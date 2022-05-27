@@ -41,6 +41,58 @@ Success means the complete CAR has been saved on s3, for indexing by Elastic pro
 
 On succesful write to s3, a lambda is triggered to update status of DynamoDB record for that `psaRequestId`.
 
+<pre>
+
+                    ┌─────────────┐
+                    │   lambda    │
+    ●──────1.──────▶│ POST /pins  │────────2. insert──────────┐
+                    └─────────────┘                           │
+                           │                                  ▼
+                           │                        /───────────────────\
+                           │                        │                   │
+                           │                        │     DynamoDB      │
+                      3. send msg                   │    PinRequests    │
+                           │                        │                   │
+                           │                        \───────────────────/
+                           │                                  ▲
+                           ▼                                  │
+                      ┌─────────┐                        8. update
+                      │         │                             │
+                      │         │                      ┌─────────────┐
+                      │         │                      │   lambda    │
+                      │   SQS   │                      │   S3 PUT    │
+                      │  queue  │                      └─────────────┘
+                      │         │                             ▲
+                      │         │                             │
+                      │         │                        7. S3 Event
+                      └─────────┘                             │
+                           │                        ┌───────────────────┐
+                           │                        │                   │
+                           │                        │        S3         │
+                           │                        │                   │
+           ─ ─ ─ ─ ─ ─ ─ ─ ┼─ 4. process msg─┐      └───────────────────┘
+          │                                  │                ▲
+                           │                 │                │
+          │                                  │            6. S3 PUT
+          ▼                ▼                 ▼                │
+   ┌─────────────┐  ┌─────────────┐   ┌─────────────┐         │
+┌ ─│             │─ ┤             ├ ─ ┤             ├ ┐       │
+   │   pickup    │  │   pickup    │   │   pickup    │─────────┘
+│  │             │  │             │   │             │ │
+   └─────────────┘  └─────────────┘   └─────────────┘
+│         │                │                 ▲        │
+                                             │
+│         │                │            5. ipfs get   │
+                                             │
+│         ▼                ▼                 ▼        │
+   ┌─────────────┐  ┌─────────────┐   ┌─────────────┐
+│  │             │  │             │   │             │ │
+   │   go-ipfs   │  │   go-ipfs   │   │   go-ipfs   │
+│  │             │  │             │   │             │ │
+   └─────────────┘  └─────────────┘   └─────────────┘
+ECS ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+
+</pre>
 
 ## References
 
