@@ -41,6 +41,8 @@ Success means the complete CAR has been saved on s3, for indexing by Elastic pro
 
 On succesful write to s3, a lambda is triggered to update status of DynamoDB record for that `psaRequestId`.
 
+## Diagram
+
 <pre>
 
                     ┌─────────────┐
