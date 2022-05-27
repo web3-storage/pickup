@@ -29,7 +29,7 @@ The pinning service frontend is a lambda:
 - A message to sqs queue with details needed to fetch a cid and write CAR to S3. 
 `(requestId, cid, origins[], awsRegion, s3Bucket, s3Path)`
 
-The queue consumer is an autoscaling set of go-ipfs nodes, with a pickup sidecar, in ECS. The sidecar long-polls the sqs queue, gets next message, connects to `origins[]`, fetches `cid` as a CAR, and writes it to S3 at `(awsRegion, s3Bucket, s3Path)`.
+The queue consumer is an autoscaling set of go-ipfs nodes (thanks @thattommyhall ✨), with a pickup sidecar, in ECS. The sidecar long-polls the sqs queue, gets next message, connects to `origins[]`, fetches `cid` as a CAR, and writes it to S3 at `(awsRegion, s3Bucket, s3Path)`.
 
 While we wait for fetching the CAR to complete, we bump up the "visibility timeout" on the message, so that message remains hidden from other workers, up to a configured `ipfsTimeout`.
 
