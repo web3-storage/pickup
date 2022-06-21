@@ -4,15 +4,15 @@ import s3 from './plugins/s3.js'
 
 const envSchema = {
   type: 'object',
-  required: ['PORT', 'NODE_ENV', 'GATEWAY_URL', 'S3_BUCKET_NAME', 'S3_BUCKET_REGION', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY_ID'],
+  required: ['PORT', 'NODE_ENV', 'GATEWAY_URL', 'S3_BUCKET_NAME', 'AWS_REGION', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY'],
   properties: {
     PORT: { type: 'string', default: 3000 },
     NODE_ENV: { type: 'string', default: 'dev' },
     GATEWAY_URL: { type: 'string' },
     S3_BUCKET_NAME: { type: 'string' },
-    S3_BUCKET_REGION: { type: 'string' },
-    S3_ACCESS_KEY_ID: { type: 'string' },
-    S3_SECRET_ACCESS_KEY_ID: { type: 'string' }
+    AWS_REGION: { type: 'string' },
+    AWS_ACCESS_KEY_ID: { type: 'string' },
+    AWS_SECRET_ACCESS_KEY: { type: 'string' }
   }
 }
 

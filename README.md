@@ -96,21 +96,39 @@ ECS ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ 
 
 </pre>
 
+## Integration with Elastic Provider
+
+see: https://github.com/ipfs-elastic-provider/ipfs-elastic-provider
+
+### Option 1 - use uploads v2
+
+The initial /pins lambda asks web3.storage for a signed s3 upload url instead of picking the bucket to write to itself.
+- Means we write the CAR directly into Elastic Provider. But we need something to say "upload complete" so that we update the PinRequests DynamoDB table... This could be done by pickup once the upload is complete. We would at that point have the full CAR, so we could mark it as pinned at that point, but it won't be available until later, after the elastic provider has processed it.
+
+
+### Option 2 - inform Elastic provider on upload complete
+
+Send a message on the indexer SQS topic from our lambda when the CAR is written to our s3 bucket.
+
 ## References
 
 > When a consumer (component 2) is ready to process messages, it consumes messages from the queue, and message A is returned. While message A is being processed, it remains in the queue and isn't returned to subsequent receive requests for the duration of the visibility timeout.
 >
-> The consumer (component 2) deletes message A from the queue to prevent the message from being received and processed again when the visibility timeout expires.
-– https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-basic-architecture.html
+> The consumer (component 2) deletes message A from the queue to prevent the message from being received and processed again when the visibility timeout expires. 
+> 
+>https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-basic-architecture.html
 
 > If you don't know how long it takes to process a message, create a heartbeat for your consumer process: Specify the initial visibility timeout (for example, 2 minutes) and then—as long as your consumer still works on the message—keep extending the visibility timeout by 2 minutes every minute.
-– https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/working-with-messages.html
+>
+> https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/working-with-messages.html
 
-> Worker Services allow you to implement asynchronous service-to-service communication with pub/sub architectures. Your microservices in your application can publish events to Amazon SNS topics that can then be consumed by a "Worker Service". 
-– https://aws.github.io/copilot-cli/docs/concepts/services/#request-driven-web-service
+> Worker Services allow you to implement asynchronous service-to-service communication with pub/sub architectures. Your microservices in your application can publish events to Amazon SNS topics that can then be consumed by a "Worker Service".
+>
+> https://aws.github.io/copilot-cli/docs/concepts/services/#request-driven-web-service
 
 > A Backend Service on AWS Copilot a one-click deployment of a gateway as a "backend service" (autoscaling at Fargate Spot pricing, each node has a port open so is a full participant in libp2p, 200G ssd for the datastore, 4cores and up to 30G RAM, no LB though - dns based discovery for client-side load balancing).
-– https://github.com/ipfs-shipyard/go-ipfs-docker-examples/tree/main/gateway-copilot-backend-service
+>
+> https://github.com/ipfs-shipyard/go-ipfs-docker-examples/tree/main/gateway-copilot-backend-service
 
 
 [pinning service api]: https://ipfs.github.io/pinning-services-api-spec/

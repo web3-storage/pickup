@@ -8,33 +8,29 @@ export default fastifyPlugin(async function (fastify, opts) {
   const bucket = fastify.env.S3_BUCKET_NAME
   fastify.decorate('s3', client)
   fastify.decorate('sendToS3', sendToS3.bind(this, { client, bucket, NODE_ENV: fastify.env.NODE_ENV }))
+  fastify.decorate('toBucketKey', toBucketKey)
 })
 
-export function createS3Client ({ S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY_ID, S3_BUCKET_REGION, NODE_ENV }) {
+export function createS3Client ({ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, NODE_ENV }) {
   console.log('NODE_ENV', NODE_ENV)
   const client = new S3Client({
-    region: S3_BUCKET_REGION,
+    region: AWS_REGION,
     credentials: {
-      accessKeyId: S3_ACCESS_KEY_ID,
-      secretAccessKey: S3_SECRET_ACCESS_KEY_ID
+      accessKeyId: AWS_ACCESS_KEY_ID,
+      secretAccessKey: AWS_SECRET_ACCESS_KEY
     }
   })
-  if (NODE_ENV !== 'production') {
-    client.middlewareStack.add(
-      (next) => async (args) => {
-        console.log('s3 request headers', args.request.headers)
-        return next(args)
-      },
-      { step: 'finalizeRequest' }
-    )
-  }
   return client
 }
 
-export async function sendToS3 ({ client, bucket, NODE_ENV }, { body, cid, userId = 'testUser', appName = 'testApp' }) {
+export function toBucketKey ({ cid, userId, appName }) {
+  return `psa/${appName}-${userId}/${cid}.car`
+}
+
+export async function sendToS3 ({ client, bucket, NODE_ENV }, { body, key }) {
   const params = {
     Metadata: { structure: 'complete' },
-    Key: `psa/${appName}-${userId}/${cid}.car`,
+    Key: key,
     Bucket: bucket,
     Body: body
   }

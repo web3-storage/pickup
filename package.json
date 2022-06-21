@@ -7,8 +7,10 @@
   "scripts": {
     "start": "fastify start app.js -l info --pretty-logs --watch --verbose-watch",
     "start:prod": "NODE_ENV=production fastify start app.js -l info",
+    "start:consumer": "node consumer.js",
     "test": "standard",
-    "lint": "standard --fix"
+    "lint": "standard --fix",
+    "build-openapi-validator": "npx ajv-openapi-compile --definition=./ipfs-pinning-service.yaml --schema=./ipfs-pinning-service.js"
   },
   "author": "olizilla",
   "license": "MIT",
