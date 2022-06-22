@@ -1,9 +1,9 @@
-import test from 'ava'
-import { Buffer } from 'buffer'
 import { DockerComposeEnvironment, Wait } from 'testcontainers'
 import { S3Client, CreateBucketCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { unpackStream } from 'ipfs-car/unpack'
 import { pickup } from '../plugins/pickup.js'
+import { Buffer } from 'buffer'
+import test from 'ava'
 
 test.before(async t => {
   t.timeout(1000 * 60)
@@ -66,7 +66,6 @@ test('pickup', async t => {
   for await (const chunk of files[0].content()) {
     chunks.push(chunk)
   }
-  // const file = new Blob(chunks)
   const buf = Buffer.concat(chunks)
   t.is(buf.toString(), 'hello world', 'expected string in the file')
   t.pass()
