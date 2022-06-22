@@ -11,8 +11,7 @@ export default fastifyPlugin(async function (fastify, opts) {
   fastify.decorate('toBucketKey', toBucketKey)
 })
 
-export function createS3Client ({ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, NODE_ENV }) {
-  console.log('NODE_ENV', NODE_ENV)
+export function createS3Client ({ AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION }) {
   const client = new S3Client({
     region: AWS_REGION,
     credentials: {
@@ -36,10 +35,10 @@ export async function sendToS3 ({ client, bucket, NODE_ENV }, { body, key }) {
   }
   // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
   const s3Upload = new Upload({ client, params })
-  if (NODE_ENV !== 'production') {
-    s3Upload.on('httpUploadProgress', (progress) => {
-      console.log(progress)
-    })
-  }
+  // if (NODE_ENV !== 'production') {
+  //   s3Upload.on('httpUploadProgress', (progress) => {
+  //     console.log(progress)
+  //   })
+  // }
   await s3Upload.done()
 }

@@ -8,8 +8,9 @@
     "start": "fastify start app.js -l info --pretty-logs --watch --verbose-watch",
     "start:prod": "NODE_ENV=production fastify start app.js -l info",
     "start:consumer": "node consumer.js",
-    "test": "standard",
-    "lint": "standard --fix",
+    "test": "ava",
+    "test:debug": "DEBUG=testcontainers* ava",
+    "lint": "standard",
     "build-openapi-validator": "npx ajv-openapi-compile --definition=./ipfs-pinning-service.yaml --schema=./ipfs-pinning-service.js"
   },
   "author": "olizilla",
@@ -21,10 +22,17 @@
     "fastify": "^3.29.0",
     "fastify-cli": "^3.1.0",
     "fastify-plugin": "^3.0.1",
+    "multiaddr": "^10.0.1",
+    "multiformats": "^9.6.5",
     "node-fetch": "^3.2.4"
   },
   "devDependencies": {
-    "standard": "^16.0.4"
+    "@web-std/blob": "^3.0.4",
+    "ava": "^4.3.0",
+    "ipfs-car": "^0.7.0",
+    "minio": "^7.0.28",
+    "standard": "^16.0.4",
+    "testcontainers": "^8.10.1"
   },
   "engines": {
     "node": "16.x"
