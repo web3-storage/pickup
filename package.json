@@ -30,7 +30,6 @@
     "@web-std/blob": "^3.0.4",
     "ava": "^4.3.0",
     "ipfs-car": "^0.7.0",
-    "minio": "^7.0.28",
     "standard": "^16.0.4",
     "testcontainers": "^8.10.1"
   },
