@@ -110,6 +110,15 @@ The initial /pins lambda asks web3.storage for a signed s3 upload url instead of
 
 Send a message on the indexer SQS topic from our lambda when the CAR is written to our s3 bucket.
 
+## Questions
+
+Rate limiting per user!
+Thing to check before adding to the SQS queue
+- do we already have the thing? Check with elastic provider.
+- does the user have too many pin requests pending already.
+- is the queue long? drop reqs at some threshold.
+
+
 ## References
 
 > When a consumer (component 2) is ready to process messages, it consumes messages from the queue, and message A is returned. While message A is being processed, it remains in the queue and isn't returned to subsequent receive requests for the duration of the visibility timeout.

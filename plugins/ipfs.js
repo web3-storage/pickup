@@ -19,7 +19,7 @@ export async function connectTo (origins, gateway) {
   for (const addr of origins.filter(isMultiaddr)) {
     // TODO: what about  /api/v0/swarm/peering/add ? is better? Should we disconnect also?
     const url = new URL(`/api/v0/swarm/connect?arg=${addr}`, gateway)
-    fetch(url, { method: 'POST' })
+    await fetch(url, { method: 'POST' })
   }
 }
 
@@ -28,7 +28,7 @@ export async function disconnect (origins, gateway) {
   for (const addr of origins.filter(isMultiaddr)) {
     // TODO: what about  /api/v0/swarm/peering/add ? is better? Should we disconnect also?
     const url = new URL(`/api/v0/swarm/disconnect?arg=${addr}`, gateway)
-    fetch(url, { method: 'POST' })
+    await fetch(url, { method: 'POST' })
   }
 }
 
