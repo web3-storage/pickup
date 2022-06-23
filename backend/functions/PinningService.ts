@@ -21,27 +21,38 @@ function getUserId(accessToken: string) {
   return accessToken
 }
 
+// gross. i have no idea how they expect you to write an IN query with this shit.
+function toInFilter(arr: string[]) {
+  const Expresssion = arr.map(k => `:${k}`).join(', ')
+  let Values = {}
+  // @ts-ignore
+  arr.forEach(k => Values[`:${k}`] = k)
+  return { Expresssion, Values }
+}
+
 // GET /pins
 export async function getPins (c: OAContext, event: APIGatewayProxyEventV2, context: AWSContext) {
   const params = c.request.query as PinQuery
-  const status = params.status || ['pinned']
+  const status = Array.isArray(params.status) ? params.status : Array.of(params.status || 'pinned')
   const userid = getUserId(c.security.accessToken)
+  const query = { 
+    TableName: process.env.TABLE_NAME,
+    // gotta sidestep dynamo reserved words!?
+    ExpressionAttributeNames: {
+      '#status': 'status'
+    },
+    ExpressionAttributeValues: { 
+      ":u": userid,
+      ...toInFilter(status).Values
+    },
+    KeyConditionExpression: "userid = :u",
+    FilterExpression: `#status IN (${toInFilter(status).Expresssion})`,
+    ScanIndexForward: false, // most recent pins first plz
+    Limit: Number(params.limit) || 10
+  }
+  console.log(query)
   try {
-    const res = await dynamoDb.send(new QueryCommand({ 
-      TableName: process.env.TABLE_NAME,
-      ExpressionAttributeValues: { 
-        ":u": userid,
-        ":s": status
-      },
-      // gotta sidestep dynamo reserved words!?
-      ExpressionAttributeNames: {
-        '#status': 'status'
-      },
-      KeyConditionExpression: "userid = :u",
-      FilterExpression: "#status IN (:s)",
-      ScanIndexForward: false, // most recent pins first plz
-      Limit: Number(params.limit) || 10
-    }))
+    const res = await dynamoDb.send(new QueryCommand(query))
     const body: PinResults = { 
       count: res.Count || 0, 
       results: res.Items as PinStatus[]
@@ -87,17 +98,22 @@ export async function addPin (c: OAContext, event: APIGatewayProxyEventV2, conte
 // GET /pins/{requestid}
 export async function getPinByRequestId (c: OAContext, event: APIGatewayProxyEventV2, context: AWSContext) {
   const { requestid } = c.request.params
+  const userid = getUserId(c.security.accessToken)
   try {
     const res = await dynamoDb.send(new GetCommand({ 
       TableName: process.env.TABLE_NAME, 
-      Key: { requestid },
+      Key: { userid, requestid },
       AttributesToGet: PinStatusAttrs
     }))
+    console.log(requestid, userid, res)
+    if (res.Item) {
+      return { statusCode: 200, body: res.Item }
+    }
     // TODO: validate Item?
-    return { statusCode: 200, body: res.Item }
+    return { statusCode: 404, body: { error: { reason: 'NOT_FOUND' }}}
   } catch (error) {
     console.log(error)
-    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR'  } } } 
+    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR'  } } }
   }
 }
 
@@ -182,10 +198,4 @@ export const handler: APIGatewayProxyHandlerV2 = async (event, awsContext) => {
   }
   // @ts-ignore the openapi-backend types need updating to deal with v2 where value could be undefined.
   return api.handleRequest(openApiContext, event, awsContext)
-}
-
-export const corsPreflight = () => {
-  return {
-    headers
-  }
 }
