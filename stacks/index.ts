@@ -1,13 +1,13 @@
-import { PinningServiceStack } from "./PinningServiceStack"
-import { App } from "@serverless-stack/resources"
+import { PinningServiceStack } from './PinningServiceStack'
+import { App } from '@serverless-stack/resources'
 
-export default function (app: App) {
+export default function (app: App): void {
   app.setDefaultFunctionProps({
-    runtime: "nodejs16.x",
-    srcPath: "backend",
+    runtime: 'nodejs16.x',
+    srcPath: 'backend',
     bundle: {
-      format: "esm",
-    },
-  });
+      format: 'esm'
+    }
+  })
   app.stack(PinningServiceStack)
 }

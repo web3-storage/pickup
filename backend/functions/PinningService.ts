@@ -1,62 +1,37 @@
-import { nanoid } from 'nanoid'
 import { OpenAPIBackend } from 'openapi-backend'
 import { Context as OAContext } from 'openapi-backend/backend'
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb"
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2, Context as AWSContext } from 'aws-lambda'
-import { components, paths } from '../schema'
+import { Pin, PinQuery } from '../schema'
+import DynamoDBPinningService from '../db'
 
-type PinResults = components['schemas']['PinResults']
-type PinStatus = components['schemas']['PinStatus']
-type Pin = components["schemas"]["Pin"]
-type PinQuery = paths["/pins"]["get"]["parameters"]["query"]
-
-// used to filter props when querying dynamodb
-const PinStatusAttrs = ['requestid', 'status', 'created', 'pin', 'delegates', 'info']
-
-const dynamoDb = DynamoDBDocumentClient.from(new DynamoDBClient({}))
+const db = new DynamoDBPinningService({ table: process.env.TABLE_NAME })
 
 function getUserId(accessToken: string) {
   // TODO: map access token to user id
   return accessToken
 }
 
-// gross. i have no idea how they expect you to write an IN query with this shit.
-function toInFilter(arr: string[]) {
-  const Expresssion = arr.map(k => `:${k}`).join(', ')
-  let Values = {}
-  // @ts-ignore
-  arr.forEach(k => Values[`:${k}`] = k)
-  return { Expresssion, Values }
-}
-
 // GET /pins
 export async function getPins (c: OAContext, event: APIGatewayProxyEventV2, context: AWSContext) {
-  const params = c.request.query as PinQuery
-  const status = Array.isArray(params.status) ? params.status : Array.of(params.status || 'pinned')
+  const query = c.request.query as PinQuery
   const userid = getUserId(c.security.accessToken)
-  const query = { 
-    TableName: process.env.TABLE_NAME,
-    // gotta sidestep dynamo reserved words!?
-    ExpressionAttributeNames: {
-      '#status': 'status'
-    },
-    ExpressionAttributeValues: { 
-      ":u": userid,
-      ...toInFilter(status).Values
-    },
-    KeyConditionExpression: "userid = :u",
-    FilterExpression: `#status IN (${toInFilter(status).Expresssion})`,
-    ScanIndexForward: false, // most recent pins first plz
-    Limit: Number(params.limit) || 10
-  }
-  console.log(query)
+  console.log(query.status)
   try {
-    const res = await dynamoDb.send(new QueryCommand(query))
-    const body: PinResults = { 
-      count: res.Count || 0, 
-      results: res.Items as PinStatus[]
-    }
+    const body = await db.getPins(userid, query)
+    return { statusCode: 200, body }
+  } catch (error) {
+    console.log(error)
+    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR'  } } } 
+  } 
+}
+
+// POST /pins
+export async function addPin (c: OAContext, event: APIGatewayProxyEventV2, context: AWSContext) {
+  const pin = c.request.requestBody as Pin
+  const userid = getUserId(c.security.accessToken)
+  try {
+    const body = await db.addPin(userid, pin)
+    // TODO: put it in SQS
     return { statusCode: 200, body }
   } catch (error) {
     console.log(error)
@@ -64,52 +39,15 @@ export async function getPins (c: OAContext, event: APIGatewayProxyEventV2, cont
   }
 }
 
-// POST /pins
-export async function addPin (c: OAContext, event: APIGatewayProxyEventV2, context: AWSContext) {
-  const pin = c.request.requestBody as Pin
-  // TODO: map access token to user id
-  const userid = c.security.accessToken
-  
-  const status: PinStatus = {
-    requestid: `${Date.now()}-${nanoid(13)}`,
-    status: 'queued',
-    created: new Date().toISOString(),
-    pin,
-    delegates: [],
-    info: {}
-  }
-
-  try {
-    await dynamoDb.send(new PutCommand({ 
-      TableName: process.env.TABLE_NAME, 
-      Item: {
-        ...status,
-        userid
-      } 
-    }))
-  } catch (error) {
-    console.log(error)
-    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR'  } } } 
-  }
-  // TODO: put it in SQS
-  return { statusCode: 200, body: status }
-}
-
 // GET /pins/{requestid}
 export async function getPinByRequestId (c: OAContext, event: APIGatewayProxyEventV2, context: AWSContext) {
-  const { requestid } = c.request.params
+  const requestid = first(c.request.params.requestid)
   const userid = getUserId(c.security.accessToken)
   try {
-    const res = await dynamoDb.send(new GetCommand({ 
-      TableName: process.env.TABLE_NAME, 
-      Key: { userid, requestid },
-      AttributesToGet: PinStatusAttrs
-    }))
-    console.log(requestid, userid, res)
-    if (res.Item) {
-      return { statusCode: 200, body: res.Item }
+    const status = await db.getPinByRequestId(userid, requestid)
+    if (status) {
+      return { statusCode: 200, body: status }
     }
-    // TODO: validate Item?
     return { statusCode: 404, body: { error: { reason: 'NOT_FOUND' }}}
   } catch (error) {
     console.log(error)
@@ -119,8 +57,19 @@ export async function getPinByRequestId (c: OAContext, event: APIGatewayProxyEve
 
 // POST /pins/{requestid}
 export async function replacePinByRequestId (c: OAContext, event: APIGatewayProxyEventV2, context: AWSContext) {
-  const body = { operationId: c.operation.operationId }
-  return { statusCode: 501, body}
+  const requestid = first(c.request.params.requestid)
+  const pin = c.request.requestBody as Pin
+  const userid = getUserId(c.security.accessToken)
+  try {
+    const status = await db.replacePinByRequestId(userid, requestid, pin)
+    if (status) {
+      return { statusCode: 200, body: status }
+    }
+    return { statusCode: 404, body: { error: { reason: 'NOT_FOUND' }}}
+  } catch (error) {
+    console.log(error)
+    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR'  } } }
+  }
 }
 
 // DELETE /pins/{requestid}
@@ -146,6 +95,10 @@ export async function notFound (c: OAContext) {
   const body = c.api.document.components?.examples?.NotFoundExample?.value
 
   return { statusCode: 404, body }
+}
+
+function first (a: string | string[]) {
+  return Array.isArray(a) ? a[0] : a
 }
 
 const api = new OpenAPIBackend({ 
