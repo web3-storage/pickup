@@ -2,7 +2,7 @@ import { fetchCar, connectTo, disconnect } from './ipfs.js'
 import { sendToS3 } from './s3.js'
 
 export async function pickup ({ client, GATEWAY_URL, NODE_ENV }, { requestid, cid, origins, bucket, key }) {
-  console.log(`Fetching req: ${requestid} cid: ${cid}`)
+  // console.log(`Fetching req: ${requestid} cid: ${cid}`)
   // TODO: check if the work still needs to be done. by asking EP.
   try {
     await connectTo(origins, GATEWAY_URL)

@@ -7,7 +7,6 @@ import test from 'ava'
 
 test.before(async t => {
   t.timeout(1000 * 60)
-  console.log('✨ Starting containers')
   // Start local ipfs and minio daemons for testing against.
   const docker = await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
     .withWaitStrategy('ipfs', Wait.forLogMessage('Daemon is ready'))
@@ -32,8 +31,7 @@ test.before(async t => {
 })
 
 test.after.always(async t => {
-  console.log('🔪 Killing containers')
-  await t.context.docker.down()
+  await t.context.docker?.down()
 })
 
 test('pickup', async t => {
