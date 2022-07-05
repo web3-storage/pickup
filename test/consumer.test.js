@@ -1,4 +1,4 @@
-import { GenericContainer } from 'testcontainers'
+import { GenericContainer, Wait } from 'testcontainers'
 import { SQSClient, SendMessageCommand, CreateQueueCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs'
 import { Consumer } from 'sqs-consumer'
 import test from 'ava'
@@ -9,7 +9,7 @@ test.before(async t => {
   const container = await new GenericContainer('softwaremill/elasticmq-native')
     .withExposedPorts(9324)
     .start()
-  t.context.container = container
+  t.context.sqs = container
   const endpoint = `http://${container.getHost()}:${container.getMappedPort(9324)}`
   t.context.sqsClient = new SQSClient({
     endpoint
@@ -27,7 +27,7 @@ test.before(async t => {
 })
 
 test.after.always(async t => {
-  await t.context.container?.stop()
+  await t.context.sqs?.stop()
 })
 
 test('sqs-consumer', async t => {
@@ -61,4 +61,25 @@ test('sqs-consumer', async t => {
     })
     app.start()
   })
+})
+
+// builds image and starts container
+test.only('Dockerfile', async t => {
+  const img = await GenericContainer.fromDockerfile('.').build()
+  img.withWaitStrategy(Wait.forLogMessage(`Pickup subscribed to ${t.context.QueueUrl}`))
+  await t.throwsAsync(img.start())
+
+  img.withEnv('SQS_QUEUE_URL', t.context.QueueUrl)
+  await t.throwsAsync(img.start())
+
+  img.withEnv('GATEWAY_URL', 'test')
+  let pickup
+  try {
+    pickup = await img.start()
+    t.pass('Should start container')
+  } catch (err) {
+    t.fail(err.message || err)
+  } finally {
+    await pickup?.stop()
+  }
 })
