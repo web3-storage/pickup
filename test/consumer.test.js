@@ -64,7 +64,7 @@ test('sqs-consumer', async t => {
 })
 
 // builds image and starts container
-test.only('Dockerfile', async t => {
+test('Dockerfile', async t => {
   const img = await GenericContainer.fromDockerfile('.').build()
   img.withWaitStrategy(Wait.forLogMessage(`Pickup subscribed to ${t.context.QueueUrl}`))
   await t.throwsAsync(img.start())
