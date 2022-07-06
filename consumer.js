@@ -1,6 +1,6 @@
 import { Consumer } from 'sqs-consumer'
-import { pickup } from './plugins/pickup.js'
-import { createS3Client } from './plugins/s3.js'
+import { pickup } from './lib/pickup.js'
+import { createS3Client } from './lib/s3.js'
 
 const { GATEWAY_URL, NODE_ENV, SQS_QUEUE_URL } = process.env
 

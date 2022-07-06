@@ -1,7 +1,7 @@
 import { DockerComposeEnvironment, Wait } from 'testcontainers'
 import { S3Client, CreateBucketCommand, GetObjectCommand } from '@aws-sdk/client-s3'
 import { unpackStream } from 'ipfs-car/unpack'
-import { pickup } from '../plugins/pickup.js'
+import { pickup } from '../lib/pickup.js'
 import { Buffer } from 'buffer'
 import test from 'ava'
 

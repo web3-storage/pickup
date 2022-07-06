@@ -5,9 +5,7 @@
   "description": "Fetch content from IPFS as a CAR and push it to S3.",
   "main": "index.js",
   "scripts": {
-    "start": "fastify start app.js -l info --pretty-logs --watch --verbose-watch",
-    "start:prod": "NODE_ENV=production fastify start app.js -l info",
-    "start:consumer": "node consumer.js",
+    "start": "node consumer.js",
     "test": "ava",
     "test:debug": "DEBUG=testcontainers* ava",
     "lint": "standard",
@@ -18,10 +16,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.95.0",
     "@aws-sdk/lib-storage": "^3.97.0",
-    "@fastify/env": "^3.0.0",
-    "fastify": "^3.29.0",
-    "fastify-cli": "^3.1.0",
-    "fastify-plugin": "^3.0.1",
     "multiaddr": "^10.0.1",
     "multiformats": "^9.6.5",
     "node-fetch": "^3.2.4",
