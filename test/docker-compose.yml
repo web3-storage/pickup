@@ -1,15 +1,9 @@
 version: '3.7'
 
-volumes:
-  minio:
-  ipfs:
-
 services:  
   ipfs:
     container_name: ipfs
     image: ipfs/go-ipfs:v0.13.0
-    volumes:
-      - ipfs:/data/ipfs
     ports:
       - "8080:8080"
 
@@ -20,8 +14,6 @@ services:
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
-    volumes:
-      - minio:/data
     ports:
       - "9000:9000"
       - "9001:9001"

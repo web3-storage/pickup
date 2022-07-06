@@ -1,4 +1,4 @@
-import { GenericContainer, Wait } from 'testcontainers'
+import { GenericContainer } from 'testcontainers'
 import { SQSClient, SendMessageCommand, CreateQueueCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs'
 import { Consumer } from 'sqs-consumer'
 import test from 'ava'
@@ -61,25 +61,4 @@ test('sqs-consumer', async t => {
     })
     app.start()
   })
-})
-
-// builds image and starts container
-test('Dockerfile', async t => {
-  const img = await GenericContainer.fromDockerfile('.').build()
-  img.withWaitStrategy(Wait.forLogMessage(`Pickup subscribed to ${t.context.QueueUrl}`))
-  await t.throwsAsync(img.start())
-
-  img.withEnv('SQS_QUEUE_URL', t.context.QueueUrl)
-  await t.throwsAsync(img.start())
-
-  img.withEnv('GATEWAY_URL', 'test')
-  let pickup
-  try {
-    pickup = await img.start()
-    t.pass('Should start container')
-  } catch (err) {
-    t.fail(err.message || err)
-  } finally {
-    await pickup?.stop()
-  }
 })
