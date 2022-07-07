@@ -2,35 +2,38 @@ import { nanoid } from 'nanoid'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 import { GenericContainer as Container, StartedTestContainer } from 'testcontainers'
-import DynamoDBPinningService, { PinStatusAttrs, PinStatusVals } from '../db'
+import DynamoDBPinningService, { PinStatusVals } from '../db'
 
 describe('DynamoDBPinningService', () => {
   let container: StartedTestContainer
   let db: DynamoDBPinningService
 
   beforeAll(async () => {
-    container = await new Container("amazon/dynamodb-local:latest")
+    container = await new Container('amazon/dynamodb-local:latest')
       .withExposedPorts(8000)
       .start()
 
     const table = 'TEST'
-    db = new DynamoDBPinningService({table, client: new DynamoDBClient({
-      endpoint: `http://${container.getHost()}:${container.getMappedPort(8000)}`
-    })})
+    db = new DynamoDBPinningService({
+      table,
+      client: new DynamoDBClient({
+        endpoint: `http://${container.getHost()}:${container.getMappedPort(8000)}`
+      })
+    })
 
-    await db.client.send(new CreateTableCommand({ 
+    await db.client.send(new CreateTableCommand({
       TableName: table,
       AttributeDefinitions: [
-        { AttributeName: "userid", AttributeType: "S" },
-        { AttributeName: "requestid", AttributeType: "S" }
+        { AttributeName: 'userid', AttributeType: 'S' },
+        { AttributeName: 'requestid', AttributeType: 'S' }
       ],
       KeySchema: [
-        { AttributeName: "userid", KeyType: "HASH" },
-        { AttributeName: "requestid", KeyType: "RANGE" }
+        { AttributeName: 'userid', KeyType: 'HASH' },
+        { AttributeName: 'requestid', KeyType: 'RANGE' }
       ],
       ProvisionedThroughput: {
         ReadCapacityUnits: 1,
-        WriteCapacityUnits: 1,
+        WriteCapacityUnits: 1
       }
     }))
   }, 1000 * 60 * 10)
@@ -43,7 +46,7 @@ describe('DynamoDBPinningService', () => {
     // set a unique userid per test to isolate as they run in parallel against shared db
     const userid = nanoid()
     const cid = 'test-cid'
-    const res = await db.addPin(userid, { cid }) 
+    const res = await db.addPin(userid, { cid })
     expect(res).not.toHaveProperty('userid')
     expect(res).toMatchObject({
       requestid: expect.stringMatching(/\S{26,}/), // 26 or more non-white space chars
@@ -63,10 +66,10 @@ describe('DynamoDBPinningService', () => {
       count: 0,
       results: []
     })
-    
+
     const cid = 'test-cid'
     await db.addPin(userid, { cid })
-    
+
     // should only return `pinned` pins by default
     res = await db.getPins(userid, {})
     expect(res).not.toHaveProperty('userid')

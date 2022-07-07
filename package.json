@@ -29,5 +29,11 @@
   ],
   "dependencies": {
     "aws-cdk-lib": "2.24.0"
+  },
+  "ts-standard": {
+    "ignore": [
+      "backend/schema-gen.ts",
+      "vitest.config.ts"
+    ]
   }
 }

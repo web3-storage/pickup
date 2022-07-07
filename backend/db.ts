@@ -1,17 +1,17 @@
 import { nanoid } from 'nanoid'
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, QueryCommandInput, UpdateCommand } from "@aws-sdk/lib-dynamodb"
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, QueryCommandInput, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { PinResults, PinStatus, Pin, PinQuery, Status } from './schema'
 
 // used to filter props when querying dynamodb
 export const PinStatusAttrs = ['requestid', 'status', 'created', 'pin', 'delegates', 'info']
-export const PinStatusVals: Status[] = ["queued", "pinning", "pinned", "failed"]
+export const PinStatusVals: Status[] = ['queued', 'pinning', 'pinned', 'failed']
 
 export default class DynamoDBPinningService {
   table: string
   client: DynamoDBDocumentClient
 
-  constructor ({table = 'PinStatus', client = new DynamoDBClient({})} = {}) {
+  constructor ({ table = 'PinStatus', client = new DynamoDBClient({}) } = {}) {
     this.table = table
     this.client = DynamoDBDocumentClient.from(client)
   }
@@ -28,51 +28,52 @@ export default class DynamoDBPinningService {
       delegates: [],
       info: {}
     }
-    await this.client.send(new PutCommand({ 
-      TableName: this.table, 
+    await this.client.send(new PutCommand({
+      TableName: this.table,
       Item: {
         ...status,
         userid
-      } 
+      }
     }))
     return status
   }
-  
+
   /**
    * Find PinStatus objects for userid that match query. Returns pins with status: `pinned` by default
    */
   async getPins (userid: string, query: PinQuery): Promise<PinResults> {
-    const status = Array.isArray(query.status) ? query.status : Array.of(query.status || 'pinned')  
-    const dbQuery: QueryCommandInput = { 
+    const status: Status[] = Array.isArray(query.status) ? query.status : Array.of(query.status ?? 'pinned')
+    const statusFilter = toInFilter(status)
+    const dbQuery: QueryCommandInput = {
       TableName: this.table,
       // gotta sidestep dynamo reserved words!?
       ExpressionAttributeNames: {
         '#status': 'status'
       },
-      ExpressionAttributeValues: { 
-        ":u": userid,
-        ...toInFilter(status).Values
+      ExpressionAttributeValues: {
+        ':u': userid,
+        ...statusFilter.values
       },
-      KeyConditionExpression: "userid = :u",
-      FilterExpression: `#status IN (${toInFilter(status).Expresssion})`,
+      KeyConditionExpression: 'userid = :u',
+      FilterExpression: `#status IN (${statusFilter.expression})`,
       ProjectionExpression: PinStatusAttrs.map(x => x === 'status' ? '#status' : x).join(', '),
       ScanIndexForward: false, // most recent pins first plz
-      Limit: Number(query.limit) || 10
+      Limit: query.limit ?? 10
     }
     const res = await this.client.send(new QueryCommand(dbQuery))
-    const body: PinResults = { 
-      count: res.Count || 0, 
+    const body: PinResults = {
+      count: res.Count ?? 0,
       results: res.Items as PinStatus[]
     }
     return body
   }
 
   /**
-   * 
+   *
    */
-  async getPinByRequestId (userid: string, requestid: string): Promise<PinStatus> {
-    const res = await this.client.send(new GetCommand({ 
-      TableName: this.table, 
+  async getPinByRequestId (userid: string, requestid: string): Promise<PinStatus | undefined> {
+    const res = await this.client.send(new GetCommand({
+      TableName: this.table,
       Key: { userid, requestid },
       AttributesToGet: PinStatusAttrs
     }))
@@ -80,12 +81,12 @@ export default class DynamoDBPinningService {
   }
 
   /**
-   * Replace an existing pin object. Intended to be a shortcut for executing 
-   * remove and add operations in one step to avoid unnecessary garbage 
+   * Replace an existing pin object. Intended to be a shortcut for executing
+   * remove and add operations in one step to avoid unnecessary garbage
    * collection of blocks present in both recursive pins... but we're gonna do
    * it the hard way, as we're all CARs in S3, not blocks in a shared blockstore.
    */
-  async replacePinByRequestId (userid: string, requestid: string, pin: Pin): Promise<PinStatus>  {
+  async replacePinByRequestId (userid: string, requestid: string, pin: Pin): Promise<PinStatus> {
     throw new Error('Not Implemented')
   }
 
@@ -99,12 +100,12 @@ export default class DynamoDBPinningService {
   /**
    * Update the state for a given Pin
    */
-  async updatePinStatusByRequestId(userid: string, requestid: string, status: Status): Promise<PinStatus> {
+  async updatePinStatusByRequestId (userid: string, requestid: string, status: Status): Promise<PinStatus> {
     if (!PinStatusVals.includes(status)) {
       throw new Error(`Cannot update pin status to ${status}. Must be one of ${PinStatusVals.join(', ')}`)
     }
-    const res = await this.client.send(new UpdateCommand({ 
-      TableName: this.table, 
+    const res = await this.client.send(new UpdateCommand({
+      TableName: this.table,
       Key: { userid, requestid },
       ExpressionAttributeNames: {
         '#status': 'status'
@@ -113,18 +114,20 @@ export default class DynamoDBPinningService {
         ':s': status
       },
       UpdateExpression: 'set #status = :s',
-      ReturnValues: "ALL_NEW"
+      ReturnValues: 'ALL_NEW'
     }))
-    // @ts-ignore ReturnValues on query mean res.Item exists.
+    // @ts-expect-error ReturnValues on query mean res.Item exists.
     return res.Item as PinStatus
   }
 }
 
 // gross. i have no idea how they expect you to write an IN query with this shit.
-export function toInFilter(arr: string[]) {
-  const Expresssion = arr.map(k => `:${k}`).join(', ')
-  let Values = {}
-  // @ts-ignore
-  arr.forEach(k => Values[`:${k}`] = k)
-  return { Expresssion, Values }
+export function toInFilter (arr: string[]): { expression: string, values: any } {
+  const expression = arr.map(k => `:${k}`).join(', ')
+  const values = {}
+  for (const k of arr) {
+    // @ts-expect-error
+    values[`:${k}`] = k
+  }
+  return { expression, values }
 }

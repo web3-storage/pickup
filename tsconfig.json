@@ -1,6 +1,7 @@
 {
   "extends": "@tsconfig/node16/tsconfig.json",
-  "include": ["stacks/**/*"],
+  "include": ["stacks/**/*", "backend/**/*"],
+  
   "compilerOptions": {
     "module": "esnext",
     "moduleResolution": "node",
