@@ -1,9 +1,9 @@
-import { StackContext, Api, Table, Topic } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue } from '@serverless-stack/resources'
 
-export function PinningServiceStack ({ stack }: StackContext): void {
-  const topic = new Topic(stack, 'Pin')
+export function PinningServiceStack ({ stack }: StackContext): { table: Table, queue: Queue } {
+  const queue = new Queue(stack, 'Pin')
 
-  const table = new Table(stack, 'PinStatusv2', {
+  const table = new Table(stack, 'PinStatusv4', {
     fields: {
       requestid: 'string',
       userid: 'string'
@@ -18,10 +18,10 @@ export function PinningServiceStack ({ stack }: StackContext): void {
     cors: true,
     defaults: {
       function: {
-        permissions: [table, topic], // Allow the API to access the table and topic
+        permissions: [table, queue], // Allow the API to access the table and topic
         environment: {
           TABLE_NAME: table.tableName,
-          TOPIC_ARN: topic.topicArn
+          QUEUE_URL: queue.queueUrl
         }
       }
     },
@@ -38,7 +38,11 @@ export function PinningServiceStack ({ stack }: StackContext): void {
   // Show the endpoint in the output
   stack.addOutputs({
     ApiEndpoint: api.url,
-    TopicName: topic.topicName,
-    TopicARN: topic.topicArn
+    QueueURL: queue.queueUrl
   })
+
+  return {
+    table,
+    queue
+  }
 }

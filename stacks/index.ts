@@ -1,3 +1,4 @@
+import { PickupStack } from './PickupStack'
 import { PinningServiceStack } from './PinningServiceStack'
 import { App } from '@serverless-stack/resources'
 
@@ -10,4 +11,5 @@ export default function (app: App): void {
     }
   })
   app.stack(PinningServiceStack)
+  app.stack(PickupStack)
 }
