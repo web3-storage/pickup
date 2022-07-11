@@ -15,7 +15,7 @@ test('build', async t => {
     .start()
   t.teardown(() => ipfs.stop())
   const ipfsApiUrl = `http://${ipfsHost}:5001`
-  const img = await GenericContainer.fromDockerfile('.').build()
+  const img = await GenericContainer.fromDockerfile(new URL('../..', import.meta.url).pathname).build()
   img.withWaitStrategy(Wait.forLogMessage(`Pickup subscribed to ${SQS_QUEUE_URL}`))
   img.withNetworkMode(network.getName()) // so it can talk to the go-ipfs node
   await t.throwsAsync(img.start())

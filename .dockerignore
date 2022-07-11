@@ -1,0 +1,13 @@
+/*
+!/pickup
+!package*.json
+# node_modules
+# npm-debug.log
+# .env-tpl
+# .env
+# .gitignore
+# ipfs-pinning-service.yaml
+# README.md
+# backend
+# stacks
+# .github

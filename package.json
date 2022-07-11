@@ -25,7 +25,8 @@
     "vitest": "^0.13.0"
   },
   "workspaces": [
-    "backend"
+    "backend",
+    "pickup"
   ],
   "dependencies": {
     "aws-cdk-lib": "2.24.0"
