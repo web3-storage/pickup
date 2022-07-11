@@ -23,7 +23,7 @@ test.before(async t => {
     }
   })
   const ipfs = docker.getContainer('ipfs')
-  t.context.ipfsApiUrl = `http://${ipfs.getHost()}:${ipfs.getMappedPort(8080)}`
+  t.context.ipfsApiUrl = `http://${ipfs.getHost()}:${ipfs.getMappedPort(5001)}`
   t.context.bucket = 'test-bucket'
   t.context.s3 = s3
   t.context.docker = docker

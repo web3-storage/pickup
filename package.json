@@ -5,7 +5,7 @@
   "description": "Fetch content from IPFS as a CAR and push it to S3.",
   "main": "index.js",
   "scripts": {
-    "start": "node consumer.js",
+    "start": "node index.js",
     "test": "ava",
     "test:debug": "DEBUG=testcontainers* ava",
     "lint": "standard",
