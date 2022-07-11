@@ -1,9 +1,11 @@
-import { StackContext, Api, Table, Queue } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resources'
 
-export function PinningServiceStack ({ stack }: StackContext): { table: Table, queue: Queue } {
+export function PinningServiceStack ({ stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
 
-  const table = new Table(stack, 'PinStatusv4', {
+  const bucket = new Bucket(stack, 'Car')
+
+  const table = new Table(stack, 'PinStatusv5', {
     fields: {
       requestid: 'string',
       userid: 'string'
@@ -20,6 +22,7 @@ export function PinningServiceStack ({ stack }: StackContext): { table: Table, q
       function: {
         permissions: [table, queue], // Allow the API to access the table and topic
         environment: {
+          BUCKET_NAME: bucket.bucketName,
           TABLE_NAME: table.tableName,
           QUEUE_URL: queue.queueUrl
         }
@@ -42,7 +45,7 @@ export function PinningServiceStack ({ stack }: StackContext): { table: Table, q
   })
 
   return {
-    table,
-    queue
+    queue,
+    bucket
   }
 }

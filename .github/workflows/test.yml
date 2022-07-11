@@ -28,8 +28,7 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run typecheck
-      # ts-standard is not having a good time yet.
-      # - run: npm run lint
+      - run: npm run lint
 
   test:
     runs-on: ubuntu-latest

@@ -1,14 +1,31 @@
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 import { OpenAPIBackend } from 'openapi-backend'
 import { Context as OAContext } from 'openapi-backend/backend'
 import { APIGatewayProxyStructuredResultV2, APIGatewayProxyHandlerV2 } from 'aws-lambda'
-import { Pin, PinQuery } from '../schema'
+import { Pin, PinQuery, PinStatus } from '../schema'
 import DynamoDBPinningService from '../db'
 
 interface Response extends APIGatewayProxyStructuredResultV2 {
   body: any
 }
 
-const db = new DynamoDBPinningService({ table: process.env.TABLE_NAME })
+const { TABLE_NAME: table, BUCKET_NAME: bucket, QUEUE_URL: QueueUrl } = process.env
+
+const db = new DynamoDBPinningService({ table })
+const sqs = new SQSClient({})
+
+async function sendMessage (status: PinStatus): Promise<void> {
+  const { requestid, pin } = status
+  const { cid, origins } = pin
+  const message = {
+    requestid,
+    cid,
+    origins,
+    bucket,
+    key: `pickup/${cid}/${cid}.root.car`
+  }
+  await sqs.send(new SendMessageCommand({ QueueUrl, MessageBody: JSON.stringify(message) }))
+}
 
 function getUserId (accessToken: string): string {
   // TODO: map access token to user id
@@ -34,7 +51,8 @@ export async function addPin (c: OAContext): Promise<Response> {
   const userid = getUserId(c.security.accessToken)
   try {
     const body = await db.addPin(userid, pin)
-    // TODO: put it in SQS
+    // todo: retry if error sending message
+    await sendMessage(body)
     return { statusCode: 200, body }
   } catch (error) {
     console.log(error)

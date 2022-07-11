@@ -1,18 +1,17 @@
+import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
 import { PinningServiceStack } from './PinningServiceStack'
-import { StackContext, use, Queue } from '@serverless-stack/resources'
 import { SymlinkFollowMode } from 'aws-cdk-lib'
-import * as ecs from 'aws-cdk-lib/aws-ecs'
-// import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns'
+import { ContainerImage } from 'aws-cdk-lib/aws-ecs'
+// import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns' // forked as missing ephemeralStorage param.
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 
 export function PickupStack ({ stack }: StackContext): void {
-  const pinService = use(PinningServiceStack) as unknown as { queue: Queue }
-  // https://docs.aws.amazon.com/cdk/v2/guide/ecs_example.html
+  const pinService = use(PinningServiceStack) as unknown as { queue: Queue, bucket: Bucket }
 
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
-    // https://docs.aws.amazon.com/cdk/v2/guide/assets.html
-    image: ecs.ContainerImage.fromAsset(new URL('../../pickup', import.meta.url).pathname, {
+    // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
+    image: ContainerImage.fromAsset(new URL('../../pickup', import.meta.url).pathname, {
       // todo: remove me
       followSymlinks: SymlinkFollowMode.ALWAYS
     }),
@@ -35,9 +34,12 @@ export function PickupStack ({ stack }: StackContext): void {
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
-    image: ecs.ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.0')
+    image: ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.0')
     // environment: {
     //   IPFS_PATH: '/data/ipfs'
     // }
   })
+
+  pinService.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+  pinService.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
 }
