@@ -1,0 +1,5 @@
+.env
+.sst
+.build
+node_modules
+coverage
