@@ -12,7 +12,7 @@
     "lint": "ts-standard",
     "test": "vitest run",
     "test:debug": "DEBUG=testcontainers* vitest run --reporter json",
-    "openapi-types": "npx openapi-typescript https://raw.githubusercontent.com/ipfs/pinning-services-api-spec/main/ipfs-pinning-service.yaml --output backend/schema-gen.ts"
+    "openapi-types": "npx openapi-typescript https://raw.githubusercontent.com/ipfs/pinning-services-api-spec/main/ipfs-pinning-service.yaml --output api/schema-gen.ts"
   },
   "devDependencies": {
     "@serverless-stack/cli": "^1.2.12",
@@ -25,7 +25,7 @@
     "vitest": "^0.13.0"
   },
   "workspaces": [
-    "backend",
+    "api",
     "pickup"
   ],
   "dependencies": {
@@ -33,7 +33,7 @@
   },
   "ts-standard": {
     "ignore": [
-      "backend/schema-gen.ts",
+      "api/schema-gen.ts",
       "vitest.config.ts"
     ]
   }

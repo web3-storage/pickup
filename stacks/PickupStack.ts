@@ -1,11 +1,10 @@
 import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
-import { PinningServiceStack } from './PinningServiceStack'
+import { ApiStack } from './ApiStack'
 import { ContainerImage } from 'aws-cdk-lib/aws-ecs'
-// import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns' // forked as missing ephemeralStorage param.
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 
 export function PickupStack ({ stack }: StackContext): void {
-  const pinService = use(PinningServiceStack) as unknown as { queue: Queue, bucket: Bucket }
+  const pinService = use(ApiStack) as unknown as { queue: Queue, bucket: Bucket }
 
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {

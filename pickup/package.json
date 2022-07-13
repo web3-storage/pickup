@@ -8,8 +8,7 @@
     "start": "node index.js",
     "test": "ava",
     "test:debug": "DEBUG=testcontainers* ava",
-    "lint": "standard",
-    "build-openapi-validator": "npx ajv-openapi-compile --definition=./ipfs-pinning-service.yaml --schema=./ipfs-pinning-service.js"
+    "lint": "standard"
   },
   "author": "olizilla",
   "license": "MIT",

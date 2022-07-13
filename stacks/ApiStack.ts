@@ -1,6 +1,6 @@
 import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resources'
 
-export function PinningServiceStack ({ stack }: StackContext): { queue: Queue, bucket: Bucket } {
+export function ApiStack ({ stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
 
   const bucket = new Bucket(stack, 'Car')

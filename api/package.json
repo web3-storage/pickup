@@ -1,6 +1,6 @@
 {
-  "name": "@ipfs-pinning-service-lambda/backend",
-  "version": "0.0.0",
+  "name": "pickup-api",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {},
   "dependencies": {
