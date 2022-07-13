@@ -2,26 +2,41 @@
 
 # Pickup 🛻
 
-**WIP - README DRIVEN DEV - NOT A THING YET**
-
 Fetch content from IPFS as a CAR and push it to S3. AKA an elastic [pinning service api]. 🌐📌 
-
-## Getting started
-
-Requires **node.js v16** or higher. Install the dependencies with `npm i`.
-
-Start the api in dev mode:
-
-```console
-$ npm start
-16:33:45 ✨ Server listening at http://127.0.0.1:3000
-```
-
-## The plan
 
 Lambda + Dynamo + SQS + ECS impl of the pinning service api
 
-The pinning service frontend is a lambda:
+## Getting Started
+
+Built on SST: https://serverless-stack.com/
+
+You need:
+- node >= 16
+- An AWS account with the AWS CLI configured locally
+
+Install the deps
+
+```console
+npm i
+```
+
+Deploy dev services to aws and start dev console
+```console
+npm start
+```
+
+## Overview
+
+Project structure:
+
+```
+├── Dockerfile - image for the pickup worker run in ECS
+├── backend    - lambda & dynamoDB implementation of the pinning service api 
+├── pickup     - worker to fetch cid as CAR and write to s3
+└── stacks     - sst and aws cdk code to deploy all the things 
+```
+
+The pinning service API is implemented as a lambda:
 
 `POST /pins {cid, name, origins, meta}` route creates:
 - A pinning service record in a dynamo db table. Needed to fulfil the pinning service api. 
@@ -96,6 +111,7 @@ ECS ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ 
 
 </pre>
 
+
 ## Integration with Elastic Provider
 
 see: https://github.com/ipfs-elastic-provider/ipfs-elastic-provider
@@ -141,44 +157,3 @@ Thing to check before adding to the SQS queue
 
 
 [pinning service api]: https://ipfs.github.io/pinning-services-api-spec/
-
-## Notes
-
-**what copilot did** - for a worker service it sets up
-
-```console
-✔ Proposing infrastructure changes for the pickup-test environment.
-- Creating the infrastructure for the pickup-test environment.                [create complete]  [71.4s]
-  - An IAM Role for AWS CloudFormation to manage resources                    [create complete]  [15.6s]
-  - An ECS cluster to group your services                                     [create complete]  [10.5s]
-  - An IAM Role to describe resources in your environment                     [create complete]  [14.0s]
-  - A security group to allow your containers to talk to each other           [create complete]  [5.7s]
-  - An Internet Gateway to connect to the public internet                     [create complete]  [20.3s]
-  - Private subnet 1 for resources with no internet access                    [create complete]  [5.7s]
-  - Private subnet 2 for resources with no internet access                    [create complete]  [5.7s]
-  - A custom route table that directs network traffic for the public subnets  [create complete]  [12.0s]
-  - Public subnet 1 for resources that can access the internet                [create complete]  [5.7s]
-  - Public subnet 2 for resources that can access the internet                [create complete]  [9.5s]
-  - A private DNS namespace for discovering services within the environment   [create complete]  [45.4s]
-  - A Virtual Private Cloud to control networking of your AWS resources       [create complete]  [17.3s]
-✔ Created environment test in region us-east-2 under application pickup.
-
-...
-
-✔ Proposing infrastructure changes for stack pickup-test-ipfs
-- Creating the infrastructure for stack pickup-test-ipfs                      [create complete]  [271.1s]
-  - Update your environment's shared resources                                [create complete]  [3.2s]
-  - An IAM role to update your environment stack                              [create complete]  [16.6s]
-  - A KMS key to encrypt messages in your queues                              [create complete]  [123.5s]
-  - An events SQS queue to buffer messages                                    [create complete]  [75.1s]
-  - An IAM Role for the Fargate agent to make AWS API calls on your behalf    [create complete]  [13.7s]
-  - A CloudWatch log group to hold your service logs                          [create complete]  [3.1s]
-  - An ECS service to run and maintain your tasks in the environment cluster  [create complete]  [41.5s]
-    Deployments                                                                                   
-               Revision  Rollout      Desired  Running  Failed  Pending                                   
-      PRIMARY  1         [completed]  1        1        0       0                                         
-  - An ECS task definition to group your containers and run them on ECS       [create complete]  [4.7s]
-  - An IAM role to control permissions for the containers in your tasks       [create complete]  [16.6s]
-✔ Deployed service ipfs.
-
-```

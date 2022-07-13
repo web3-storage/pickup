@@ -27,7 +27,6 @@ jobs:
           node-version: 16
           cache: 'npm'
       - run: npm ci
-      - run: npm run typecheck
       - run: npm run lint
 
   test:
@@ -44,3 +43,4 @@ jobs:
           AWS_REGION: 'us-east-1'
           AWS_ACCESS_KEY_ID: 'NOSUCH'
           AWS_SECRET_ACCESS_KEY: 'NOSUCH'
+
