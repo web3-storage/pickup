@@ -1,5 +1,5 @@
 {
-  "name": "ipfs-pinning-service-lambda",
+  "name": "pickup",
   "version": "0.0.0",
   "private": true,
   "scripts": {

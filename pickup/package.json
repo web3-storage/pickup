@@ -1,6 +1,6 @@
 {
   "name": "pickup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Fetch content from IPFS as a CAR and push it to S3.",
   "main": "index.js",

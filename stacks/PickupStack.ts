@@ -1,6 +1,5 @@
 import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
 import { PinningServiceStack } from './PinningServiceStack'
-import { SymlinkFollowMode } from 'aws-cdk-lib'
 import { ContainerImage } from 'aws-cdk-lib/aws-ecs'
 // import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns' // forked as missing ephemeralStorage param.
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
@@ -11,10 +10,9 @@ export function PickupStack ({ stack }: StackContext): void {
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
     // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
-    image: ContainerImage.fromAsset(new URL('../../pickup', import.meta.url).pathname, {
-      // todo: remove me
-      followSymlinks: SymlinkFollowMode.ALWAYS
-    }),
+    // Requires Docker running locally
+    // Note: this is run from /.build/<somehting> so the path to the Dockerfile is not quite what you'd expect.
+    image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname),
     containerName: 'pickup',
     maxScalingCapacity: 2,
     cpu: 512,
@@ -24,7 +22,7 @@ export function PickupStack ({ stack }: StackContext): void {
     // memoryLimitMiB: 8192,
     environment: {
       SQS_QUEUE_URL: pinService.queue.queueUrl,
-      GATEWAY_URL: 'http://127.0.0.1:8080'
+      IPFS_API_URL: 'http://127.0.0.1:5001'
     },
     queue: pinService.queue.cdk.queue
     // retentionPeriod: Duration.days(1),
@@ -34,7 +32,7 @@ export function PickupStack ({ stack }: StackContext): void {
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
-    image: ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.0')
+    image: ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.1')
     // environment: {
     //   IPFS_PATH: '/data/ipfs'
     // }
