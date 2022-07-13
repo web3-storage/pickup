@@ -31,7 +31,7 @@ Project structure:
 
 ```
 ├── Dockerfile - image for the pickup worker run in ECS
-├── backend    - lambda & dynamoDB implementation of the pinning service api 
+├── api        - lambda & dynamoDB implementation of the pinning service api 
 ├── pickup     - worker to fetch cid as CAR and write to s3
 └── stacks     - sst and aws cdk code to deploy all the things 
 ```

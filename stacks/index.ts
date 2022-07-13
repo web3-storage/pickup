@@ -1,15 +1,15 @@
 import { PickupStack } from './PickupStack'
-import { PinningServiceStack } from './PinningServiceStack'
+import { ApiStack } from './ApiStack'
 import { App } from '@serverless-stack/resources'
 
 export default function (app: App): void {
   app.setDefaultFunctionProps({
     runtime: 'nodejs16.x',
-    srcPath: 'backend',
+    srcPath: 'api',
     bundle: {
       format: 'esm'
     }
   })
-  app.stack(PinningServiceStack)
+  app.stack(ApiStack)
   app.stack(PickupStack)
 }
