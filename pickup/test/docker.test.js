@@ -2,7 +2,7 @@ import { GenericContainer, Wait, Network } from 'testcontainers'
 import test from 'ava'
 
 // builds image and starts container
-test('build', async t => {
+test.skip('build', async t => {
   t.timeout(1000 * 120)
   const SQS_QUEUE_URL = 'http://127.0.0.1'
   const network = await new Network().start()

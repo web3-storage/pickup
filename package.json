@@ -1,5 +1,6 @@
 {
   "name": "pickup",
+  "type": "module",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -10,8 +11,8 @@
     "console": "sst console",
     "typecheck": "tsc --noEmit",
     "lint": "ts-standard",
-    "test": "vitest run",
-    "test:debug": "DEBUG=testcontainers* vitest run --reporter json",
+    "test": "ava",
+    "test:debug": "DEBUG=testcontainers* ava",
     "openapi-types": "npx openapi-typescript https://raw.githubusercontent.com/ipfs/pinning-services-api-spec/main/ipfs-pinning-service.yaml --output api/schema-gen.ts"
   },
   "devDependencies": {
@@ -19,10 +20,11 @@
     "@serverless-stack/resources": "^1.2.12",
     "@tsconfig/node16": "^1.0.2",
     "@typescript-eslint/experimental-utils": "^5.29.0",
+    "ava": "^4.3.1",
     "testcontainers": "^8.10.1",
+    "ts-node": "^10.8.2",
     "ts-standard": "^11.0.0",
-    "typescript": "^4.7.2",
-    "vitest": "^0.13.0"
+    "typescript": "^4.7.2"
   },
   "workspaces": [
     "api",
@@ -33,8 +35,16 @@
   },
   "ts-standard": {
     "ignore": [
-      "api/schema-gen.ts",
-      "vitest.config.ts"
+      "api/schema-gen.ts"
+    ]
+  },
+  "ava": {
+    "extensions": {
+      "ts": "module",
+      "js": true
+    },
+    "nodeArguments": [
+      "--loader=ts-node/esm"
     ]
   }
 }
