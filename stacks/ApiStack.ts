@@ -5,7 +5,7 @@ export function ApiStack ({ stack }: StackContext): { queue: Queue, bucket: Buck
 
   const bucket = new Bucket(stack, 'Car')
 
-  const table = new Table(stack, 'PinStatusv5', {
+  const table = new Table(stack, 'PinStatusv6', {
     fields: {
       requestid: 'string',
       userid: 'string'
