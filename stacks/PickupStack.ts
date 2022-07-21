@@ -31,14 +31,14 @@ export function PickupStack ({ stack }: StackContext): void {
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
-    image: ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.1'),
-    command: [
-      'daemon',
-      '--profile=server' // Disables local host discovery. https://github.com/ipfs/kubo/blob/master/docs/config.md#profiles
-      // '--migrate=true',         // upgrade the repo if needed. copied from the default command. https://github.com/ipfs/kubo/blob/a6687744c703c5c020f4c004ca73f024c3bae4f7/Dockerfile#L120
-      // '--routing=dhtclient'     // Node will query the DHT as a client but will not respond to requests from other peers. This mode is less resource-intensive than server mode. https://github.com/ipfs/kubo/blob/master/docs/config.md#routingtype
-      // '--enable-namesys-pubsub' // web3.storage cluster default
-    ]
+    image: ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.1')
+    // command: [
+    //   'daemon',
+    //   '--profile=server' // Disables local host discovery. https://github.com/ipfs/kubo/blob/master/docs/config.md#profiles
+    //   // '--migrate=true',         // upgrade the repo if needed. copied from the default command. https://github.com/ipfs/kubo/blob/a6687744c703c5c020f4c004ca73f024c3bae4f7/Dockerfile#L120
+    //   // '--routing=dhtclient'     // Node will query the DHT as a client but will not respond to requests from other peers. This mode is less resource-intensive than server mode. https://github.com/ipfs/kubo/blob/master/docs/config.md#routingtype
+    //   // '--enable-namesys-pubsub' // web3.storage cluster default
+    // ]
   })
 
   pinService.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)

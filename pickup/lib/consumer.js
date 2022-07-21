@@ -1,10 +1,16 @@
+import retry from 'p-retry'
 import { Consumer } from 'sqs-consumer'
 import { createS3Uploader } from './s3.js'
 import { testIpfsApi, repoStat } from './ipfs.js'
 import { pickup } from './pickup.js'
 
 export async function createConsumer ({ ipfsApiUrl, queueUrl }) {
-  await testIpfsApi(ipfsApiUrl) // throws if can't connect
+  // throws if can't connect
+  await retry(() => testIpfsApi(ipfsApiUrl), {
+    retries: 10,
+    maxRetryTime: 1000 * 60 * 10,
+    onFailedAttempt: error => console.log(`Failed to connect to IPFS. Attempt #${error.attemptNumber}`)
+  })
 
   const app = Consumer.create({
     queueUrl,
@@ -28,7 +34,7 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl }) {
         origins,
         cid
       })
-      console.log(await repoStat())
+      console.log(await repoStat(ipfsApiUrl))
     }
   })
 
