@@ -1,12 +1,11 @@
-# never ever these under any circumstances
-node_modules
-.env
-
-# ignore everything
-/*
-
-# but don't ignore these
-!/package-lock.json
-!/pickup/package.json
-!/pickup/index.js
-!/pickup/lib
+*
+# allow these at the root
+!package-lock.json
+!package.json
+!pickup
+# but ignore everthing inside pickup
+pickup/*
+# but allow these
+!pickup/package.json
+!pickup/index.js
+!pickup/lib
