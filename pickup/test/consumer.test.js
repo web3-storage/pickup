@@ -1,47 +1,33 @@
-import { GenericContainer } from 'testcontainers'
-import { SQSClient, SendMessageCommand, CreateQueueCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs'
+import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { Consumer } from 'sqs-consumer'
 import { createConsumer } from '../lib/consumer.js'
+import { compose } from './compose.js'
 import test from 'ava'
 
 test.before(async t => {
   t.timeout(1000 * 60)
-  const container = await new GenericContainer('softwaremill/elasticmq-native') // see: https://github.com/softwaremill/elasticmq
-    .withExposedPorts(9324)
-    .start()
-  const endpoint = `http://${container.getHost()}:${container.getMappedPort(9324)}`
-  const sqsClient = new SQSClient({ endpoint })
-  const QueueName = 'TEST_QUEUE'
-  await sqsClient.send(new CreateQueueCommand({
-    QueueName,
-    Attributes: {
-      DelaySeconds: '1',
-      MessageRetentionPeriod: '10'
-    }
-  }))
-  const { QueueUrl } = await sqsClient.send(new GetQueueUrlCommand({ QueueName }))
-  t.context.QueueUrl = QueueUrl.replace('9324', container.getMappedPort(9324))
-  t.context.sqsClient = sqsClient
-  t.context.sqs = container
-})
-
-test.after.always(async t => {
-  await t.context.sqs?.stop()
+  const { createQueue, createBucket, sqs, ipfsApiUrl, s3 } = await compose()
+  t.context.QueueUrl = await createQueue()
+  t.context.Bucket = await createBucket()
+  t.context.sqs = sqs
+  t.context.s3 = s3
+  t.context.ipfsApiUrl = ipfsApiUrl
 })
 
 // verify the lib behaves as expected
 test('sqs-consumer', async t => {
   const testCid = 'hello!'
+  const { QueueUrl, sqs } = t.context
 
-  await t.context.sqsClient.send(new SendMessageCommand({
+  await sqs.send(new SendMessageCommand({
     DelaySeconds: 1,
     MessageBody: JSON.stringify({ cid: testCid }),
-    QueueUrl: t.context.QueueUrl
+    QueueUrl
   }))
 
   await new Promise((resolve, reject) => {
     const app = Consumer.create({
-      queueUrl: t.context.QueueUrl,
+      queueUrl: QueueUrl,
       handleMessage: async (message) => {
         const res = JSON.parse(message.Body)
         t.is(res.cid, testCid)
@@ -62,16 +48,35 @@ test('sqs-consumer', async t => {
   })
 })
 
-test('createConsumer', async t => {
-  const queueUrl = t.context.QueueUrl
-  const ipfs = await new GenericContainer('ipfs/go-ipfs:v0.13.0').withExposedPorts(5001).start()
-  t.teardown(() => ipfs.stop())
-  const ipfsApiUrl = `http://${ipfs.getHost()}:${ipfs.getMappedPort(5001)}`
-  await t.notThrowsAsync(createConsumer({ ipfsApiUrl, queueUrl }))
+test.only('createConsumer', async t => {
+  t.timeout(1000 * 60)
+  const { QueueUrl, ipfsApiUrl, Bucket, sqs, s3 } = t.context
+
+  const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
+  const key = `psa/${cid}.car`
+
+  const consumer = await createConsumer({ ipfsApiUrl, queueUrl: QueueUrl, s3 })
+  const done = new Promise((resolve, reject) => {
+    consumer.on('message_processed', msg => {
+      const { cid: msgCid } = JSON.parse(msg.Body)
+      t.is(msgCid, cid)
+      resolve()
+    })
+    consumer.on('processing_error', reject)
+    consumer.on('timeout_error', reject)
+  })
+  consumer.start()
+
+  await sqs.send(new SendMessageCommand({
+    DelaySeconds: 1,
+    MessageBody: JSON.stringify({ cid, bucket: Bucket, key, origins: [], requestid: 'test1' }),
+    QueueUrl
+  }))
+
+  return done
 })
 
 test('createConsumer errors if can\'t connect to IPFS', async t => {
-  const queueUrl = t.context.QueueUrl
-  const ipfsApiUrl = 'http://127.0.0.1'
-  await t.throwsAsync(createConsumer({ ipfsApiUrl, queueUrl }))
+  const { QueueUrl: queueUrl } = t.context
+  await t.throwsAsync(createConsumer({ ipfsApiUrl: 'http://127.0.0.1', queueUrl }))
 })

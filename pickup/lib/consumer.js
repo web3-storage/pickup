@@ -4,11 +4,10 @@ import { createS3Uploader } from './s3.js'
 import { testIpfsApi, repoStat } from './ipfs.js'
 import { pickup } from './pickup.js'
 
-export async function createConsumer ({ ipfsApiUrl, queueUrl }) {
+export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
   // throws if can't connect
   await retry(() => testIpfsApi(ipfsApiUrl), {
-    retries: 10,
-    maxRetryTime: 1000 * 60 * 10,
+    maxRetryTime: 1000 * 10,
     onFailedAttempt: error => console.log(`Failed to connect to IPFS. Attempt #${error.attemptNumber}`)
   })
 
@@ -29,7 +28,7 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl }) {
       const { cid, origins, bucket, key, requestid } = JSON.parse(message.Body)
       console.log(`Fetching req: ${requestid} cid: ${cid}`)
       await pickup({
-        upload: createS3Uploader({ bucket, key }),
+        upload: createS3Uploader({ bucket, key, client: s3 }),
         ipfsApiUrl,
         origins,
         cid

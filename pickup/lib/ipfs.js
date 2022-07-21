@@ -75,6 +75,8 @@ export async function testIpfsApi (ipfsApiUrl) {
 }
 
 export async function repoStat (ipfsApiUrl) {
-  const res = await fetch('/api/v0/repo/stat', ipfsApiUrl)
-  return await res.json()
+  const res = await fetch(new URL('/api/v0/repo/stat', ipfsApiUrl), { method: 'POST' })
+  if (res.ok) {
+    return res.json()
+  }
 }

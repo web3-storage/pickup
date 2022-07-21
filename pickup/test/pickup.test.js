@@ -11,6 +11,7 @@ test.before(async t => {
   // Start local ipfs and minio daemons for testing against.
   const docker = await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
     .withWaitStrategy('ipfs', Wait.forLogMessage('Daemon is ready'))
+    .withNoRecreate()
     .up()
   const minio = docker.getContainer('minio')
   const s3 = new S3Client({
