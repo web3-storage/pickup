@@ -2,11 +2,11 @@ import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import fetch from 'node-fetch'
 
-export async function fetchCar (cid, gateway) {
+export async function fetchCar (cid, ipfsApiUrl) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
-  const url = new URL(`/api/v0/dag/export?arg=${cid}`, gateway)
+  const url = new URL(`/api/v0/dag/export?arg=${cid}`, ipfsApiUrl)
   const res = await fetch(url, { method: 'POST' })
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText} ${url}`)
@@ -14,9 +14,9 @@ export async function fetchCar (cid, gateway) {
   return res.body
 }
 
-export async function connectTo (origins = [], gateway) {
+export async function connectTo (origins = [], ipfsApiUrl) {
   for (const addr of origins.filter(isMultiaddr)) {
-    const url = new URL(`/api/v0/swarm/connect?arg=${addr}`, gateway)
+    const url = new URL(`/api/v0/swarm/connect?arg=${addr}`, ipfsApiUrl)
     const res = await fetch(url, { method: 'POST' })
     if (!res.ok) {
       console.log(`Error connecting to ${addr} - got: ${res.status} ${res.statusText}`)
@@ -24,14 +24,23 @@ export async function connectTo (origins = [], gateway) {
   }
 }
 
-export async function disconnect (origins = [], gateway) {
+export async function disconnect (origins = [], ipfsApiUrl) {
   for (const addr of origins.filter(isMultiaddr)) {
-    const url = new URL(`/api/v0/swarm/disconnect?arg=${addr}`, gateway)
+    const url = new URL(`/api/v0/swarm/disconnect?arg=${addr}`, ipfsApiUrl)
     const res = await fetch(url, { method: 'POST' })
     if (!res.ok) {
       console.log(`Error disconnecting from ${addr} - got: ${res.status} ${res.statusText}`)
     }
   }
+}
+
+export async function waitForGC (ipfsApiUrl) {
+  const url = new URL('/api/v0/repo/gc?silent=true', ipfsApiUrl)
+  const res = await fetch(url, { method: 'POST' })
+  if (!res.ok) {
+    console.log(`Error GCing - got: ${res.status} ${res.statusText}`)
+  }
+  await res.text()
 }
 
 export function isMultiaddr (input) {
@@ -48,13 +57,13 @@ export function isCID (str) {
   return Boolean(CID.parse(str))
 }
 
-export async function testIpfsApi (ipfsApi) {
-  const url = new URL('/api/v0/id', ipfsApi)
+export async function testIpfsApi (ipfsApiUrl) {
+  const url = new URL('/api/v0/id', ipfsApiUrl)
   try {
     const res = await fetch(url, { method: 'POST' })
     if (!res.ok) {
       if (res.status === 404) {
-        throw new Error('IPFS API returned 404. IPFS_API_URL must be the RPC API port (:5001) rather than the Gateway port (:8080)')
+        throw new Error('IPFS API returned 404. IPFS_API_URL must be the RPC API port (:5001) rather than the ipfsApiUrl port (:8080)')
       }
       throw new Error(`IPFS API test failed. POST ${url} returned ${res.status} ${res.statusText}`)
     }
@@ -63,4 +72,9 @@ export async function testIpfsApi (ipfsApi) {
   } catch (cause) {
     throw new Error('IPFS API test failed.', { cause })
   }
+}
+
+export async function repoStat (ipfsApiUrl) {
+  const res = await fetch('/api/v0/repo/stat', ipfsApiUrl)
+  return await res.json()
 }

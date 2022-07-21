@@ -1,3 +1,12 @@
+# never ever these under any circumstances
+node_modules
+.env
+
+# ignore everything
 /*
-!/pickup
-!package*.json
+
+# but don't ignore these
+!/package-lock.json
+!/pickup/package.json
+!/pickup/index.js
+!/pickup/lib

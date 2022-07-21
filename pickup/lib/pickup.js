@@ -1,7 +1,6 @@
-import { fetchCar, connectTo, disconnect } from './ipfs.js'
+import { fetchCar, connectTo, disconnect, waitForGC } from './ipfs.js'
 
 export async function pickup ({ upload, ipfsApiUrl, cid, origins }) {
-  // console.log(`Fetching req: ${requestid} cid: ${cid}`)
   // TODO: check if the work still needs to be done. by asking EP.
   try {
     await connectTo(origins, ipfsApiUrl)
@@ -9,6 +8,7 @@ export async function pickup ({ upload, ipfsApiUrl, cid, origins }) {
     await upload({ body })
   } finally {
     await disconnect(origins, ipfsApiUrl)
+    await waitForGC(ipfsApiUrl)
   }
   return { cid, origins }
 }
