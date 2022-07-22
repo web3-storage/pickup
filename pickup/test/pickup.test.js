@@ -10,32 +10,7 @@ test.before(async t => {
   t.timeout(1000 * 60)
   // Start local ipfs and minio daemons for testing against.
   t.context = await compose()
-
-  // const docker = await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
-  //   .withWaitStrategy('ipfs', Wait.forLogMessage('Daemon is ready'))
-  //   .withNoRecreate()
-  //   .up()
-  // const minio = docker.getContainer('minio')
-  // const s3 = new S3Client({
-  //   endpoint: `http://${minio.getHost()}:${minio.getMappedPort(9000)}`,
-  //   forcePathStyle: true,
-  //   region: 'us-east-1',
-  //   credentials: {
-  //     accessKeyId: 'minioadmin',
-  //     secretAccessKey: 'minioadmin'
-  //   }
-  // })
-  // const ipfs = docker.getContainer('ipfs')
-  // t.context.ipfsApiUrl = `http://${ipfs.getHost()}:${ipfs.getMappedPort(5001)}`
-  // t.context.bucket = 'test-bucket'
-  // t.context.s3 = s3
-  // t.context.docker = docker
-  // await s3.send(new CreateBucketCommand({ Bucket: t.context.bucket }))
 })
-
-// test.after.always(async t => {
-//   await t.context.docker?.down()
-// })
 
 test('happy path', async t => {
   const { s3, createBucket, ipfsApiUrl } = t.context
