@@ -6,10 +6,7 @@ import { pickup } from './pickup.js'
 
 export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
   // throws if can't connect
-  await retry(() => testIpfsApi(ipfsApiUrl), {
-    maxRetryTime: 1000 * 10,
-    onFailedAttempt: error => console.log(`Failed to connect to IPFS. Attempt #${error.attemptNumber}`)
-  })
+  await retry(() => testIpfsApi(ipfsApiUrl), { maxRetryTime: 1000 * 5 })
 
   const app = Consumer.create({
     queueUrl,

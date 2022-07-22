@@ -2,13 +2,16 @@ import { DockerComposeEnvironment, Wait } from 'testcontainers'
 import { SQSClient, CreateQueueCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs'
 import { S3Client, CreateBucketCommand } from '@aws-sdk/client-s3'
 import { nanoid, customAlphabet } from 'nanoid'
-import process from 'process'
 
-export async function compose () {
-  const docker = await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
+export async function up () {
+  return await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
     .withWaitStrategy('ipfs', Wait.forLogMessage('Daemon is ready'))
     .withNoRecreate()
     .up()
+}
+
+export async function compose () {
+  const docker = await up()
   const minio = docker.getContainer('minio')
   const s3 = new S3Client({
     endpoint: `http://${minio.getHost()}:${minio.getMappedPort(9000)}`,
@@ -50,7 +53,7 @@ export async function createQueue (sqsPort, sqs) {
 }
 
 export async function createBucket (s3) {
-  const id = customAlphabet('1234567890abcdef', 10)
+  const id = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 10)
   const Bucket = id()
   await s3.send(new CreateBucketCommand({ Bucket }))
   return Bucket

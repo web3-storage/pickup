@@ -1,44 +1,47 @@
-import { DockerComposeEnvironment, Wait } from 'testcontainers'
-import { S3Client, CreateBucketCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { unpackStream } from 'ipfs-car/unpack'
 import { createS3Uploader } from '../lib/s3.js'
 import { pickup } from '../lib/pickup.js'
 import { Buffer } from 'buffer'
 import test from 'ava'
+import { compose } from './_compose.js'
 
 test.before(async t => {
   t.timeout(1000 * 60)
   // Start local ipfs and minio daemons for testing against.
-  const docker = await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
-    .withWaitStrategy('ipfs', Wait.forLogMessage('Daemon is ready'))
-    .withNoRecreate()
-    .up()
-  const minio = docker.getContainer('minio')
-  const s3 = new S3Client({
-    endpoint: `http://${minio.getHost()}:${minio.getMappedPort(9000)}`,
-    forcePathStyle: true,
-    region: 'us-east-1',
-    credentials: {
-      accessKeyId: 'minioadmin',
-      secretAccessKey: 'minioadmin'
-    }
-  })
-  const ipfs = docker.getContainer('ipfs')
-  t.context.ipfsApiUrl = `http://${ipfs.getHost()}:${ipfs.getMappedPort(5001)}`
-  t.context.bucket = 'test-bucket'
-  t.context.s3 = s3
-  t.context.docker = docker
-  await s3.send(new CreateBucketCommand({ Bucket: t.context.bucket }))
+  t.context = await compose()
+
+  // const docker = await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
+  //   .withWaitStrategy('ipfs', Wait.forLogMessage('Daemon is ready'))
+  //   .withNoRecreate()
+  //   .up()
+  // const minio = docker.getContainer('minio')
+  // const s3 = new S3Client({
+  //   endpoint: `http://${minio.getHost()}:${minio.getMappedPort(9000)}`,
+  //   forcePathStyle: true,
+  //   region: 'us-east-1',
+  //   credentials: {
+  //     accessKeyId: 'minioadmin',
+  //     secretAccessKey: 'minioadmin'
+  //   }
+  // })
+  // const ipfs = docker.getContainer('ipfs')
+  // t.context.ipfsApiUrl = `http://${ipfs.getHost()}:${ipfs.getMappedPort(5001)}`
+  // t.context.bucket = 'test-bucket'
+  // t.context.s3 = s3
+  // t.context.docker = docker
+  // await s3.send(new CreateBucketCommand({ Bucket: t.context.bucket }))
 })
 
-test.after.always(async t => {
-  await t.context.docker?.down()
-})
+// test.after.always(async t => {
+//   await t.context.docker?.down()
+// })
 
 test('happy path', async t => {
-  const { s3, bucket, ipfsApiUrl } = t.context
+  const { s3, createBucket, ipfsApiUrl } = t.context
   const cid = 'bafkreifzjut3te2nhyekklss27nh3k72ysco7y32koao5eei66wof36n5e' // hello world
   const key = `psa/${cid}.car`
+  const bucket = await createBucket()
   await t.throwsAsync(s3.send(new GetObjectCommand({ Bucket: bucket, Key: key })))
 
   await pickup({
@@ -58,9 +61,10 @@ test('happy path', async t => {
 })
 
 test('with origins', async t => {
-  const { s3, bucket, ipfsApiUrl } = t.context
+  const { s3, createBucket, ipfsApiUrl } = t.context
   const cid = 'bafkreig6ylslysmsgffjzgsrxpmftynqqg3uc6ebrrj4dhiy233wd5oyaq' // "test 2"
   const key = `psa/${cid}.car`
+  const bucket = await createBucket()
   await t.throwsAsync(s3.send(new GetObjectCommand({ Bucket: bucket, Key: key })))
 
   await pickup({
@@ -80,9 +84,10 @@ test('with origins', async t => {
 })
 
 test('with bad origins', async t => {
-  const { s3, bucket, ipfsApiUrl } = t.context
+  const { s3, createBucket, ipfsApiUrl } = t.context
   const cid = 'bafkreihyyavekzt6coios4bio3ou3rwaazxetnonvjxmdsb6pwel5exc4i' // "test 3"
   const key = `psa/${cid}.car`
+  const bucket = await createBucket()
   await t.throwsAsync(s3.send(new GetObjectCommand({ Bucket: bucket, Key: key })))
 
   await pickup({
