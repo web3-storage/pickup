@@ -8,7 +8,7 @@ export async function pickup ({ upload, ipfsApiUrl, cid, origins }) {
     await upload({ body })
   } finally {
     await disconnect(origins, ipfsApiUrl)
-    await waitForGC()
+    await waitForGC(ipfsApiUrl)
   }
   return { cid, origins }
 }
