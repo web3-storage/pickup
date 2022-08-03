@@ -1,8 +1,8 @@
 import retry from 'p-retry'
 import { Consumer } from 'sqs-consumer'
 import { createS3Uploader } from './s3.js'
-import { testIpfsApi, waitForGC, repoStat, connectTo } from './ipfs.js'
-import { pickup, pickupBatch } from './pickup.js'
+import { testIpfsApi } from './ipfs.js'
+import { pickupBatch } from './pickup.js'
 
 export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
   // throws if can't connect
@@ -24,16 +24,6 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
     handleMessageBatch: async (messages) => {
       return pickupBatch(messages, { ipfsApiUrl, createS3Uploader, s3 })
     }
-    // handleMessage: async (message) => {
-    //   const { cid, origins, bucket, key, requestid } = JSON.parse(message.Body)
-    //   await pickup({
-    //     upload: createS3Uploader({ bucket, key, client: s3 }),
-    //     ipfsApiUrl,
-    //     origins,
-    //     cid
-    //   })
-    //   console.log(await repoStat(ipfsApiUrl))
-    // }
   })
 
   app.on('error', (err) => {

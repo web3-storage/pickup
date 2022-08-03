@@ -81,7 +81,7 @@ test('with bad origins', async t => {
   t.pass()
 })
 
-test.only('pickupBatch', async t => {
+test('pickupBatch', async t => {
   const { s3, createBucket, ipfsApiUrl } = t.context
   const bucket = await createBucket()
   const cids = [
