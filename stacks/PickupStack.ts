@@ -1,10 +1,10 @@
 import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
-import { ApiStack } from './ApiStack'
+import { BasicApiStack } from './BasicApiStack'
 import { ContainerImage } from 'aws-cdk-lib/aws-ecs'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 
 export function PickupStack ({ stack }: StackContext): void {
-  const pinService = use(ApiStack) as unknown as { queue: Queue, bucket: Bucket }
+  const pinService = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
 
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {

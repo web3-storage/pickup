@@ -2,13 +2,10 @@ import { DynamoDBClient, ConditionalCheckFailedException } from '@aws-sdk/client
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
-import { Pin, Response } from './schema.js'
+import { ClusterAddResponse, Pin, Response } from './schema.js'
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import { nanoid } from 'nanoid'
-
-const sqs = new SQSClient({})
-const dynamo = new DynamoDBClient({})
 
 interface UpsertPinInput {
   cid: string
@@ -27,31 +24,24 @@ interface AddToQueueInput {
 // type AddPinInput = AddToQueueInput & UpsertPinInput
 interface AddPinInput extends UpsertPinInput, AddToQueueInput {}
 
-interface ClusterAddResponse {
-  replication_factor_min: -1
-  replication_factor_max: -1
-  name: ''
-  mode: 'recursive'
-  shard_size: 0
-  user_allocations: null
-  expire_at: '0001-01-01T00:00:00Z'
-  metadata: {}
-  pin_update: null
-  origins: string[]
-  cid: string
-  type: 'pin'
-  allocations: []
-  max_depth: -1
-  reference: null
-  timestamp: string // "2022-08-11T12:39:50.772359472Z"
-}
+const {
+  TABLE_NAME: table = '',
+  BUCKET_NAME: bucket = '',
+  QUEUE_URL: queueUrl = '',
+  CLUSTER_BASIC_AUTH_TOKEN: token = ''
+} = process.env
+
+const sqs = new SQSClient({})
+const dynamo = new DynamoDBClient({})
 
 /**
  * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
  * Collect the params and delegate to addPin to do the work
  */
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
-  const { TABLE_NAME: table = '', BUCKET_NAME: bucket = '', QUEUE_URL: queueUrl = '' } = process.env
+  if (event.headers.authorization !== `Basic ${token}`) {
+    return { statusCode: 401, body: { error: { reason: 'UNAUTHORIZED' } } }
+  }
   const cid = event.pathParameters?.cid ?? ''
   const origins = event.queryStringParameters?.origins?.split(',') ?? []
   try {

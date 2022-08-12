@@ -1,9 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
-import { Pin, Response } from './schema.js'
-
-const dynamo = new DynamoDBClient({})
+import { ClusterStatusResponse, Pin, Response } from './schema.js'
 
 interface GetPinInput {
   cid: string
@@ -11,35 +9,21 @@ interface GetPinInput {
   table: string
 }
 
-interface ClusterStatusResponse {
-  'cid': string
-  'name': ''
-  'allocations': []
-  'origins': []
-  'created': string
-  'metadata': null
-  'peer_map': {
-    '12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR': {
-      'peername': 'elastic-ipfs'
-      'ipfs_peer_id': 'bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm'
-      'ipfs_peer_addresses': [
-        '/dns4/peer.ipfs-elastic-provider-aws.com/tcp/3000/ws/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm',
-      ]
-      'status': Pin['status']
-      'timestamp': string
-      'error': ''
-      'attempt_count': 0
-      'priority_pin': false
-    }
-  }
-}
+const {
+  TABLE_NAME: table = '',
+  CLUSTER_BASIC_AUTH_TOKEN: token = ''
+} = process.env
+
+const dynamo = new DynamoDBClient({})
 
 /**
  * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
  * Collect the params and delegate to addPin to do the work
  */
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
-  const { TABLE_NAME: table = '' } = process.env
+  if (event.headers.authorization !== `Basic ${token}`) {
+    return { statusCode: 401, body: { error: { reason: 'UNAUTHORIZED' } } }
+  }
   const cid = event.pathParameters?.cid ?? ''
   try {
     const pin = await getPin({ cid, dynamo, table })
