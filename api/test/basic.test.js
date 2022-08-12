@@ -126,9 +126,3 @@ export async function createQueue (sqsPort, sqs) {
   const { QueueUrl } = await sqs.send(new GetQueueUrlCommand({ QueueName }))
   return QueueUrl.replace('9324', sqsPort)
 }
-
-export async function fetchFromQueue (queueUrl, sqs) {
-  const QueueName = queueUrl.split('/').at(-1)
-  
-  console.log(res)
-}
