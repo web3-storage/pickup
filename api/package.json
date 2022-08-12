@@ -17,5 +17,14 @@
   "devDependencies": {
     "@types/aws-lambda": "^8.10.97",
     "@types/node": "^18.0.0"
+  },
+  "ava": {
+    "extensions": {
+      "ts": "module",
+      "js": true
+    },
+    "nodeArguments": [
+      "--loader=ts-node/esm"
+    ]
   }
 }

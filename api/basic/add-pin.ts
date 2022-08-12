@@ -27,6 +27,25 @@ interface AddToQueueInput {
 // type AddPinInput = AddToQueueInput & UpsertPinInput
 interface AddPinInput extends UpsertPinInput, AddToQueueInput {}
 
+interface ClusterAddResponse {
+  replication_factor_min: -1
+  replication_factor_max: -1
+  name: ''
+  mode: 'recursive'
+  shard_size: 0
+  user_allocations: null
+  expire_at: '0001-01-01T00:00:00Z'
+  metadata: {}
+  pin_update: null
+  origins: string[]
+  cid: string
+  type: 'pin'
+  allocations: []
+  max_depth: -1
+  reference: null
+  timestamp: string // "2022-08-11T12:39:50.772359472Z"
+}
+
 /**
  * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
  * Collect the params and delegate to addPin to do the work
@@ -72,13 +91,35 @@ export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, tab
   }
   const pin = await putIfNotExists({ cid, dynamo, table })
   await addToQueue({ cid, origins, bucket, sqs, queueUrl })
-  return { statusCode: 200, body: pin }
+  const body = toClusterResponse(pin, origins)
+  return { statusCode: 200, body }
+}
+
+export function toClusterResponse (pin: Pin, origins: string[]): ClusterAddResponse {
+  return {
+    replication_factor_min: -1,
+    replication_factor_max: -1,
+    name: '',
+    mode: 'recursive',
+    shard_size: 0,
+    user_allocations: null,
+    expire_at: '0001-01-01T00:00:00Z',
+    metadata: {},
+    pin_update: null,
+    origins: origins,
+    cid: pin.cid,
+    type: 'pin',
+    allocations: [],
+    max_depth: -1,
+    reference: null,
+    timestamp: pin.created
+  }
 }
 
 /**
  * Save Pin to Dynamo. If we already have that CID then return the existing.
  */
-export const putIfNotExists = async ({ cid, dynamo, table }: UpsertPinInput): Promise<Pin> => {
+export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): Promise<Pin> {
   const client = DynamoDBDocumentClient.from(dynamo)
   const pin: Pin = {
     cid,
@@ -132,5 +173,9 @@ function isMultiaddr (input = ''): boolean {
 }
 
 export function isCID (str = ''): boolean {
-  return Boolean(CID.parse(str))
+  try {
+    return Boolean(CID.parse(str))
+  } catch (err) {
+    return false
+  }
 }

@@ -5,6 +5,6 @@ export interface Response {
 
 export interface Pin {
   cid: string
-  status: 'queued' | 'pinning' | 'pinned' | 'failed'
+  status: 'queued' | 'pinning' | 'pinned' | 'failed' | 'unpinned'
   created: string
 }
