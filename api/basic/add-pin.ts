@@ -37,6 +37,9 @@ const dynamo = new DynamoDBClient({})
 /**
  * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
  * Collect the params and delegate to addPin to do the work
+ *
+ * We provide responses in Payload format v2.0
+ * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
  */
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
   if (event.headers.authorization !== `Basic ${token}`) {
@@ -45,10 +48,12 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   const cid = event.pathParameters?.cid ?? ''
   const origins = event.queryStringParameters?.origins?.split(',') ?? []
   try {
-    return await addPin({ cid, origins, bucket, sqs, queueUrl, dynamo, table })
+    const res = await addPin({ cid, origins, bucket, sqs, queueUrl, dynamo, table })
+    res.body = JSON.stringify(res.body)
+    return res
   } catch (error) {
     console.log(error)
-    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR' } } }
+    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
   }
 }
 
