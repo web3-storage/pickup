@@ -24,16 +24,6 @@ interface AddToQueueInput {
 // type AddPinInput = AddToQueueInput & UpsertPinInput
 interface AddPinInput extends UpsertPinInput, AddToQueueInput {}
 
-const {
-  TABLE_NAME: table = '',
-  BUCKET_NAME: bucket = '',
-  QUEUE_URL: queueUrl = '',
-  CLUSTER_BASIC_AUTH_TOKEN: token = ''
-} = process.env
-
-const sqs = new SQSClient({})
-const dynamo = new DynamoDBClient({})
-
 /**
  * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
  * Collect the params and delegate to addPin to do the work
@@ -42,15 +32,27 @@ const dynamo = new DynamoDBClient({})
  * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
  */
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
+  const {
+    TABLE_NAME: table = '',
+    BUCKET_NAME: bucket = '',
+    QUEUE_URL: queueUrl = '',
+    CLUSTER_BASIC_AUTH_TOKEN: token = '',
+    // set for testing
+    SQS_ENDPOINT: sqsEndpoint = undefined,
+    DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
+  } = process.env
+
   if (event.headers.authorization !== `Basic ${token}`) {
     return { statusCode: 401, body: { error: { reason: 'UNAUTHORIZED' } } }
   }
+
+  const sqs = new SQSClient({ endpoint: sqsEndpoint })
+  const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
   const cid = event.pathParameters?.cid ?? ''
   const origins = event.queryStringParameters?.origins?.split(',') ?? []
   try {
     const res = await addPin({ cid, origins, bucket, sqs, queueUrl, dynamo, table })
-    res.body = JSON.stringify(res.body)
-    return res
+    return { ...res, body: JSON.stringify(res.body) }
   } catch (error) {
     console.log(error)
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }

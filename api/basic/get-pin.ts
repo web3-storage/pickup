@@ -12,20 +12,23 @@ interface GetPinInput {
 /**
  * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
  * Collect the params and delegate to addPin to do the work
- * 
+ *
  * We provide responses in Payload format v2.0
  * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
  */
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
   const {
     TABLE_NAME: table = '',
-    DYNAMO_DB_ENDPOINT: endpoint = undefined,
-    CLUSTER_BASIC_AUTH_TOKEN: token = ''
+    CLUSTER_BASIC_AUTH_TOKEN: token = '',
+    // set for testing
+    DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
   } = process.env
+
   if (event.headers.authorization !== `Basic ${token}`) {
     return { statusCode: 401, body: { error: { reason: 'UNAUTHORIZED' } } }
   }
-  const dynamo = new DynamoDBClient({endpoint})
+
+  const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
   const cid = event.pathParameters?.cid ?? ''
   try {
     const pin = await getPin({ cid, dynamo, table })

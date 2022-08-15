@@ -1,13 +1,14 @@
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 import { SQSClient, CreateQueueCommand, GetQueueUrlCommand, ReceiveMessageCommand } from '@aws-sdk/client-sqs'
 import { GenericContainer as Container } from 'testcontainers'
-import { addPin, putIfNotExists } from '../basic/add-pin.js'
+import { addPin, putIfNotExists, handler as addPinHandler } from '../basic/add-pin.js'
 import { getPin, handler as getPinHandler } from '../basic/get-pin.js'
 import { nanoid } from 'nanoid'
 import test from 'ava'
 
 test.before(async t => {
   t.timeout(1000 * 60)
+
   const dbContainer = await new Container('amazon/dynamodb-local:latest')
     .withExposedPorts(8000)
     .start()
@@ -33,13 +34,14 @@ test.before(async t => {
   const sqsContainer = await new Container('softwaremill/elasticmq-native:1.3.9')
     .withExposedPorts(9324)
     .start()
-  const sqs = new SQSClient({
-    endpoint: `http://${sqsContainer.getHost()}:${sqsContainer.getMappedPort(9324)}`
-  })
+  const sqsEndpoint = `http://${sqsContainer.getHost()}:${sqsContainer.getMappedPort(9324)}`
+  const sqs = new SQSClient({ endpoint: sqsEndpoint })
+
   t.context.containers = [dbContainer, sqsContainer]
   t.context.dbEndpoint = dbEndpoint
   t.context.dynamo = dynamo
   t.context.table = table
+  t.context.sqsEndpoint = sqsEndpoint
   t.context.sqs = sqs
   t.context.createQueue = createQueue.bind(null, sqsContainer.getMappedPort(9324), sqs)
 })
@@ -116,19 +118,6 @@ test('putIfNotExists', async t => {
   t.is(res3.created, res1.created)
 })
 
-export async function createQueue (sqsPort, sqs) {
-  const QueueName = nanoid()
-  await sqs.send(new CreateQueueCommand({
-    QueueName,
-    Attributes: {
-      DelaySeconds: '0',
-      MessageRetentionPeriod: '10'
-    }
-  }))
-  const { QueueUrl } = await sqs.send(new GetQueueUrlCommand({ QueueName }))
-  return QueueUrl.replace('9324', sqsPort)
-}
-
 test('getPin basic auth', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
@@ -148,3 +137,39 @@ test('getPin basic auth', async t => {
   const auth = await getPinHandler(event)
   t.is(auth.statusCode, 200)
 })
+
+test('addPin basic auth', async t => {
+  process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
+  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
+  process.env.SQS_ENDPOINT = t.context.sqsEndpoint
+  process.env.TABLE_NAME = t.context.table
+  process.env.BUCKET_NAME = t.context.bucket
+  process.env.QUEUE_URL = await t.context.createQueue()
+  const event = {
+    headers: {
+      authorization: 'nope'
+    },
+    pathParameters: {
+      cid: 'bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354'
+    }
+  }
+  const unauth = await addPinHandler(event)
+  t.is(unauth.statusCode, 401)
+
+  event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
+  const auth = await addPinHandler(event)
+  t.is(auth.statusCode, 200)
+})
+
+export async function createQueue (sqsPort, sqs) {
+  const QueueName = nanoid()
+  await sqs.send(new CreateQueueCommand({
+    QueueName,
+    Attributes: {
+      DelaySeconds: '0',
+      MessageRetentionPeriod: '10'
+    }
+  }))
+  const { QueueUrl } = await sqs.send(new GetQueueUrlCommand({ QueueName }))
+  return QueueUrl.replace('9324', sqsPort)
+}
