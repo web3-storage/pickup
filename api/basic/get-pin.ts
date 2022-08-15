@@ -58,8 +58,8 @@ export const getPin = async ({ cid, dynamo, table }: GetPinInput): Promise<Pin |
 /**
  * Hardcodes much of a cluster shaped response as if it was a single node cluster
  * with just elastic-ipfs as it's single backing node.
- * 
- * TODO: Once we know that EP is providing the CID, we update the status to pinned in our db. 
+ *
+ * TODO: Once we know that EP is providing the CID, we update the status to pinned in our db.
  */
 export function toClusterResponse (
   cid: string,
@@ -67,7 +67,7 @@ export function toClusterResponse (
   ipfsAddr = '/dns4/peer.ipfs-elastic-provider-aws.com/tcp/3000/ws/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm',
   ipfsPeerId = ipfsAddr.split('/').at(-1)
 ): ClusterStatusResponse {
-  if (!ipfsPeerId) {
+  if (ipfsPeerId === undefined) {
     throw new Error('CLUSTER_IPFS_ADDR must be a valid multiaddr')
   }
   return {
