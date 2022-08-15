@@ -19,10 +19,8 @@ export interface ClusterStatusResponse {
   'peer_map': {
     '12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR': {
       'peername': 'elastic-ipfs'
-      'ipfs_peer_id': 'bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm'
-      'ipfs_peer_addresses': [
-        '/dns4/peer.ipfs-elastic-provider-aws.com/tcp/3000/ws/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm',
-      ]
+      'ipfs_peer_id': string
+      'ipfs_peer_addresses': string[]
       'status': Pin['status']
       'timestamp': string
       'error': ''
