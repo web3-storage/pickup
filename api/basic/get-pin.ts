@@ -10,8 +10,8 @@ interface GetPinInput {
 }
 
 /**
- * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
- * Collect the params and delegate to addPin to do the work
+ * AWS API Gateway handler for GET /pins/${cid}
+ * Collect the params and delegate to getPin to do the work
  *
  * We provide responses in Payload format v2.0
  * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
