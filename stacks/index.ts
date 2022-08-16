@@ -1,5 +1,5 @@
 import { PickupStack } from './PickupStack'
-import { ApiStack } from './ApiStack'
+import { BasicApiStack } from './BasicApiStack'
 import { App } from '@serverless-stack/resources'
 
 export default function (app: App): void {
@@ -10,6 +10,6 @@ export default function (app: App): void {
       format: 'esm'
     }
   })
-  app.stack(ApiStack)
+  app.stack(BasicApiStack)
   app.stack(PickupStack)
 }

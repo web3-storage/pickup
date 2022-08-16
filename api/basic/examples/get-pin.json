@@ -1,0 +1,23 @@
+{
+    "cid": "QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn",
+    "name": "",
+    "allocations": [],
+    "origins": [],
+    "created": "2022-08-11T12:39:50Z",
+    "metadata": null,
+    "peer_map": {
+        "12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR": {
+            "peername": "cluster0",
+            "ipfs_peer_id": "12D3KooWCMqLBr5xNBhgkrCfVF2GcafmQrqoPwxLhQHVjRUsUKzH",
+            "ipfs_peer_addresses": [
+                "/ip4/172.18.0.2/tcp/4001/p2p/12D3KooWCMqLBr5xNBhgkrCfVF2GcafmQrqoPwxLhQHVjRUsUKzH",
+                "/ip4/172.18.0.2/udp/4001/quic/p2p/12D3KooWCMqLBr5xNBhgkrCfVF2GcafmQrqoPwxLhQHVjRUsUKzH"
+            ],
+            "status": "pinned",
+            "timestamp": "2022-08-11T12:39:50Z",
+            "error": "",
+            "attempt_count": 0,
+            "priority_pin": false
+        }
+    }
+}

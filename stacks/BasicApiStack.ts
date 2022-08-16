@@ -1,18 +1,16 @@
 import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resources'
 
-export function ApiStack ({ stack }: StackContext): { queue: Queue, bucket: Bucket } {
+export function BasicApiStack ({ stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
 
   const bucket = new Bucket(stack, 'Car')
 
-  const table = new Table(stack, 'PinStatusv6', {
+  const table = new Table(stack, 'BasicV2', {
     fields: {
-      requestid: 'string',
-      userid: 'string'
+      cid: 'string'
     },
     primaryIndex: {
-      partitionKey: 'userid',
-      sortKey: 'requestid'
+      partitionKey: 'cid'
     }
   })
 
@@ -24,16 +22,14 @@ export function ApiStack ({ stack }: StackContext): { queue: Queue, bucket: Buck
         environment: {
           BUCKET_NAME: bucket.bucketName,
           TABLE_NAME: table.tableName,
-          QUEUE_URL: queue.queueUrl
+          QUEUE_URL: queue.queueUrl,
+          CLUSTER_BASIC_AUTH_TOKEN: process.env.CLUSTER_BASIC_AUTH_TOKEN ?? ''
         }
       }
     },
     routes: {
-      'GET    /pins': 'functions/PinningService.handler',
-      'POST   /pins': 'functions/PinningService.handler',
-      'GET    /pins/{requestId}': 'functions/PinningService.handler',
-      'POST   /pins/{requestId}': 'functions/PinningService.handler',
-      'DELETE /pins/{requestId}': 'functions/PinningService.handler'
+      'GET    /pins/{cid}': 'basic/get-pin.handler',
+      'POST   /pins/{cid}': 'basic/add-pin.handler'
     }
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })

@@ -14,6 +14,8 @@ You need:
 - node >= 16
 - An AWS account with the AWS CLI configured locally
 
+Copy `.env.tpl` to `.env.local` and set `CLUSTER_BASIC_AUTH_TOKEN` with a base64 encoded user:pass string.
+
 Install the deps
 
 ```console
@@ -157,3 +159,13 @@ Thing to check before adding to the SQS queue
 
 
 [pinning service api]: https://ipfs.github.io/pinning-services-api-spec/
+
+
+## aws notes
+
+remove a bunch of buckets by bucket prefix name
+
+```sh
+# danger! will delete things!
+aws s3 ls | grep olizilla-pickup | awk '{print "s3://"$3}' | xargs -n 1 -I {} aws s3 rb {} --force;
+```
