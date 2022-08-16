@@ -31,7 +31,7 @@ export function PickupStack ({ stack }: StackContext): void {
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
-    image: ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.1')
+    image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname)
     // command: [
     //   'daemon',
     //   '--profile=server' // Disables local host discovery. https://github.com/ipfs/kubo/blob/master/docs/config.md#profiles
