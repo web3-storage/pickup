@@ -9,6 +9,17 @@ export interface Pin {
   created: string
 }
 
+export interface PeerMapValue {
+  'peername': string
+  'ipfs_peer_id': string
+  'ipfs_peer_addresses': string[]
+  'status': Pin['status']
+  'timestamp': string
+  'error': string
+  'attempt_count': number
+  'priority_pin': boolean
+}
+
 export interface ClusterStatusResponse {
   'cid': string
   'name': ''
@@ -16,28 +27,17 @@ export interface ClusterStatusResponse {
   'origins': []
   'created': string
   'metadata': null
-  'peer_map': {
-    '12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR': {
-      'peername': 'elastic-ipfs'
-      'ipfs_peer_id': string
-      'ipfs_peer_addresses': string[]
-      'status': Pin['status']
-      'timestamp': string
-      'error': ''
-      'attempt_count': 0
-      'priority_pin': false
-    }
-  }
+  'peer_map': Record<string, PeerMapValue>
 }
 
 export interface ClusterAddResponse {
   replication_factor_min: -1
   replication_factor_max: -1
-  name: ''
+  name: string
   mode: 'recursive'
   shard_size: 0
   user_allocations: null
-  expire_at: '0001-01-01T00:00:00Z'
+  expire_at: '0001-01-01T00:00:00Z' // we don't support exiring pins, so always return this value.
   metadata: {}
   pin_update: null
   origins: string[]

@@ -46,10 +46,6 @@ test.before(async t => {
   t.context.createQueue = createQueue.bind(null, sqsContainer.getMappedPort(9324), sqs)
 })
 
-test.after.always(async t => {
-  t.context.containers.forEach(t => t.stop())
-})
-
 test('getPin', async t => {
   const cid = 'foo'
   const { dynamo, table } = t.context
