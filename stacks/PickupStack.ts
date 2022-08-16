@@ -4,7 +4,7 @@ import { ContainerImage } from 'aws-cdk-lib/aws-ecs'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 
 export function PickupStack ({ stack }: StackContext): void {
-  const pinService = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
+  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
 
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
@@ -20,10 +20,10 @@ export function PickupStack ({ stack }: StackContext): void {
     // cpu: 4096,
     // memoryLimitMiB: 8192,
     environment: {
-      SQS_QUEUE_URL: pinService.queue.queueUrl,
+      SQS_QUEUE_URL: basicApi.queue.queueUrl,
       IPFS_API_URL: 'http://127.0.0.1:5001'
     },
-    queue: pinService.queue.cdk.queue
+    queue: basicApi.queue.cdk.queue
     // retentionPeriod: Duration.days(1),
     // visibilityTimeout: Duration.minutes(5),
   })
@@ -41,6 +41,6 @@ export function PickupStack ({ stack }: StackContext): void {
     // ]
   })
 
-  pinService.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
-  pinService.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+  basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+  basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
 }
