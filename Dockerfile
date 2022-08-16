@@ -1,5 +1,5 @@
 # I build the pickup worker that subscribes to the SQS Queue.
-FROM --platform=linux/amd64 node:16-alpine
+FROM node:16-alpine
 WORKDIR /usr/src/app
 
 # Such is monorepo lyfe.
