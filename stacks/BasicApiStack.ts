@@ -1,9 +1,30 @@
-import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue, Bucket, Topic } from '@serverless-stack/resources'
+import * as sns from 'aws-cdk-lib/aws-sns'
 
 export function BasicApiStack ({ stack }: StackContext): { queue: Queue, bucket: Bucket } {
-  const queue = new Queue(stack, 'Pin')
+  const indexerTopicArn = process.env.INDEXER_TOPIC_ARN
+  if (indexerTopicArn === undefined) {
+    console.warn('INDEXER_TOPIC_ARN is not set, creating local sns topic')
+  }
 
-  const bucket = new Bucket(stack, 'Car')
+  const indexerTopic = new Topic(stack, 'IndexerTopic', {
+    cdk: {
+      // the indexer sns topic is managed elsewhere so we import it by ARN here.
+      topic: indexerTopicArn !== undefined ? sns.Topic.fromTopicArn(stack, 'IndexerTopic', indexerTopicArn) : undefined
+    }
+  })
+
+  const bucket = new Bucket(stack, 'Car', {
+    notifications: {
+      indexer: {
+        type: 'topic',
+        topic: indexerTopic,
+        events: ['object_created']
+      }
+    }
+  })
+
+  const queue = new Queue(stack, 'Pin')
 
   const table = new Table(stack, 'BasicV2', {
     fields: {
