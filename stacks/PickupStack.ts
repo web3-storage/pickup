@@ -1,6 +1,7 @@
 import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
 import { ContainerImage } from 'aws-cdk-lib/aws-ecs'
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 
 export function PickupStack ({ stack }: StackContext): void {
@@ -11,7 +12,9 @@ export function PickupStack ({ stack }: StackContext): void {
     // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
     // Requires Docker running locally
     // Note: this is run from /.build/<somehting> so the path to the Dockerfile is not quite what you'd expect.
-    image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname),
+    image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
+      platform: Platform.LINUX_AMD64
+    }),
     containerName: 'pickup',
     maxScalingCapacity: 3,
     cpu: 512,
@@ -31,7 +34,9 @@ export function PickupStack ({ stack }: StackContext): void {
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
-    image: ContainerImage.fromRegistry('ipfs/go-ipfs:v0.13.1')
+    image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
+      platform: Platform.LINUX_AMD64
+    })
     // command: [
     //   'daemon',
     //   '--profile=server' // Disables local host discovery. https://github.com/ipfs/kubo/blob/master/docs/config.md#profiles
