@@ -6,6 +6,7 @@ import { ClusterAddResponse, Pin, Response } from './schema.js'
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import { nanoid } from 'nanoid'
+import { hasBlock } from './dagula.js'
 
 interface UpsertPinInput {
   cid: string
@@ -86,10 +87,13 @@ export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, tab
       return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: `${str} in origins is not a valid multiaddr` } } }
     }
   }
-  const pin = await putIfNotExists({ cid, dynamo, table })
+  if (await hasBlock(cid)) {
+    const pin = toPin(cid, 'pinned')
+    return { statusCode: 200, body: toClusterResponse(pin, origins) }
+  }
   await addToQueue({ cid, origins, bucket, sqs, queueUrl })
-  const body = toClusterResponse(pin, origins)
-  return { statusCode: 200, body }
+  const pin = await putIfNotExists({ cid, dynamo, table })
+  return { statusCode: 200, body: toClusterResponse(pin, origins) }
 }
 
 export function toClusterResponse (pin: Pin, origins: string[]): ClusterAddResponse {
@@ -113,16 +117,20 @@ export function toClusterResponse (pin: Pin, origins: string[]): ClusterAddRespo
   }
 }
 
+export function toPin (cid: string, status: Pin['status']): Pin {
+  return {
+    cid,
+    status,
+    created: new Date().toISOString()
+  }
+}
+
 /**
  * Save Pin to Dynamo. If we already have that CID then return the existing.
  */
 export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): Promise<Pin> {
   const client = DynamoDBDocumentClient.from(dynamo)
-  const pin: Pin = {
-    cid,
-    status: 'queued',
-    created: new Date().toISOString()
-  }
+  const pin = toPin(cid, 'queued')
   try {
     await client.send(new PutCommand({
       TableName: table,
