@@ -60,11 +60,13 @@ export const getPin = async ({ cid, dynamo, table }: GetPinInput): Promise<Pin |
  * with just elastic-ipfs as it's single backing node.
  *
  * TODO: Once we know that EP is providing the CID, we update the status to pinned in our db.
+ *
+ * NOTE: This API is "temporary" to allow us to swap in pickup for cluster. A simpler, non-cluster compatible api can be used onced we are happy that it's a good idea.
  */
 export function toClusterResponse (
   cid: string,
   pin?: Pin,
-  ipfsAddr = '/dns4/peer.ipfs-elastic-provider-aws.com/tcp/3000/ws/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm',
+  ipfsAddr = '/dns4/elastic.dag.house/tcp/443/wss/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm',
   ipfsPeerId = ipfsAddr.split('/').at(-1)
 ): ClusterStatusResponse {
   if (ipfsPeerId === undefined) {
@@ -78,6 +80,7 @@ export function toClusterResponse (
     created: pin?.created ?? new Date().toISOString(),
     metadata: null,
     peer_map: {
+      // Fake cluster ID to give correct shape to output, not expected to be used. dotStorge dont care.
       '12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR': {
         peername: 'elastic-ipfs',
         ipfs_peer_id: ipfsPeerId,
