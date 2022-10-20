@@ -1,9 +1,7 @@
-import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue, Bucket, Topic } from '@serverless-stack/resources'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
-
-  const bucket = new Bucket(stack, 'Car')
 
   const table = new Table(stack, 'BasicV2', {
     fields: {
@@ -11,6 +9,21 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     },
     primaryIndex: {
       partitionKey: 'cid'
+    }
+  })
+
+  const bucket = new Bucket(stack, 'Car', {
+    notifications: {
+      created: {
+        events: ["object_created"],
+        function: {
+          handler: 'basic/update-pin.handler',
+          permissions: [table],
+          environment: {
+            TABLE_NAME: table.tableName
+          }
+        }
+      }
     }
   })
 
