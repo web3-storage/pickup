@@ -1,4 +1,4 @@
-import { StackContext, Api, Table, Queue, Bucket, ApiDomainProps } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resources'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
@@ -39,7 +39,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
 
   stack.addOutputs({
     ApiEndpoint: api.url,
-    CustomDomain: customDomain ? `https://${customDomain.domainName}` : 'Set HOSTED_ZONE in env to deploy to a custom domain'
+    CustomDomain: (customDomain !== undefined) ? `https://${customDomain.domainName}` : 'Set HOSTED_ZONE in env to deploy to a custom domain'
   })
 
   return {
@@ -48,7 +48,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
   }
 }
 
-function getCustomDomain (stage: string, hostedZone?: string): ApiDomainProps | undefined {
+function getCustomDomain (stage: string, hostedZone?: string): { domainName: string, hostedZone: string} | undefined {
   if (hostedZone === undefined) {
     return undefined
   }
