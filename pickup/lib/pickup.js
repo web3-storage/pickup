@@ -37,17 +37,26 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3 
     connectTo(allOrigins, ipfsApiUrl)
   ])
 
+  console.log(`Ready to process ${jobs.length} jobs`)
+
   // Do!
   const res = await Promise.allSettled(jobs.map(async job => {
     const { message, cid, upload } = job
     const body = await fetchCar(cid, ipfsApiUrl)
+    console.log(`got car for ${cid}`)
     await upload({ body })
+    console.log(`uploaded car for ${cid} to s3`)
     return message // hand back msg so we can ack all that succeded
   }))
 
   // Clear!
   await disconnect(allOrigins, ipfsApiUrl)
 
+  // find the ones that worked
+  const ok = res.filter(r => r.status === 'fulfilled').map(r => r.value)
+
+  console.log(`Done processing batch ${jobs[0].cid}. ${ok.length}/${messages.length} OK`)
+
   // return the set of messages that were handled
-  return res.filter(r => r.status === 'fulfilled').map(r => r.value)
+  return ok
 }

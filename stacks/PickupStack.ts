@@ -17,23 +17,24 @@ export function PickupStack ({ stack }: StackContext): void {
     }),
     containerName: 'pickup',
     maxScalingCapacity: 3,
-    cpu: 512,
-    memoryLimitMiB: 1024,
+    cpu: 4096,
+    memoryLimitMiB: 8192,
     ephemeralStorageGiB: 64, // max 200
-    // cpu: 4096,
-    // memoryLimitMiB: 8192,
     environment: {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
       IPFS_API_URL: 'http://127.0.0.1:5001'
     },
-    queue: basicApi.queue.cdk.queue
+    queue: basicApi.queue.cdk.queue,
     // retentionPeriod: Duration.days(1),
     // visibilityTimeout: Duration.minutes(5),
+    // for debug!
+    enableExecuteCommand: true
   })
 
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
+    logging: service.logDriver,
     image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
       platform: Platform.LINUX_AMD64
     })

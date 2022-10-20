@@ -10,7 +10,7 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
 
   const app = Consumer.create({
     queueUrl,
-    batchSize: 2, // 1 to 10
+    batchSize: 1, // 1 to 10
     visibilityTimeout: 20, // seconds, how long to hide message from queue after reading.
     heartbeatInterval: 10, // seconds, must be lower than `visibilityTimeout`. how long before increasing the `visibilityTimeout`
     // allow 4hrs before timeout. 2/3rs of the world can upload faster than
@@ -20,7 +20,8 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
     // see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
     // TODO: enforce 32GiB limit
     // TODO: monitor throughput and bail early if stalled.
-    handleMessageTimeout: 4 * 60 * 60 * 1000, // ms, error if processing takes longer than this.
+    // handleMessageTimeout: 4 * 60 * 60 * 1000, // ms, error if processing takes longer than this.
+    handleMessageTimeout: 10 * 1000, // ms, error if processing takes longer than this.
     handleMessageBatch: async (messages) => {
       return pickupBatch(messages, { ipfsApiUrl, createS3Uploader, s3 })
     }
