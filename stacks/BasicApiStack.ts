@@ -1,6 +1,6 @@
-import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue, Bucket, ApiDomainProps } from '@serverless-stack/resources'
 
-export function BasicApiStack ({ stack }: StackContext): { queue: Queue, bucket: Bucket } {
+export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
 
   const bucket = new Bucket(stack, 'Car')
@@ -14,7 +14,10 @@ export function BasicApiStack ({ stack }: StackContext): { queue: Queue, bucket:
     }
   })
 
+  const customDomain = getCustomDomain(app.stage, process.env.HOSTED_ZONE)
+
   const api = new Api(stack, 'api', {
+    customDomain,
     cors: true,
     defaults: {
       function: {
@@ -34,14 +37,21 @@ export function BasicApiStack ({ stack }: StackContext): { queue: Queue, bucket:
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
 
-  // Show the endpoint in the output
   stack.addOutputs({
     ApiEndpoint: api.url,
-    QueueURL: queue.queueUrl
+    CustomDomain: customDomain ? `https://${customDomain.domainName}` : 'Set HOSTED_ZONE in env to deploy to a custom domain'
   })
 
   return {
     queue,
     bucket
   }
+}
+
+function getCustomDomain (stage: string, hostedZone?: string): ApiDomainProps | undefined {
+  if (hostedZone === undefined) {
+    return undefined
+  }
+  const domainName = stage === 'prod' ? hostedZone : `${stage}.${hostedZone}`
+  return { domainName, hostedZone }
 }
