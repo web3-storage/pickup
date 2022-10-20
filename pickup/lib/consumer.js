@@ -20,7 +20,8 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
     // see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
     // TODO: enforce 32GiB limit
     // TODO: monitor throughput and bail early if stalled.
-    handleMessageTimeout: 4 * 60 * 60 * 1000, // ms, error if processing takes longer than this.
+    // handleMessageTimeout: 4 * 60 * 60 * 1000, // ms, error if processing takes longer than this.
+    handleMessageTimeout: 10 * 1000, // ms, error if processing takes longer than this.
     handleMessageBatch: async (messages) => {
       return pickupBatch(messages, { ipfsApiUrl, createS3Uploader, s3 })
     }
