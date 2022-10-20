@@ -10,7 +10,7 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
 
   const app = Consumer.create({
     queueUrl,
-    batchSize: 2, // 1 to 10
+    batchSize: 1, // 1 to 10
     visibilityTimeout: 20, // seconds, how long to hide message from queue after reading.
     heartbeatInterval: 10, // seconds, must be lower than `visibilityTimeout`. how long before increasing the `visibilityTimeout`
     // allow 4hrs before timeout. 2/3rs of the world can upload faster than
