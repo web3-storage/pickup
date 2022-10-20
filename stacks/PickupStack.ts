@@ -24,9 +24,11 @@ export function PickupStack ({ stack }: StackContext): void {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
       IPFS_API_URL: 'http://127.0.0.1:5001'
     },
-    queue: basicApi.queue.cdk.queue
+    queue: basicApi.queue.cdk.queue,
     // retentionPeriod: Duration.days(1),
     // visibilityTimeout: Duration.minutes(5),
+    // for debug!
+    enableExecuteCommand: true
   })
 
   // go-ipfs as sidecar!
