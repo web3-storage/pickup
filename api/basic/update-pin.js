@@ -19,7 +19,7 @@ export async function handler (event) {
     if (!key.endsWith('.car')) {
       continue
     }
-    const file = key.split('/').at(-1) 
+    const file = key.split('/').at(-1)
     const cid = file.split('.').at(0)
     res.push(await updatePinStatus(dynamo, table, cid))
     // TODO: notify indexer, or do as seperate lambda
@@ -29,7 +29,7 @@ export async function handler (event) {
 
 /**
  * Update the pin status for a given CID
- * 
+ *
  * @param {DynamoDBClient} dynamo
  * @param {cid} string
  * @param {string} status

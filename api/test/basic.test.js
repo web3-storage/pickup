@@ -173,7 +173,7 @@ test('updatePinStatus', async t => {
   t.is(res3.status, res2.status)
   t.is(res3.created, res2.created)
 
-  const s3Event = { 
+  const s3Event = {
     Records: [{
       s3: {
         object: {
