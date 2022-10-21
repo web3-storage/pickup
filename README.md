@@ -1,31 +1,82 @@
-![](https://ipfs.io/ipfs/bafybeig5uisjbc25pkjwtyq5goocmwr7lz5ln63llrtw4d5s2y7m7nhyeu/ep-logo.svg)
-
 # Pickup 🛻
 
-Fetch content from IPFS as a CAR and push it to S3. AKA an elastic [pinning service api]. 🌐📌 
+Fetch content from IPFS by CID save it to S3 as a CAR.
 
-Lambda + Dynamo + SQS + ECS impl of the pinning service api
+Provides a [pinning service api] *and* a mimimal ipfs-cluster compatible http api.
+
+This repo deploys resources to AWS and stiches them together to provide an Lambda-based HTTP interface and a worker pool in ECS. Pin requests are queued and handled by the `pickup` service, an auto-scaling set of `kubo` nodes. The dag is saved as a CAR to S3, where E-IPFS can index and provide it to the public IPFS network.
+
+## Example
+
+Make a pin request using the ipfs-cluster `POST /pin/:cid` enpoint
+
+```bash
+$ curl -X POST 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu' -H "Authorization: Basic $CLUSTER_BASIC_AUTH_TOKEN" -s | jq
+{
+  "replication_factor_min": -1,
+  "replication_factor_max": -1,
+  "name": "",
+  "mode": "recursive",
+  "shard_size": 0,
+  "user_allocations": null,
+  "expire_at": "0001-01-01T00:00:00Z",
+  "metadata": {},
+  "pin_update": null,
+  "origins": [],
+  "cid": "bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu",
+  "type": "pin",
+  "allocations": [],
+  "max_depth": -1,
+  "reference": null,
+  "timestamp": "2022-10-21T08:50:48.304Z"
+}
+```
+
+Find the status of a pin using the ipfs-cluster `POST /pin/:cid` endpoint.
+
+```bash
+❯ curl -X GET 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu' -H "Authorization: Basic $CLUSTER_BASIC_AUTH_TOKEN" -s | jq
+{
+  "cid": "bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu",
+  "name": "",
+  "allocations": [],
+  "origins": [],
+  "created": "2022-10-21T08:50:48.304Z",
+  "metadata": null,
+  "peer_map": {
+    "12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR": {
+      "peername": "elastic-ipfs",
+      "ipfs_peer_id": "bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm",
+      "ipfs_peer_addresses": [
+        "/dns4/elastic.dag.house/tcp/443/wss/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm"
+      ],
+      "status": "pinned",
+      "timestamp": "2022-10-21T08:54:28.962Z",
+      "error": "",
+      "attempt_count": 0,
+      "priority_pin": false
+    }
+  }
+}
+```
 
 ## Getting Started
 
-Built on SST: https://serverless-stack.com/
+PR's are deployed automatically to `https://<pr#>.pickup.dag.haus`. The `main` branch is deployed to https://staging.pickup.dag.haus and staging builds are promoted to prod manually via the UI at https://console.seed.run/dag-house/pickup
 
-You need:
+To work on this codebase you need:
 - node >= 16
 - An AWS account with the AWS CLI configured locally
+- Copy `.env.tpl` to `.env.local` and set `CLUSTER_BASIC_AUTH_TOKEN` with a base64 encoded user:pass string.
+- Install the deps with `npm i`
 
-Copy `.env.tpl` to `.env.local` and set `CLUSTER_BASIC_AUTH_TOKEN` with a base64 encoded user:pass string.
+Deploy dev services to your aws account and start dev console
 
-Install the deps
-
-```console
-npm i
-```
-
-Deploy dev services to aws and start dev console
 ```console
 npm start
 ```
+
+See: https://docs.sst.dev for more info on how things get deployed.
 
 ## Overview
 
