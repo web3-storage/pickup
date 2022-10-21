@@ -6,8 +6,9 @@ This repo deploys resources to AWS and stiches them together to provide an Lambd
 
 ## API
 
-A minimal ipfs-cluster compaible http API is provided for adding pins and checking pin status in [api/basic](api/basic). The response objects match what ipfs-cluster would return so `pickup` can be used as a drop in replacement. Many of the properties make no sense for pickup and are faked.
+A minimal [ipfs-cluster](https://github.com/ipfs-cluster/ipfs-cluster) compatible http API is provided for adding pins and checking pin status in [api/basic](api/basic). The response objects match the shape ipfs-cluster would return so `pickup` can be used as a drop in replacement. Many of the properties make no sense for pickup and are faked.
 
+🏗 A full [pinning service api] is also implemented in [api/functions/PinningService.ts](api/functions/PinningService.ts), but is not currently in use. A future release may switch this to be the main interface once we need it.
 
 ### POST /pins/:cid
 
@@ -64,10 +65,6 @@ Find the status of a pin
   }
 }
 ```
-
-### Pinning Service API
-
-🏗 A full [pinning service api] is implemented in [api/functions/PinningService.ts](api/functions/PinningService.ts), but is not currently deployed.
 
 ## Getting Started
 

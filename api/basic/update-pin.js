@@ -2,6 +2,9 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 
 /**
+ * Set pin status to pinned when receiving an
+ * S3 `object_created` event for a .car file.
+ *
  * @param {import('aws-lambda').S3Event} event
  */
 export async function handler (event) {
@@ -16,13 +19,13 @@ export async function handler (event) {
   const res = []
   for (const record of event.Records) {
     const { key } = record.s3.object
-    if (!key.endsWith('.car')) {
+    if (!key.endsWith('.car') || !record.eventName.startsWith('ObjectCreated')) {
+      console.error(`Ignoring '${record.eventName}' event for ${key} - Expected ObjectCreated event for .car file`)
       continue
     }
     const file = key.split('/').at(-1)
     const cid = file.split('.').at(0)
     res.push(await updatePinStatus(dynamo, table, cid))
-    // TODO: notify indexer, or do as seperate lambda
   }
   return res
 }

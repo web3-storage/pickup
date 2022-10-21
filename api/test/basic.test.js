@@ -175,6 +175,7 @@ test('updatePinStatus', async t => {
 
   const s3Event = {
     Records: [{
+      eventName: 'ObjectCreated:Put',
       s3: {
         object: {
           key: `pickup/${cid}.car`
