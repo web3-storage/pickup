@@ -3,14 +3,27 @@ import { StackContext, Api, Table, Queue, Bucket } from '@serverless-stack/resou
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
 
-  const bucket = new Bucket(stack, 'Car')
-
   const table = new Table(stack, 'BasicV2', {
     fields: {
       cid: 'string'
     },
     primaryIndex: {
       partitionKey: 'cid'
+    }
+  })
+
+  const bucket = new Bucket(stack, 'Car', {
+    notifications: {
+      created: {
+        events: ['object_created'],
+        function: {
+          handler: 'basic/update-pin.handler',
+          permissions: [table],
+          environment: {
+            TABLE_NAME: table.tableName
+          }
+        }
+      }
     }
   })
 

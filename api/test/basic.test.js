@@ -3,6 +3,7 @@ import { SQSClient, CreateQueueCommand, GetQueueUrlCommand, ReceiveMessageComman
 import { GenericContainer as Container } from 'testcontainers'
 import { addPin, putIfNotExists, handler as addPinHandler } from '../basic/add-pin.js'
 import { getPin, handler as getPinHandler } from '../basic/get-pin.js'
+import { handler as updatePin } from '../basic/update-pin.js'
 import { nanoid } from 'nanoid'
 import test from 'ava'
 
@@ -155,6 +156,38 @@ test('addPin basic auth', async t => {
   event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
   const auth = await addPinHandler(event)
   t.is(auth.statusCode, 200)
+})
+
+test('updatePinStatus', async t => {
+  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
+  process.env.TABLE_NAME = t.context.table
+  const cid = 'update'
+  const { dynamo, table } = t.context
+  const res1 = await getPin({ cid, dynamo, table })
+  t.is(res1, undefined)
+
+  const res2 = await putIfNotExists({ cid, dynamo, table })
+
+  const res3 = await getPin({ cid, dynamo, table })
+  t.is(res3.cid, cid)
+  t.is(res3.status, res2.status)
+  t.is(res3.created, res2.created)
+
+  const s3Event = {
+    Records: [{
+      eventName: 'ObjectCreated:Put',
+      s3: {
+        object: {
+          key: `pickup/${cid}.car`
+        }
+      }
+    }]
+  }
+
+  const [res4] = await updatePin(s3Event)
+  t.is(res4.cid, cid)
+  t.is(res4.status, 'pinned')
+  t.is(res4.created, res2.created)
 })
 
 export async function createQueue (sqsPort, sqs) {
