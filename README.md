@@ -2,16 +2,19 @@
 
 Fetch content from IPFS by CID save it to S3 as a CAR.
 
-Provides a [pinning service api] *and* a mimimal ipfs-cluster compatible http api.
+This repo deploys resources to AWS and stiches them together to provide an Lambda-based HTTP interface and a worker pool in ECS. Pin requests are queued and handled by the `pickup` service, an auto-scaling set of `kubo` nodes. The DAG is saved as a CAR to S3, where E-IPFS can index and provide it to the public IPFS network.
 
-This repo deploys resources to AWS and stiches them together to provide an Lambda-based HTTP interface and a worker pool in ECS. Pin requests are queued and handled by the `pickup` service, an auto-scaling set of `kubo` nodes. The dag is saved as a CAR to S3, where E-IPFS can index and provide it to the public IPFS network.
+## API
 
-## Example
+A minimal ipfs-cluster compaible http API is provided for adding pins and checking pin status in [api/basic](api/basic). The response objects match what ipfs-cluster would return so `pickup` can be used as a drop in replacement. Many of the properties make no sense for pickup and are faked.
 
-Make a pin request using the ipfs-cluster `POST /pin/:cid` enpoint
+
+### POST /pins/:cid
+
+Make a pin request by CID, asking the service to fetch the content from IPFS.
 
 ```bash
-$ curl -X POST 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu' -H "Authorization: Basic $CLUSTER_BASIC_AUTH_TOKEN" -s | jq
+$ curl -X POST 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu' -H "Authorization: Basic $PICKUP_BASIC_AUTH_TOKEN" -s | jq
 {
   "replication_factor_min": -1,
   "replication_factor_max": -1,
@@ -32,10 +35,12 @@ $ curl -X POST 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3au
 }
 ```
 
-Find the status of a pin using the ipfs-cluster `POST /pin/:cid` endpoint.
+### GET /pins/:cid
+
+Find the status of a pin
 
 ```bash
-❯ curl -X GET 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu' -H "Authorization: Basic $CLUSTER_BASIC_AUTH_TOKEN" -s | jq
+❯ curl -X GET 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu' -H "Authorization: Basic $PICKUP_BASIC_AUTH_TOKEN" -s | jq
 {
   "cid": "bafybeifpaez32hlrz5tmr7scndxtjgw3auuloyuyxblynqmjw5saapewmu",
   "name": "",
@@ -59,6 +64,10 @@ Find the status of a pin using the ipfs-cluster `POST /pin/:cid` endpoint.
   }
 }
 ```
+
+### Pinning Service API
+
+🏗 A full [pinning service api] is implemented in [api/functions/PinningService.ts](api/functions/PinningService.ts), but is not currently deployed.
 
 ## Getting Started
 
