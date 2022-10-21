@@ -4,7 +4,7 @@ Fetch content from IPFS by CID save it to S3 as a CAR.
 
 This repo deploys resources to AWS and stiches them together to provide an Lambda-based HTTP interface and a worker pool in ECS. Pin requests are queued and handled by the `pickup` service, an auto-scaling set of `kubo` nodes. The DAG is saved as a CAR to S3, where E-IPFS can index and provide it to the public IPFS network.
 
-## API
+## API
 
 A minimal [ipfs-cluster](https://github.com/ipfs-cluster/ipfs-cluster) compatible http API is provided for adding pins and checking pin status in [api/basic](api/basic). The response objects match the shape ipfs-cluster would return so `pickup` can be used as a drop in replacement. Many of the properties make no sense for pickup and are faked.
 
