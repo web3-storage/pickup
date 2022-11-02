@@ -17,10 +17,12 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       created: {
         events: ['object_created'],
         function: {
-          handler: 'basic/update-pin.handler',
+          handler: 'basic/car-created.handler',
           permissions: [table],
           environment: {
-            TABLE_NAME: table.tableName
+            TABLE_NAME: table.tableName,
+            SQS_INDEXER_QUEUE_URL: process.env.SQS_INDEXER_QUEUE_URL ?? '',
+            SQS_INDEXER_QUEUE_REGION: process.env.SQS_INDEXER_QUEUE_REGION ?? ''
           }
         }
       }
