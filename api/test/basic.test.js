@@ -3,7 +3,7 @@ import { SQSClient, CreateQueueCommand, GetQueueUrlCommand, ReceiveMessageComman
 import { GenericContainer as Container } from 'testcontainers'
 import { addPin, putIfNotExists, handler as addPinHandler } from '../basic/add-pin.js'
 import { getPin, handler as getPinHandler } from '../basic/get-pin.js'
-import { handler as updatePin } from '../basic/update-pin.js'
+import { s3EventHandler as updatePin } from '../basic/update-pin.js'
 import { nanoid } from 'nanoid'
 import test from 'ava'
 
