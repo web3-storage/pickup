@@ -28,7 +28,11 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
 
   const bucket = new Bucket(stack, 'Car', {
     notifications: {
-      topic: s3Topic
+      topic: {
+        type: 'topic',
+        topic: s3Topic,
+        events: ['object_created']
+      }
     }
   })
 
