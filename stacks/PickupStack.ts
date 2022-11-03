@@ -28,7 +28,8 @@ export function PickupStack ({ stack }: StackContext): void {
     // retentionPeriod: Duration.days(1),
     // visibilityTimeout: Duration.minutes(5),
     // for debug!
-    enableExecuteCommand: true
+    enableExecuteCommand: true,
+    assignPublicIp: true
   })
 
   // go-ipfs as sidecar!
