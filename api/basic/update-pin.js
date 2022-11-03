@@ -2,12 +2,25 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 
 /**
+ * Deal with the horror of S3Events wrapped up as strings in SNSEvents.
+ *
+ * @param {import('aws-lambda').SNSEvent} snsEvent
+ */
+export async function snsEventHandler (snsEvent) {
+  for (const record of snsEvent.Records) {
+    /** @type {import('aws-lambda').S3Event} */
+    const s3Event = JSON.parse(record.Sns.Message)
+    await s3EventHandler(s3Event)
+  }
+}
+
+/**
  * Set pin status to pinned when receiving an
  * S3 `object_created` event for a .car file.
  *
  * @param {import('aws-lambda').S3Event} event
  */
-export async function handler (event) {
+export async function s3EventHandler (event) {
   const {
     TABLE_NAME: table = '',
     // set for testing
