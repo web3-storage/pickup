@@ -129,6 +129,8 @@ test('getPin basic auth', async t => {
   }
   const unauth = await getPinHandler(event)
   t.is(unauth.statusCode, 401)
+  t.true(typeof unauth.body === 'string')
+  t.deepEqual(JSON.parse(unauth.body), { error: { reason: 'UNAUTHORIZED' } })
 
   event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
   const auth = await getPinHandler(event)
@@ -152,6 +154,8 @@ test('addPin basic auth', async t => {
   }
   const unauth = await addPinHandler(event)
   t.is(unauth.statusCode, 401)
+  t.true(typeof unauth.body === 'string')
+  t.deepEqual(JSON.parse(unauth.body), { error: { reason: 'UNAUTHORIZED' } })
 
   event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
   const auth = await addPinHandler(event)

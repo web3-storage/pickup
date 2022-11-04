@@ -43,7 +43,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   } = process.env
 
   if (event.headers.authorization !== `Basic ${token}`) {
-    return { statusCode: 401, body: { error: { reason: 'UNAUTHORIZED' } } }
+    return { statusCode: 401, body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }) }
   }
 
   const sqs = new SQSClient({ endpoint: sqsEndpoint })
