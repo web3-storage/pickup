@@ -16,7 +16,7 @@ export async function fetchCar (cid, ipfsApiUrl, timeoutMs = 30000) {
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText} ${url}`)
   }
-  async function* restartCountdown (source) {
+  async function * restartCountdown (source) {
     for await (const chunk of source) {
       startCountdown()
       yield chunk
