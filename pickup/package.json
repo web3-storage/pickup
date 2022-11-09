@@ -15,9 +15,10 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.95.0",
     "@aws-sdk/lib-storage": "^3.97.0",
+    "debounce": "^1.2.1",
     "multiaddr": "^10.0.1",
     "multiformats": "^9.6.5",
-    "node-fetch": "^3.2.4",
+    "node-fetch": "^3.2.10",
     "p-retry": "^5.1.1",
     "sqs-consumer": "^5.7.0"
   },
@@ -30,6 +31,6 @@
     "testcontainers": "^8.10.1"
   },
   "engines": {
-    "node": "16.x"
+    "node": ">=16.14"
   }
 }
