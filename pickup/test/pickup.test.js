@@ -109,6 +109,24 @@ test('pickupBatch', async t => {
   }
 })
 
+test('pickupBatch timeout', async t => {
+  const rareCid = 'bafkreifd77jsx5jwez7nthztzc6smqmvgrj43ip6scqccnxoeqizc3qn3i' // "olizilla Tue  8 Nov 2022 15:31:39 GMT"
+  const { s3, createBucket, ipfsApiUrl } = t.context
+  const bucket = await createBucket()
+  const cids = [rareCid]
+  const msgs = cids.map((cid, i) => ({
+    Body: JSON.stringify({
+      cid,
+      bucket,
+      key: `batch/${cid}.car`,
+      requestid: `#${i}`
+    })
+  }))
+
+  const res = await pickupBatch(msgs, { createS3Uploader, s3, ipfsApiUrl })
+  t.is(res.length, 0, 'Expecting 0 succesful jobs. The CID should not be fetchable')
+})
+
 async function resToFiles (res) {
   const files = []
   for await (const file of unpackStream(res.Body)) {
