@@ -12,7 +12,7 @@ export default async function (app: App) {
     }
   })
   await app.stack(BasicApiStack)
-  // app.stack(PickupStack)
+  app.stack(PickupStack)
 
   // tags let us discover all the aws resource costs incurred by this app
   // see: https://docs.sst.dev/advanced/tagging-resources
