@@ -39,7 +39,6 @@ export default async function (app: App) {
 
   // tags let us discover all the aws resource costs incurred by this app
   // see: https://docs.sst.dev/advanced/tagging-resources
-
   for (const tag of tagList) {
     Tags.of(app).add(tag.Key, tag.Value)
   }

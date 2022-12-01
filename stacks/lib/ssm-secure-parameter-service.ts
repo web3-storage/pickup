@@ -10,9 +10,6 @@ export class SSMSecureParameterService {
   }
 
   async putIfNotExists(parameterName: string, tagList: Array<any>) {
-    console.log('********** debug: Converting tags record to list')
-    console.log(tagList)
-    console.log(`Creating ${parameterName} secureString type parameter`)
     const ssmPutResult = await this.ssm
       .putParameter({
         Name: parameterName,
