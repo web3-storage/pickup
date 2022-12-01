@@ -3,7 +3,7 @@ import { PickupStack } from './PickupStack'
 import { BasicApiStack } from './BasicApiStack'
 import { App } from '@serverless-stack/resources'
 
-export default function (app: App): void {
+export default async function (app: App) {
   app.setDefaultFunctionProps({
     runtime: 'nodejs16.x',
     srcPath: 'api',
@@ -11,8 +11,8 @@ export default function (app: App): void {
       format: 'esm'
     }
   })
-  app.stack(BasicApiStack)
-  app.stack(PickupStack)
+  await app.stack(BasicApiStack)
+  // app.stack(PickupStack)
 
   // tags let us discover all the aws resource costs incurred by this app
   // see: https://docs.sst.dev/advanced/tagging-resources
