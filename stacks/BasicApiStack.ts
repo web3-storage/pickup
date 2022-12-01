@@ -1,6 +1,8 @@
 import { StackContext, Api, Table, Queue, Bucket, Topic } from '@serverless-stack/resources'
+import { SSMSecureParameterService } from './lib/ssm-secure-parameter-service'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
+  SSMSecureParameterService.putIfNotExists('/test/pickup/secure/created') // TODO: send tags
   const queue = new Queue(stack, 'Pin')
 
   const table = new Table(stack, 'BasicV2', {

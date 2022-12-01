@@ -31,7 +31,8 @@
     "pickup"
   ],
   "dependencies": {
-    "aws-cdk-lib": "2.39.1"
+    "aws-cdk-lib": "2.39.1",
+    "aws-sdk": "^2.1265.0"
   },
   "ts-standard": {
     "ignore": [
