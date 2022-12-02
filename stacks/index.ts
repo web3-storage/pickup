@@ -4,7 +4,7 @@ import { BasicApiStack } from './BasicApiStack'
 import { App } from '@serverless-stack/resources'
 
 export default function (app: App): void {
-  if (app.stage !== "prod") {
+  if (!(app.stage in ['prod', 'staging'])) {
     app.setDefaultRemovalPolicy(RemovalPolicy.DESTROY)
   }
 
