@@ -1,10 +1,10 @@
 import { Tags } from 'aws-cdk-lib'
 import { PickupStack } from './PickupStack'
 import { BasicApiStack } from './BasicApiStack'
+import { SecretStack } from './SecretStack'
 import { App } from '@serverless-stack/resources'
-import { SSMSecureParameterService } from './lib/ssm-secure-parameter-service'
 
-export default async function (app: App) {
+export default function (app: App) {
   const tagList = [
     {
       Key: 'Project',
@@ -24,8 +24,7 @@ export default async function (app: App) {
     },
   ]
 
-  const ssmSecureParameterService = new SSMSecureParameterService(app.region);
-  await ssmSecureParameterService.putIfNotExists('/test/pickup/secure/created', tagList)
+  
 
   app.setDefaultFunctionProps({
     runtime: 'nodejs16.x',
@@ -36,6 +35,7 @@ export default async function (app: App) {
   })
   app.stack(BasicApiStack)
   app.stack(PickupStack)
+  app.stack(SecretStack, tagList)
 
   // tags let us discover all the aws resource costs incurred by this app
   // see: https://docs.sst.dev/advanced/tagging-resources
