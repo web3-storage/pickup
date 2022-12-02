@@ -6,6 +6,7 @@ import { ClusterAddResponse, Pin, Response } from './schema.js'
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import { nanoid } from 'nanoid'
+import { Config } from "@serverless-stack/node/config";
 
 interface UpsertPinInput {
   cid: string
@@ -42,7 +43,8 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
   } = process.env
 
-  if (event.headers.authorization !== `Basic ${token}`) {
+  console.log(Config['AUTH_TOKEN']);
+  if (event.headers.authorization !== `Basic ${Config['AUTH_TOKEN']}`) {
     return { statusCode: 401, body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }) }
   }
 

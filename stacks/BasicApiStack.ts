@@ -1,4 +1,4 @@
-import { StackContext, Api, Table, Queue, Bucket, Topic } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverless-stack/resources'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
@@ -38,11 +38,15 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
 
   const customDomain = getCustomDomain(app.stage, process.env.HOSTED_ZONE)
 
+  const AUTH_TOKEN = new Config.Secret(stack, "AUTH_TOKEN");
+
+
   const api = new Api(stack, 'api', {
     customDomain,
     cors: true,
     defaults: {
       function: {
+        config: [AUTH_TOKEN],
         permissions: [table, queue], // Allow the API to access the table and topic
         environment: {
           BUCKET_NAME: bucket.bucketName,
@@ -55,9 +59,10 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     routes: {
       'GET    /pins/{cid}': 'basic/get-pin.handler',
       'POST   /pins/{cid}': 'basic/add-pin.handler'
-    }
+    },
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
+  // TODO: Required?? // api.bind[]
 
   stack.addOutputs({
     S3EventsTopicARN: s3Topic.topicArn,
