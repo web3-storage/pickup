@@ -16,9 +16,9 @@
     "openapi-types": "npx openapi-typescript https://raw.githubusercontent.com/ipfs/pinning-services-api-spec/main/ipfs-pinning-service.yaml --output api/schema-gen.ts"
   },
   "devDependencies": {
-    "@serverless-stack/cli": "^1.18.4",
-    "@serverless-stack/resources": "^1.18.4",
-    "@serverless-stack/node": "^1.18.4",
+    "@serverless-stack/cli": "^1.15.16",
+    "@serverless-stack/resources": "^1.15.16",
+    "@serverless-stack/node": "^1.15.16",
     "@tsconfig/node16": "^1.0.2",
     "@typescript-eslint/experimental-utils": "^5.29.0",
     "ava": "^4.3.1",

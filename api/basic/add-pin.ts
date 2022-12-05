@@ -43,7 +43,6 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
   } = process.env
 
-  console.log(Config['AUTH_TOKEN']);
   if (event.headers.authorization !== `Basic ${Config['AUTH_TOKEN']}`) {
     return { statusCode: 401, body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }) }
   }

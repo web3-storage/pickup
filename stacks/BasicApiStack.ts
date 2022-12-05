@@ -62,7 +62,6 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     },
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
-  // TODO: Required?? // api.bind[]
 
   stack.addOutputs({
     S3EventsTopicARN: s3Topic.topicArn,
