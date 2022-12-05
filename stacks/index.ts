@@ -1,9 +1,13 @@
-import { Tags } from 'aws-cdk-lib'
+import { Tags, RemovalPolicy } from 'aws-cdk-lib'
 import { PickupStack } from './PickupStack'
 import { BasicApiStack } from './BasicApiStack'
 import { App } from '@serverless-stack/resources'
 
 export default function (app: App): void {
+  if (!(app.stage in ['prod', 'staging'])) {
+    app.setDefaultRemovalPolicy(RemovalPolicy.DESTROY)
+  }
+
   app.setDefaultFunctionProps({
     runtime: 'nodejs16.x',
     srcPath: 'api',
