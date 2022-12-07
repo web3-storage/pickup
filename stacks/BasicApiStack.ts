@@ -17,7 +17,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       updatePin: {
         function: {
           handler: 'basic/update-pin.snsEventHandler',
-          permissions: [table],
+          bind: [table],
           environment: {
             TABLE_NAME: table.tableName
           }
