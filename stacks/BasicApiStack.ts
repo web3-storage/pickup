@@ -45,6 +45,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     cors: true,
     defaults: {
       function: {
+        config: [AUTH_TOKEN],
         permissions: [table, queue], // Allow the API to access the table and topic
         environment: {
           BUCKET_NAME: bucket.bucketName,
@@ -60,6 +61,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     }
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
+  app.
 
   stack.addOutputs({
     S3EventsTopicARN: s3Topic.topicArn,
