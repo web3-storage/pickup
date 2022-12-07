@@ -40,14 +40,12 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
 
   const AUTH_TOKEN = new Config.Secret(stack, "AUTH_TOKEN");
 
-
   const api = new Api(stack, 'api', {
     customDomain,
     cors: true,
     defaults: {
       function: {
-        config: [AUTH_TOKEN],
-        permissions: [table, queue], // Allow the API to access the table and topic
+        bind: [AUTH_TOKEN, bucket, table, queue],
         environment: {
           BUCKET_NAME: bucket.bucketName,
           TABLE_NAME: table.tableName,
