@@ -18,6 +18,7 @@
   "devDependencies": {
     "@serverless-stack/cli": "^1.15.16",
     "@serverless-stack/resources": "^1.15.16",
+    "@serverless-stack/node": "^1.15.16",
     "@tsconfig/node16": "^1.0.2",
     "@typescript-eslint/experimental-utils": "^5.29.0",
     "ava": "^4.3.1",
