@@ -37,7 +37,6 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     TABLE_NAME: table = '',
     BUCKET_NAME: bucket = '',
     QUEUE_URL: queueUrl = '',
-    CLUSTER_BASIC_AUTH_TOKEN: token = '',
     // set for testing
     SQS_ENDPOINT: sqsEndpoint = undefined,
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
