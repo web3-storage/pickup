@@ -48,7 +48,8 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
           BUCKET_NAME: bucket.bucketName,
           TABLE_NAME: table.tableName,
           QUEUE_URL: queue.queueUrl,
-          CLUSTER_BASIC_AUTH_TOKEN: process.env.CLUSTER_BASIC_AUTH_TOKEN ?? ''
+          CLUSTER_BASIC_AUTH_TOKEN: process.env.CLUSTER_BASIC_AUTH_TOKEN ?? '',
+          CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? ''
         }
       }
     },
