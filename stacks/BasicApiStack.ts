@@ -38,7 +38,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
 
   const customDomain = getCustomDomain(app.stage, process.env.HOSTED_ZONE)
 
-  const AUTH_TOKEN = new Config.Secret(stack, "AUTH_TOKEN");
+  const AUTH_TOKEN = new Config.Secret(stack, 'AUTH_TOKEN')
 
   const api = new Api(stack, 'api', {
     customDomain,
@@ -57,7 +57,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     routes: {
       'GET    /pins/{cid}': 'basic/get-pin.handler',
       'POST   /pins/{cid}': 'basic/add-pin.handler'
-    },
+    }
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
 

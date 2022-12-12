@@ -26,7 +26,6 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
   } = process.env
 
-
   const authResponse = doAuth(event.headers.authorization)
   if (authResponse) return authResponse
 
