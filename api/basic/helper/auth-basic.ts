@@ -1,6 +1,7 @@
 import { Config } from '@serverless-stack/node/config'
+import { Response } from '../schema.js'
 
-export function doAuth(authorizationHeader) {
+export function doAuth(authorizationHeader): Response | undefined {
   if (authorizationHeader !== `Basic ${getValidCredentials()}`) {
     return {
       statusCode: 401,

@@ -6,7 +6,7 @@ import { ClusterAddResponse, Pin, Response } from './schema.js'
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import { nanoid } from 'nanoid'
-import { doAuth } from '../helper/auth-basic.js'
+import { doAuth } from './helper/auth-basic.js'
 
 interface UpsertPinInput {
   cid: string
