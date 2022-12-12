@@ -1,7 +1,7 @@
 import { Config } from '@serverless-stack/node/config'
 import { Response } from '../schema.js'
 
-const emptyOrNil = (input) => (input?.trim()?.length || 0) === 0
+const emptyOrNil = (input: string) => (input?.trim()?.length || 0) === 0
 
 export function doAuth(
   authorizationHeader: string | undefined,
