@@ -1,8 +1,15 @@
 import { Config } from '@serverless-stack/node/config'
 import { Response } from '../schema.js'
 
-export function doAuth(authorizationHeader: string): Response | undefined {
-  if (authorizationHeader !== `Basic ${getValidCredentials()}`) {
+const emptyOrNil = (input) => (input?.trim()?.length || 0) === 0
+
+export function doAuth(
+  authorizationHeader: string | undefined,
+): Response | undefined {
+  if (
+    authorizationHeader !== `Basic ${getValidCredentials()}` ||
+    emptyOrNil(authorizationHeader)
+  ) {
     return {
       statusCode: 401,
       body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }),
