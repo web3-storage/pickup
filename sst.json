@@ -1,5 +1,5 @@
 {
   "name": "pickup",
-  "region": "us-east-2",
+  "region": "us-west-2",
   "main": "stacks/index.ts"
 }
