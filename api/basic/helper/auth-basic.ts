@@ -20,8 +20,11 @@ function getValidCredentials (): string {
   if (validCredentials == null) {
     // If not set as environment variable...
     // eslint-disable-next-line
-    // ts-ignore
+    // @ts-ignore
     validCredentials = Config.AUTH_TOKEN // ... Get it from AWS SSM parameter store
+  }
+  if (validCredentials == null) {
+    throw new Error('Valid credentials weren\'t set. Please configure ENV or SST Secret')
   }
   return validCredentials
 }
