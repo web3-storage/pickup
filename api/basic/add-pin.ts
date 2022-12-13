@@ -43,7 +43,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   } = process.env
 
   const authResponse = doAuth(event.headers.authorization)
-  if (authResponse) return authResponse
+  if (authResponse != null) return authResponse
 
   const sqs = new SQSClient({ endpoint: sqsEndpoint })
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
