@@ -1,7 +1,7 @@
 import { Config } from '@serverless-stack/node/config/index.js'
 import { Response } from '../schema.js'
 
-const emptyOrNil = (input) => (input?.trim()?.length || 0) === 0
+const emptyOrNil = (input: string) => (input?.trim()?.length || 0) === 0
 
 export function doAuth (
   authorizationHeader: string | undefined
@@ -21,7 +21,7 @@ async function getValidCredentials () {
   let validCredentials = process.env.CLUSTER_BASIC_AUTH_TOKEN
   if (!validCredentials) {
     // If not set as environment variable...
-    // @ts-expect-error:next-line
+    // @ts-ignore
     validCredentials = Config.AUTH_TOKEN // ... Get it from AWS SSM parameter store
   }
   return validCredentials
