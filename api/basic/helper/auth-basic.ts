@@ -1,8 +1,6 @@
 import { Config } from '@serverless-stack/node/config/index.js'
 import { Response } from '../schema.js'
 
-const emptyOrNil = (input: string): boolean => (input?.trim()?.length || 0) === 0
-
 export function doAuth (
   authorizationHeader: string | undefined
 ): Response | undefined {
@@ -19,11 +17,16 @@ export function doAuth (
 
 function getValidCredentials (): string {
   let validCredentials = process.env.CLUSTER_BASIC_AUTH_TOKEN
-  if (!validCredentials) {
+  if (validCredentials == null) {
     // If not set as environment variable...
-    // eslint-disable-next-line padded-blocks 
+    // eslint-disable-next-line
     // ts-ignore
     validCredentials = Config.AUTH_TOKEN // ... Get it from AWS SSM parameter store
   }
   return validCredentials
+}
+
+function emptyOrNil (input: string): boolean {
+  // eslint-disable-next-line
+  return (input?.trim()?.length || 0) === 0
 }
