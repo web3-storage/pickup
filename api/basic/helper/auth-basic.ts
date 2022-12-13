@@ -17,19 +17,18 @@ export function doAuth (
 
 function getValidCredentials (): string {
   let validCredentials = process.env.CLUSTER_BASIC_AUTH_TOKEN
-  if (validCredentials == null) {
-    // If not set as environment variable...
+  if (emptyOrNil(validCredentials)) {
+    // If not set as environment variable, get it from AWS SSM parameter store
     // eslint-disable-next-line
     // @ts-ignore
-    validCredentials = Config.AUTH_TOKEN // ... Get it from AWS SSM parameter store
+    validCredentials = Config.AUTH_TOKEN // Throws exception when not found
   }
-  if (validCredentials == null) {
-    throw new Error('Valid credentials weren\'t set. Please configure ENV or SST Secret')
-  }
+  // eslint-disable-next-line
+  // @ts-ignore
   return validCredentials
 }
 
-function emptyOrNil (input: string): boolean {
+function emptyOrNil (input: string | undefined): boolean {
   // eslint-disable-next-line
   return (input?.trim()?.length || 0) === 0
 }
