@@ -7,6 +7,7 @@ import { Multiaddr } from 'multiaddr'
 import fetch from 'node-fetch'
 
 import { ClusterAddResponse, ClusterStatusResponse, PeerMapValue, Pin, Response } from './schema.js'
+import { doAuth } from './helper/auth-basic.js'
 
 interface AddPinInput {
   cid: string
@@ -37,9 +38,8 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     BALANCER_RATE: balancerRate = 100
   } = process.env
 
-  if (event.headers.authorization !== `Basic ${token}`) {
-    return { statusCode: 401, body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }) }
-  }
+  const authResponse = doAuth(event.headers.authorization)
+  if (authResponse != null) return authResponse
 
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
   const cid = event.pathParameters?.cid ?? ''

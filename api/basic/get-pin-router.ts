@@ -3,6 +3,8 @@ import { ClusterStatusResponse, Response } from './schema.js'
 import { CID } from 'multiformats/cid'
 import fetch from 'node-fetch'
 
+import { doAuth } from './helper/auth-basic.js'
+
 /**
  * AWS API Gateway handler for GET /pins/${cid}
  * Collect the params and delegate to getPin to do the work
@@ -17,9 +19,8 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     PICKUP_ENDPOINT: pickupEndpoint = ''
   } = process.env
 
-  if (event.headers.authorization !== `Basic ${token}`) {
-    return { statusCode: 401, body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }) }
-  }
+  const authResponse = doAuth(event.headers.authorization)
+  if (authResponse != null) return authResponse
 
   const cid = event.pathParameters?.cid ?? ''
 
