@@ -46,7 +46,7 @@ export function BasicApiStack({ app, stack }: StackContext): { queue: Queue, buc
     CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? ''
   }
   const AUTH_TOKEN = new Config.Secret(stack, 'AUTH_TOKEN')
-  configureAuth(apiFunctionBindList, AUTH_TOKEN, apiFunctionEnvironment)
+  configureAuth(apiFunctionBindList, apiFunctionEnvironment, AUTH_TOKEN)
 
   const api = new Api(stack, 'api', {
     customDomain,
@@ -76,7 +76,7 @@ export function BasicApiStack({ app, stack }: StackContext): { queue: Queue, buc
   }
 }
 
-function configureAuth (apiFunctionBindList: SSTConstruct[], AUTH_TOKEN: Config.Secret, apiFunctionEnvironment: Record<string, string>): void {
+function configureAuth (apiFunctionBindList: SSTConstruct[], apiFunctionEnvironment: Record<string, string>, AUTH_TOKEN: Config.Secret): void {
   if (process.env.CLUSTER_BASIC_AUTH_TOKEN == null) {
     apiFunctionBindList.push(AUTH_TOKEN)
   } else {
