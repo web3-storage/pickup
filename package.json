@@ -41,6 +41,9 @@
     ]
   },
   "ava": {
+    "files": [
+      "!api/test/__data"
+    ],
     "extensions": {
       "ts": "module",
       "js": true
