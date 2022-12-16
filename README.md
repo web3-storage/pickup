@@ -10,7 +10,15 @@ A minimal [ipfs-cluster](https://github.com/ipfs-cluster/ipfs-cluster) compatibl
 
 🏗 A full [pinning service api] is also implemented in [api/functions/PinningService.ts](api/functions/PinningService.ts), but is not currently in use. A future release may switch this to be the main interface once we need it.
 
-### POST /pins/:cid
+### GET /pins/:cid
+
+Manage the balanced request using `GET /internal/pins/:cid` and the `Indexer server` as endpoint.
+
+### POST /internal/pins/:cid
+
+Manage the balanced request using `POST /internal/pins/:cid` and the `Indexer server` as endpoint.
+
+### POST /internal/pins/:cid
 
 Make a pin request by CID, asking the service to fetch the content from IPFS.
 
@@ -36,7 +44,7 @@ $ curl -X POST 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3au
 }
 ```
 
-### GET /pins/:cid
+### GET /internal/pins/:cid
 
 Find the status of a pin
 
@@ -170,6 +178,11 @@ ECS ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ 
 
 </pre>
 
+## Route balancer
+
+A temporary router is added to the project to manage a balancing between the `Indexer` and the `Pickup` implementation.
+
+![Router diagram](docs/pickup.png)
 
 ## Integration with Elastic Provider
 

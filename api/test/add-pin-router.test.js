@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 import test from 'ava'
 import nock from 'nock'
 
-import { addPin } from '../basic/add-pin-route.js'
+import { addPin } from '../basic/add-pin-router.js'
 
 import responseGetPinUnpinned from './__data/response-get-pin-unpinned.js'
 import responseGetPinPinned from './__data/response-get-pin-pinned.js'

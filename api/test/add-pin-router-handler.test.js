@@ -4,7 +4,7 @@ import { nanoid } from 'nanoid'
 import test from 'ava'
 import nock from 'nock'
 
-import { handler } from '../basic/add-pin-route.js'
+import { handler } from '../basic/add-pin-router.js'
 
 import responseGetPinUnpinned from './__data/response-get-pin-unpinned.js'
 import responseAddPin from './__data/response-add-pin.js'
@@ -43,7 +43,7 @@ test.before(async t => {
   t.context.pickupEndpoint = 'http://pickup.loc'
 })
 
-test('add pin route handler basic auth fail', async t => {
+test('add pin router handler basic auth fail', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
@@ -62,7 +62,7 @@ test('add pin route handler basic auth fail', async t => {
   t.deepEqual(JSON.parse(response.body), { error: { reason: 'UNAUTHORIZED' } })
 })
 
-test('add pin route handler basic auth success', async t => {
+test('add pin router handler basic auth success', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
@@ -97,7 +97,7 @@ test('add pin route handler basic auth success', async t => {
   nockPickup.done()
 })
 
-test('add pin route handler without table', async t => {
+test('add pin router handler without table', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = ''
@@ -123,7 +123,7 @@ test('add pin route handler without table', async t => {
   })
 })
 
-test('add pin route handler without cid', async t => {
+test('add pin router handler without cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
@@ -149,7 +149,7 @@ test('add pin route handler without cid', async t => {
   })
 })
 
-test('add pin route handler with invalid cid', async t => {
+test('add pin router handler with invalid cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
@@ -175,7 +175,7 @@ test('add pin route handler with invalid cid', async t => {
   })
 })
 
-test('add pin route handler with invalid multiaddress', async t => {
+test('add pin router handler with invalid multiaddress', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
@@ -202,7 +202,7 @@ test('add pin route handler with invalid multiaddress', async t => {
   })
 })
 
-test('add pin route handler with invalid indexerEndpoint', async t => {
+test('add pin router handler with invalid indexerEndpoint', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
@@ -227,7 +227,7 @@ test('add pin route handler with invalid indexerEndpoint', async t => {
   })
 })
 
-test('add pin route handler with invalid pickupEndpoint', async t => {
+test('add pin router handler with invalid pickupEndpoint', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
