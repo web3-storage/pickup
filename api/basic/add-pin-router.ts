@@ -158,7 +158,8 @@ export function toClusterResponse (pin: Pin, origins: string[]): ClusterAddRespo
   }
 }
 
-async function getPinFromDynamo (client: DynamoDBDocumentClient, table: string, cid: string): Promise<Pin | undefined> {
+async function getPinFromDynamo (dynamo: DynamoDBClient, table: string, cid: string): Promise<Pin | undefined> {
+  const client = DynamoDBDocumentClient.from(dynamo)
   const existing = await client.send(new GetCommand({
     TableName: table,
     Key: { cid }
