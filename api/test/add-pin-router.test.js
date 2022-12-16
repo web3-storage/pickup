@@ -54,7 +54,7 @@ test('addPin with CID not in the system and fallback on pickup', async t => {
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
 
   const nockPickup = nock(t.context.pickupEndpoint)
@@ -68,7 +68,7 @@ test('addPin with CID not in the system and fallback on pickup', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint,
+    indexerEndpoint: t.context.indexerEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 100
@@ -91,7 +91,7 @@ test('addPin with CID not in the system and fallback on pickup withoput origins'
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
 
   const nockPickup = nock(t.context.pickupEndpoint)
@@ -104,7 +104,7 @@ test('addPin with CID not in the system and fallback on pickup withoput origins'
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint,
+    indexerEndpoint: t.context.indexerEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 100
@@ -127,9 +127,9 @@ test('addPin with CID not in the system and fallback on indexer', async t => {
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
-    .post(`/pins/${cid}`)
+    .post(`/api/pins/${cid}`)
     .query({ origins: origins.join(',') })
     .reply(200, { ...responseAddPin, cid, origins, timestamp: '123123123' })
 
@@ -138,7 +138,7 @@ test('addPin with CID not in the system and fallback on indexer', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint,
+    indexerEndpoint: t.context.indexerEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -160,9 +160,9 @@ test('addPin with CID not in the system and fallback on indexer with empty origi
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
-    .post(`/pins/${cid}`)
+    .post(`/api/pins/${cid}`)
     .reply(200, { ...responseAddPin, cid, origins, timestamp: '123123123' })
 
   const res = await addPin({
@@ -170,7 +170,7 @@ test('addPin with CID not in the system and fallback on indexer with empty origi
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint,
+    indexerEndpoint: t.context.indexerEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -208,7 +208,7 @@ test('addPin with CID existent in pickup', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint,
+    indexerEndpoint: t.context.indexerEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -233,7 +233,7 @@ test('addPin with CID existent in Indexer with pinned state', async t => {
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
 
   const res = await addPin({
@@ -241,7 +241,7 @@ test('addPin with CID existent in Indexer with pinned state', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint,
+    indexerEndpoint: t.context.indexerEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -263,7 +263,7 @@ test('addPin with CID existent in Indexer with queued state', async t => {
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinQueued)
 
   const res = await addPin({
@@ -271,7 +271,7 @@ test('addPin with CID existent in Indexer with queued state', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint,
+    indexerEndpoint: t.context.indexerEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0

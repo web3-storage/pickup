@@ -31,7 +31,7 @@ test('get pin router handler basic auth fail', async t => {
 
 test('get pin router handler without cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
 
   const cid = ''
@@ -54,7 +54,7 @@ test('get pin router handler without cid', async t => {
 
 test('get pin router handler with invalid cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
 
   const cid = '123123123'
@@ -75,9 +75,9 @@ test('get pin router handler with invalid cid', async t => {
   })
 })
 
-test('get pin router handler with invalid indexerEndpoint', async t => {
+test('get pin router handler with invalid pickupEndpoint', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = ''
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
@@ -97,7 +97,7 @@ test('get pin router handler with invalid indexerEndpoint', async t => {
   })
 })
 
-test('get pin router handler with invalid pickupEndpoint', async t => {
+test('get pin router handler with invalid indexerEndpoint', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.INDEXER_ENDPOINT = ''
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
@@ -121,7 +121,7 @@ test('get pin router handler with invalid pickupEndpoint', async t => {
 
 test('get pin router handler with result from pickup', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
@@ -147,14 +147,14 @@ test('get pin router handler with result from pickup', async t => {
 
 test('get pin router handler with non valid result from pickup', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
 
   const nockPickup = nock(t.context.pickupEndpoint)
@@ -181,14 +181,14 @@ test('get pin router handler with non valid result from pickup', async t => {
 
 test('get pin router handler with unpinned result from pickup', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
 
   const nockPickup = nock(t.context.pickupEndpoint)

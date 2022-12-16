@@ -218,8 +218,9 @@ async function fetchAddPin ({
   origins,
   isInternal = false
 }: FetchAddPinParams): Promise<AddPinResult> {
+  const baseUrl = (new URL(endpoint))
   const query = (origins.length > 0) ? `?${querystring.stringify({ origins: origins.join(',') })}` : ''
-  const myURL = new URL(`${isInternal ? '/internal' : ''}/pins/${cid}${query}`, endpoint)
+  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}${query}`, baseUrl.origin)
   const result = await fetch(myURL.href, { method: 'POST', headers: { Authorization: `Basic ${token}` } })
 
   return { statusCode: result.status, body: (await result.json()) as ClusterAddResponse }
@@ -230,7 +231,8 @@ async function fetchGetPin ({
   endpoint,
   token
 }: FetchGetPinParams): Promise<GetPinResult> {
-  const myURL = new URL(`/pins/${cid}`, endpoint)
+  const baseUrl = (new URL(endpoint))
+  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}/pins/${cid}`, baseUrl.origin)
   const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
   return { statusCode: result.status, body: (await result.json()) as ClusterStatusResponse }

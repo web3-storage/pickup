@@ -66,7 +66,7 @@ test('add pin router handler basic auth success', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -74,7 +74,7 @@ test('add pin router handler basic auth success', async t => {
 
   const nockIndexer = nock(t.context.indexerEndpoint)
   nockIndexer
-    .get(`/pins/${cid}`)
+    .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
 
   const nockPickup = nock(t.context.pickupEndpoint)
@@ -101,7 +101,7 @@ test('add pin router handler without table', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = ''
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -127,7 +127,7 @@ test('add pin router handler without cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -153,7 +153,7 @@ test('add pin router handler with invalid cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -179,7 +179,7 @@ test('add pin router handler with invalid multiaddress', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -206,7 +206,7 @@ test('add pin router handler with invalid indexerEndpoint', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint
+  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = ''
   process.env.BALANCER_RATE = 100
 

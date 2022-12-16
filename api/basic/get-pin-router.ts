@@ -80,7 +80,8 @@ async function fetchGetPin ({
   token,
   isInternal = false
 }: FetchGetPinParams): Promise<GetPinResult> {
-  const myURL = new URL(`${isInternal ? '/internal' : ''}/pins/${cid}`, endpoint)
+  const baseUrl = (new URL(endpoint))
+  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}`, baseUrl.origin)
   const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
   return { statusCode: result.status, body: (await result.json()) as ClusterStatusResponse }
