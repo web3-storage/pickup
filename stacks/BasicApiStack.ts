@@ -1,7 +1,7 @@
 import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverless-stack/resources'
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 
-export function BasicApiStack({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
+export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
 
   const table = new Table(stack, 'BasicV2', {
