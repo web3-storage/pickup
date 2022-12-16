@@ -49,13 +49,18 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
           TABLE_NAME: table.tableName,
           QUEUE_URL: queue.queueUrl,
           CLUSTER_BASIC_AUTH_TOKEN: process.env.CLUSTER_BASIC_AUTH_TOKEN ?? '',
-          CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? ''
+          CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? '',
+          INDEXER_ENDPOINT: process.env.INDEXER_BASE_URL ?? '',
+          PICKUP_ENDPOINT: (customDomain !== undefined) ? `https://${customDomain.domainName}` : '',
+          BALANCER_RATE: process.env.BALANCER_RATE ?? '100'
         }
       }
     },
     routes: {
-      'GET    /pins/{cid}': 'basic/get-pin.handler',
-      'POST   /pins/{cid}': 'basic/add-pin.handler'
+      'GET    /pins/{cid}': 'basic/get-pin-router.handler',
+      'POST   /pins/{cid}': 'basic/add-pin-router.handler',
+      'GET    /internal/pins/{cid}': 'basic/get-pin.handler',
+      'POST   /internal/pins/{cid}': 'basic/add-pin.handler'
     }
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
