@@ -6,6 +6,7 @@ import { ClusterAddResponse, Pin, Response } from './schema.js'
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import { nanoid } from 'nanoid'
+import { doAuth } from './helper/auth-basic.js'
 
 interface UpsertPinInput {
   cid: string
@@ -36,15 +37,13 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     TABLE_NAME: table = '',
     BUCKET_NAME: bucket = '',
     QUEUE_URL: queueUrl = '',
-    CLUSTER_BASIC_AUTH_TOKEN: token = '',
     // set for testing
     SQS_ENDPOINT: sqsEndpoint = undefined,
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
   } = process.env
 
-  if (event.headers.authorization !== `Basic ${token}`) {
-    return { statusCode: 401, body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }) }
-  }
+  const authResponse = doAuth(event.headers.authorization)
+  if (authResponse != null) return authResponse
 
   const sqs = new SQSClient({ endpoint: sqsEndpoint })
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
