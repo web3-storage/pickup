@@ -1,6 +1,7 @@
 import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverless-stack/resources'
+import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 
-export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
+export function BasicApiStack({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const queue = new Queue(stack, 'Pin')
 
   const table = new Table(stack, 'BasicV2', {
@@ -37,22 +38,23 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
   })
 
   const customDomain = getCustomDomain(app.stage, process.env.HOSTED_ZONE)
-
+  const apiFunctionBindList: SSTConstruct[] = [bucket, table, queue]
+  const apiFunctionEnvironment: Record<string, string> = {
+    BUCKET_NAME: bucket.bucketName,
+    TABLE_NAME: table.tableName,
+    QUEUE_URL: queue.queueUrl,
+    CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? ''
+  }
   const AUTH_TOKEN = new Config.Secret(stack, 'AUTH_TOKEN')
+  configureAuth(apiFunctionBindList, AUTH_TOKEN, apiFunctionEnvironment)
 
   const api = new Api(stack, 'api', {
     customDomain,
     cors: true,
     defaults: {
       function: {
-        bind: [AUTH_TOKEN, bucket, table, queue],
-        environment: {
-          BUCKET_NAME: bucket.bucketName,
-          TABLE_NAME: table.tableName,
-          QUEUE_URL: queue.queueUrl,
-          CLUSTER_BASIC_AUTH_TOKEN: process.env.CLUSTER_BASIC_AUTH_TOKEN ?? '',
-          CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? ''
-        }
+        bind: apiFunctionBindList,
+        environment: apiFunctionEnvironment
       }
     },
     routes: {
@@ -74,7 +76,15 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
   }
 }
 
-function getCustomDomain (stage: string, hostedZone?: string): { domainName: string, hostedZone: string} | undefined {
+function configureAuth (apiFunctionBindList: SSTConstruct[], AUTH_TOKEN: Config.Secret, apiFunctionEnvironment: Record<string, string>): void {
+  if (process.env.CLUSTER_BASIC_AUTH_TOKEN == null) {
+    apiFunctionBindList.push(AUTH_TOKEN)
+  } else {
+    apiFunctionEnvironment.CLUSTER_BASIC_AUTH_TOKEN = process.env.CLUSTER_BASIC_AUTH_TOKEN
+  }
+}
+
+function getCustomDomain (stage: string, hostedZone?: string): { domainName: string, hostedZone: string } | undefined {
   if (hostedZone === undefined) {
     return undefined
   }
