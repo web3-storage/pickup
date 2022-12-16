@@ -2,6 +2,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { ClusterStatusResponse, Pin, Response } from './schema.js'
+import { doAuth } from './helper/auth-basic.js'
 
 interface GetPinInput {
   cid: string
@@ -19,16 +20,14 @@ interface GetPinInput {
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
   const {
     TABLE_NAME: table = '',
-    CLUSTER_BASIC_AUTH_TOKEN: token = '',
     CLUSTER_IPFS_ADDR: ipfsAddr = undefined,
     CLUSTER_IPFS_PEERID: ipfsPeerId = undefined,
     // set for testing
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
   } = process.env
 
-  if (event.headers.authorization !== `Basic ${token}`) {
-    return { statusCode: 401, body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } }) }
-  }
+  const authResponse = doAuth(event.headers.authorization)
+  if (authResponse != null) return authResponse
 
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
   const cid = event.pathParameters?.cid ?? ''
