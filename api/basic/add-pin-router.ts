@@ -6,8 +6,8 @@ import fetch from 'node-fetch'
 
 import { ClusterAddResponse, ClusterStatusResponse, PeerMapValue, Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
-import { isCID, isMultiaddr } from './helper/cid.js'
 import usePickup from './helper/use-pickup.js'
+import { validateDynamoDBConfiguration, validateRoutingConfiguration, validateEventParameters } from './helper/validators.js'
 
 interface AddPinInput {
   cid: string
@@ -41,54 +41,21 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
 
-  // ----------------------------
-  // Validate lambda configuration
-  // ----------------------------
-
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!table) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'TABLE must be set in ENV' } })
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!indexerEndpoint) {
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'INDEXER_ENDPOINT not defined' } }) }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!pickupEndpoint) {
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'PICKUP_ENDPOINT not defined' } }) }
-  }
-
-  // ----------------------------
-  // Validate event params
-  // ----------------------------
-
   const cid = event.pathParameters?.cid ?? ''
   const origins = event.queryStringParameters?.origins?.split(',') ?? []
 
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!cid) {
-    return { statusCode: 400, body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: 'CID not found in path' } }) }
-  }
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const validationError: Response | undefined =
+    validateDynamoDBConfiguration({ table }) ||
+    validateRoutingConfiguration({
+      indexerEndpoint,
+      pickupEndpoint
+    }) ||
+    validateEventParameters({ cid, origins })
 
-  if (!isCID(cid)) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: `${cid} is not a valid CID` } })
-    }
-  }
-
-  for (const str of origins) {
-    if (!isMultiaddr(str)) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: `${str} in origins is not a valid multiaddr` } })
-      }
-    }
+  if (validationError != null) {
+    return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
   }
 
   try {

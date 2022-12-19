@@ -5,7 +5,10 @@ import { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { ClusterAddResponse, Pin, Response } from './schema.js'
 import { nanoid } from 'nanoid'
 import { doAuth } from './helper/auth-basic.js'
-import { isCID, isMultiaddr } from './helper/cid.js'
+import {
+  validateDynamoDBConfiguration,
+  validateEventParameters, validateS3Configuration, validateSQSConfiguration
+} from './helper/validators.js'
 
 interface UpsertPinInput {
   cid: string
@@ -64,26 +67,18 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
  * with optional source multiaddrs specified as origins list.
  */
 export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<Response> {
-  if (bucket === null || bucket === '') {
-    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'BUCKET_NAME must be set in ENV' } } }
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const validationError: Response | undefined =
+    validateS3Configuration({ bucket }) ||
+    validateSQSConfiguration({ queueUrl }) ||
+    validateDynamoDBConfiguration({ table }) ||
+    validateEventParameters({ cid, origins })
+
+  if (validationError != null) {
+    return validationError
   }
-  if (queueUrl === null || queueUrl === '') {
-    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'QUEUE_URL must be set in ENV' } } }
-  }
-  if (table === null || table === '') {
-    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'QUEUE_URL must be set in ENV' } } }
-  }
-  if (cid === null || cid === '') {
-    return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: 'CID not found in path' } } }
-  }
-  if (!isCID(cid)) {
-    return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: `${cid} is not a valid CID` } } }
-  }
-  for (const str of origins) {
-    if (!isMultiaddr(str)) {
-      return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: `${str} in origins is not a valid multiaddr` } } }
-    }
-  }
+
   const pin = await putIfNotExists({ cid, dynamo, table })
   await addToQueue({ cid, origins, bucket, sqs, queueUrl })
   const body = toClusterResponse(pin, origins)

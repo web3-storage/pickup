@@ -4,7 +4,10 @@ import { ClusterStatusResponse, Response } from './schema.js'
 import fetch from 'node-fetch'
 
 import { doAuth } from './helper/auth-basic.js'
-import { isCID } from './helper/cid.js'
+import {
+  validateEventParameters,
+  validateRoutingConfiguration
+} from './helper/validators.js'
 
 /**
  * AWS API Gateway handler for GET /pins/${cid}
@@ -23,36 +26,19 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
 
-  // ----------------------------
-  // Validate lambda configuration
-  // ----------------------------
-
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!indexerEndpoint) {
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'INDEXER_ENDPOINT not defined' } }) }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!pickupEndpoint) {
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'PICKUP_ENDPOINT not defined' } }) }
-  }
-
-  // ----------------------------
-  // Validate event params
-  // ----------------------------
-
   const cid = event.pathParameters?.cid ?? ''
 
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!cid) {
-    return { statusCode: 400, body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: 'CID not found in path' } }) }
-  }
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const validationError: Response | undefined =
+    validateRoutingConfiguration({
+      indexerEndpoint,
+      pickupEndpoint
+    }) ||
+    validateEventParameters({ cid })
 
-  if (!isCID(cid)) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: `${cid} is not a valid CID` } })
-    }
+  if (validationError != null) {
+    return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
   }
 
   try {
