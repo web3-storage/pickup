@@ -2,12 +2,12 @@ import querystring from 'node:querystring'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
-import { CID } from 'multiformats/cid'
-import { Multiaddr } from 'multiaddr'
 import fetch from 'node-fetch'
 
 import { ClusterAddResponse, ClusterStatusResponse, PeerMapValue, Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
+import { isCID, isMultiaddr } from './helper/cid.js'
+import usePickup from './helper/use-pickup.js'
 
 interface AddPinInput {
   cid: string
@@ -38,12 +38,12 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     BALANCER_RATE: balancerRate = 100
   } = process.env
 
-  const authResponse = doAuth(event.headers.authorization)
-  if (authResponse != null) return authResponse
+  const authError = doAuth(event.headers.authorization)
+  if (authError != null) return authError
 
-  const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
-  const cid = event.pathParameters?.cid ?? ''
-  const origins = event.queryStringParameters?.origins?.split(',') ?? []
+  // ----------------------------
+  // Validate lambda configuration
+  // ----------------------------
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!table) {
@@ -54,11 +54,6 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   }
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!cid) {
-    return { statusCode: 400, body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: 'CID not found in path' } }) }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!indexerEndpoint) {
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'INDEXER_ENDPOINT not defined' } }) }
   }
@@ -66,6 +61,18 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!pickupEndpoint) {
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'PICKUP_ENDPOINT not defined' } }) }
+  }
+
+  // ----------------------------
+  // Validate event params
+  // ----------------------------
+
+  const cid = event.pathParameters?.cid ?? ''
+  const origins = event.queryStringParameters?.origins?.split(',') ?? []
+
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  if (!cid) {
+    return { statusCode: 400, body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: 'CID not found in path' } }) }
   }
 
   if (!isCID(cid)) {
@@ -85,6 +92,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   }
 
   try {
+    const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
     const res = await addPin({
       cid, origins, dynamo, table, indexerEndpoint, pickupEndpoint, token, balancerRate: Number(balancerRate)
     })
@@ -168,24 +176,6 @@ async function getPinFromDynamo (dynamo: DynamoDBClient, table: string, cid: str
   return (existing.Item != null) ? (existing.Item as Pin) : undefined
 }
 
-function isMultiaddr (input = ''): boolean {
-  if (input === '' || input === null) return false
-  try {
-    new Multiaddr(input) // eslint-disable-line no-new
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
-export function isCID (str = ''): boolean {
-  try {
-    return Boolean(CID.parse(str))
-  } catch (err) {
-    return false
-  }
-}
-
 // Load balancing extensions
 
 interface AddPinResult {
@@ -237,14 +227,4 @@ async function fetchGetPin ({
   const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
   return { statusCode: result.status, body: (await result.json()) as ClusterStatusResponse }
-}
-
-export function usePickup (rate: number): boolean {
-  if (rate === 0) {
-    return false
-  }
-  if (rate === 100) {
-    return true
-  }
-  return Math.round(Math.random() * 100) < rate
 }

@@ -3,10 +3,9 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dyn
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { ClusterAddResponse, Pin, Response } from './schema.js'
-import { CID } from 'multiformats/cid'
-import { Multiaddr } from 'multiaddr'
 import { nanoid } from 'nanoid'
 import { doAuth } from './helper/auth-basic.js'
+import { isCID, isMultiaddr } from './helper/cid.js'
 
 interface UpsertPinInput {
   cid: string
@@ -42,8 +41,8 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
   } = process.env
 
-  const authResponse = doAuth(event.headers.authorization)
-  if (authResponse != null) return authResponse
+  const authError = doAuth(event.headers.authorization)
+  if (authError != null) return authError
 
   const sqs = new SQSClient({ endpoint: sqsEndpoint })
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
@@ -156,22 +155,4 @@ async function addToQueue ({ cid, origins, sqs, queueUrl, bucket }: AddToQueueIn
     key: `pickup/${cid}/${cid}.root.car`
   }
   await sqs.send(new SendMessageCommand({ QueueUrl: queueUrl, MessageBody: JSON.stringify(message) }))
-}
-
-function isMultiaddr (input = ''): boolean {
-  if (input === '' || input === null) return false
-  try {
-    new Multiaddr(input) // eslint-disable-line no-new
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
-export function isCID (str = ''): boolean {
-  try {
-    return Boolean(CID.parse(str))
-  } catch (err) {
-    return false
-  }
 }

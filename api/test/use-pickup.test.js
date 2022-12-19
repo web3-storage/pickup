@@ -1,5 +1,5 @@
 import test from 'ava'
-import { usePickup } from '../basic/add-pin-router.js'
+import usePickup from '../basic/helper/use-pickup.js'
 
 test('usePickup with rate of 5', async t => {
   let isTrue = 0

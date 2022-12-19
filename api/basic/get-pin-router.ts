@@ -1,9 +1,10 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { ClusterStatusResponse, Response } from './schema.js'
-import { CID } from 'multiformats/cid'
+
 import fetch from 'node-fetch'
 
 import { doAuth } from './helper/auth-basic.js'
+import { isCID } from './helper/cid.js'
 
 /**
  * AWS API Gateway handler for GET /pins/${cid}
@@ -19,15 +20,12 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     PICKUP_ENDPOINT: pickupEndpoint = ''
   } = process.env
 
-  const authResponse = doAuth(event.headers.authorization)
-  if (authResponse != null) return authResponse
+  const authError = doAuth(event.headers.authorization)
+  if (authError != null) return authError
 
-  const cid = event.pathParameters?.cid ?? ''
-
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!cid) {
-    return { statusCode: 400, body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: 'CID not found in path' } }) }
-  }
+  // ----------------------------
+  // Validate lambda configuration
+  // ----------------------------
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!indexerEndpoint) {
@@ -37,6 +35,17 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!pickupEndpoint) {
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR', details: 'PICKUP_ENDPOINT not defined' } }) }
+  }
+
+  // ----------------------------
+  // Validate event params
+  // ----------------------------
+
+  const cid = event.pathParameters?.cid ?? ''
+
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  if (!cid) {
+    return { statusCode: 400, body: JSON.stringify({ error: { reason: 'BAD_REQUEST', details: 'CID not found in path' } }) }
   }
 
   if (!isCID(cid)) {
@@ -86,12 +95,4 @@ async function fetchGetPin ({
   const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
   return { statusCode: result.status, body: (await result.json()) as ClusterStatusResponse }
-}
-
-export function isCID (str = ''): boolean {
-  try {
-    return Boolean(CID.parse(str))
-  } catch (err) {
-    return false
-  }
 }
