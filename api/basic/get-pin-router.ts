@@ -1,9 +1,8 @@
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
-import { ClusterStatusResponse, Response } from './schema.js'
-
-import fetch from 'node-fetch'
+import { Response } from './schema.js'
 
 import { doAuth } from './helper/auth-basic.js'
+import { fetchGetPin } from './helper/fetchers.js'
 import {
   validateEventParameters,
   validateRoutingConfiguration
@@ -55,30 +54,4 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     console.log(error)
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
   }
-}
-
-// Load balancing extensions
-interface GetPinResult {
-  statusCode: number
-  body: ClusterStatusResponse
-}
-
-interface FetchGetPinParams {
-  cid: string
-  endpoint: string
-  token: string
-  isInternal?: boolean
-}
-
-async function fetchGetPin ({
-  cid,
-  endpoint,
-  token,
-  isInternal = false
-}: FetchGetPinParams): Promise<GetPinResult> {
-  const baseUrl = (new URL(endpoint))
-  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}`, baseUrl.origin)
-  const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
-
-  return { statusCode: result.status, body: (await result.json()) as ClusterStatusResponse }
 }

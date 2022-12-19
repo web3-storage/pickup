@@ -1,12 +1,11 @@
-import querystring from 'node:querystring'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2 } from 'aws-lambda'
-import fetch from 'node-fetch'
 
-import { ClusterAddResponse, ClusterStatusResponse, PeerMapValue, Pin, Response } from './schema.js'
+import { ClusterAddResponse, PeerMapValue, Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
 import usePickup from './helper/use-pickup.js'
+import { fetchAddPin, fetchGetPin } from './helper/fetchers.js'
 import {
   validateDynamoDBConfiguration,
   validateRoutingConfiguration,
@@ -147,57 +146,4 @@ async function getPinFromDynamo (dynamo: DynamoDBClient, table: string, cid: str
   }))
 
   return (existing.Item != null) ? (existing.Item as Pin) : undefined
-}
-
-// Load balancing extensions
-
-interface AddPinResult {
-  statusCode: number
-  body: ClusterAddResponse
-}
-
-interface GetPinResult {
-  statusCode: number
-  body: ClusterStatusResponse
-}
-
-interface FetchAddPinParams {
-  cid: string
-  endpoint: string
-  token: string
-  origins: string[]
-  isInternal?: boolean
-}
-
-interface FetchGetPinParams {
-  cid: string
-  endpoint: string
-  token: string
-}
-
-async function fetchAddPin ({
-  cid,
-  endpoint,
-  token,
-  origins,
-  isInternal = false
-}: FetchAddPinParams): Promise<AddPinResult> {
-  const baseUrl = (new URL(endpoint))
-  const query = (origins.length > 0) ? `?${querystring.stringify({ origins: origins.join(',') })}` : ''
-  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}${query}`, baseUrl.origin)
-  const result = await fetch(myURL.href, { method: 'POST', headers: { Authorization: `Basic ${token}` } })
-
-  return { statusCode: result.status, body: (await result.json()) as ClusterAddResponse }
-}
-
-async function fetchGetPin ({
-  cid,
-  endpoint,
-  token
-}: FetchGetPinParams): Promise<GetPinResult> {
-  const baseUrl = (new URL(endpoint))
-  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}/pins/${cid}`, baseUrl.origin)
-  const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
-
-  return { statusCode: result.status, body: (await result.json()) as ClusterStatusResponse }
 }
