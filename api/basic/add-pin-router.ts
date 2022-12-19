@@ -7,7 +7,11 @@ import fetch from 'node-fetch'
 import { ClusterAddResponse, ClusterStatusResponse, PeerMapValue, Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
 import usePickup from './helper/use-pickup.js'
-import { validateDynamoDBConfiguration, validateRoutingConfiguration, validateEventParameters } from './helper/validators.js'
+import {
+  validateDynamoDBConfiguration,
+  validateRoutingConfiguration,
+  validateEventParameters
+} from './helper/validators.js'
 
 interface AddPinInput {
   cid: string
@@ -89,27 +93,29 @@ export async function addPin ({
   const pinFromDynamo = await getPinFromDynamo(dynamo, table, cid)
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!pinFromDynamo) {
-    const indexerResultJSON = await fetchGetPin({ cid, endpoint: indexerEndpoint, token })
-
-    const notUnpinnedPeerMaps = Object.values(indexerResultJSON.body?.peer_map).filter(pin => pin.status !== 'unpinned')
-    if (notUnpinnedPeerMaps.length > 0) {
-      const peerMap = ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) || notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
-      return {
-        statusCode: 200,
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        body: toClusterResponse({ cid, created: peerMap.timestamp } as Pin, origins)
-      }
-    }
-  } else {
+  if (pinFromDynamo) {
     return { statusCode: 200, body: toClusterResponse(pinFromDynamo, origins) }
   }
 
-  if (!usePickup(balancerRate)) {
-    return await fetchAddPin({ origins, cid, endpoint: indexerEndpoint, token })
-  } else {
+  // Verify if the CID exists in the indexer
+  const indexerResultJSON = await fetchGetPin({ cid, endpoint: indexerEndpoint, token })
+
+  const notUnpinnedPeerMaps = Object.values(indexerResultJSON.body?.peer_map).filter(pin => pin.status !== 'unpinned')
+  if (notUnpinnedPeerMaps.length > 0) {
+    const peerMap = ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) || notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
+    return {
+      statusCode: 200,
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      body: toClusterResponse({ cid, created: peerMap.timestamp } as Pin, origins)
+    }
+  }
+
+  // The CID is not pinned anywere, run the balance function and return based on the result
+  if (usePickup(balancerRate)) {
     return await fetchAddPin({ origins, cid, endpoint: pickupEndpoint, token, isInternal: true })
   }
+
+  return await fetchAddPin({ origins, cid, endpoint: indexerEndpoint, token })
 }
 
 export function toClusterResponse (pin: Pin, origins: string[]): ClusterAddResponse {

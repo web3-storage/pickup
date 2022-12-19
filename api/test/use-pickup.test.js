@@ -1,80 +1,44 @@
 import test from 'ava'
 import usePickup from '../basic/helper/use-pickup.js'
 
-test('usePickup with rate of 5', async t => {
-  let isTrue = 0
-  const NUM_TEST = 100
-  const RATE = 5
-  for (let i = 0; i < NUM_TEST * 100; i++) {
-    if (usePickup(RATE)) {
-      isTrue++
-    }
-  }
+const BALANCER_RATES = [5, 10, 20, 50, 80, 90]
+const TOLERANCE = 0.3
+const NUM_TEST = 100
 
-  // The function works with a random number, it's tested using range of error of the 30%
-  t.true(isTrue / NUM_TEST > RATE * 0.70)
-  t.true(isTrue / NUM_TEST < RATE * 1.30)
-})
-
-test('usePickup with rate of 20', async t => {
-  let isTrue = 0
-  const NUM_TEST = 100
-  const RATE = 20
-  for (let i = 0; i < NUM_TEST * 100; i++) {
-    if (usePickup(RATE)) {
-      isTrue++
-    }
-  }
-
-  // The function works with a random number, it's tested using range of error of the 30%
-  t.true(isTrue / NUM_TEST > RATE * 0.70)
-  t.true(isTrue / NUM_TEST < RATE * 1.30)
-})
-
-test('usePickup with rate of 80', async t => {
-  let isTrue = 0
-  const NUM_TEST = 100
-  const RATE = 80
-  for (let i = 0; i < NUM_TEST * 100; i++) {
-    if (usePickup(RATE)) {
-      isTrue++
-    }
-  }
-
-  // The function works with a random number, it's tested using range of error of the 30%
-  t.true(isTrue / NUM_TEST > RATE * 0.70)
-  t.true(isTrue / NUM_TEST < RATE * 1.30)
-})
-
-test('usePickup with rate of 0', async t => {
+function runManyTest (balancerRate) {
   let isTrue = 0
   let isFalse = 0
-  const NUM_TEST = 100
-  const RATE = 0
+
   for (let i = 0; i < NUM_TEST * 100; i++) {
-    if (usePickup(RATE)) {
+    if (usePickup(balancerRate)) {
       isTrue++
     } else {
       isFalse++
     }
   }
+
+  return { isTrue, isFalse }
+}
+
+test('usePickup with balancer rate rate of [5, 10, 20, 50, 80, 90]', async t => {
+  for (const balancerRate of BALANCER_RATES) {
+    const { isTrue } = runManyTest(balancerRate)
+
+    // The function works with a random number, it's tested using range of error of the 30%
+    t.true(isTrue / NUM_TEST > balancerRate * (1 - TOLERANCE))
+    t.true(isTrue / NUM_TEST < balancerRate * (1 + TOLERANCE))
+  }
+})
+
+test('usePickup with rate of 0', async t => {
+  const { isTrue, isFalse } = runManyTest(0)
 
   t.is(isTrue, 0)
   t.is(isFalse, NUM_TEST * 100)
 })
 
 test('usePickup with rate of 100', async t => {
-  let isTrue = 0
-  let isFalse = 0
-  const NUM_TEST = 100
-  const RATE = 100
-  for (let i = 0; i < NUM_TEST * 100; i++) {
-    if (usePickup(RATE)) {
-      isTrue++
-    } else {
-      isFalse++
-    }
-  }
+  const { isTrue, isFalse } = runManyTest(100)
 
   t.is(isTrue, NUM_TEST * 100)
   t.is(isFalse, 0)
