@@ -39,8 +39,8 @@ test.before(async t => {
   t.context.dynamo = dynamo
   t.context.table = table
 
-  t.context.legacyClusterIpfsEndpoint = 'http://indexer.loc'
-  t.context.pickupEndpoint = 'http://pickup.loc'
+  t.context.legacyClusterIpfsUrl = 'http://indexer.loc'
+  t.context.pickupUrl = 'http://pickup.loc'
 })
 
 test('add pin router handler basic auth fail', async t => {
@@ -66,18 +66,18 @@ test('add pin router handler basic auth success', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
   process.env.BALANCER_RATE = 100
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsUrl)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
 
-  const nockPickup = nock(t.context.pickupEndpoint)
+  const nockPickup = nock(t.context.pickupUrl)
   nockPickup
     .post(`/internal/pins/${cid}`)
     .reply(200, { ...responseAddPin, cid, origins: [], timestamp: '123123123' })
@@ -101,8 +101,8 @@ test('add pin router handler without table', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = ''
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
   process.env.BALANCER_RATE = 100
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
@@ -127,8 +127,8 @@ test('add pin router handler without cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
   process.env.BALANCER_RATE = 100
 
   const cid = ''
@@ -153,8 +153,8 @@ test('add pin router handler with invalid cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
   process.env.BALANCER_RATE = 100
 
   const cid = '123123123'
@@ -179,8 +179,8 @@ test('add pin router handler with invalid multiaddress', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
   process.env.BALANCER_RATE = 100
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
@@ -202,12 +202,12 @@ test('add pin router handler with invalid multiaddress', async t => {
   })
 })
 
-test('add pin router handler with invalid legacyClusterIpfsEndpoint', async t => {
+test('add pin router handler with invalid legacyClusterIpfsUrl', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = ''
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = ''
   process.env.BALANCER_RATE = 100
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
@@ -223,16 +223,16 @@ test('add pin router handler with invalid legacyClusterIpfsEndpoint', async t =>
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_ENDPOINT not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_URL not defined"}}'
   })
 })
 
-test('add pin router handler with invalid pickupEndpoint', async t => {
+test('add pin router handler with invalid pickupUrl', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
   process.env.LEGACY_CLUSTER_IPFS_URL = ''
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.PICKUP_URL = t.context.pickupUrl
   process.env.BALANCER_RATE = 100
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'

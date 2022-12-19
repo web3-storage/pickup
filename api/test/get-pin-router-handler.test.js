@@ -8,8 +8,8 @@ import responseGetPinPinned from './__data/response-get-pin-pinned.js'
 import responseGetPinQueued from './__data/response-get-pin-queued.js'
 
 test.before(async t => {
-  t.context.legacyClusterIpfsEndpoint = 'http://indexer.loc'
-  t.context.pickupEndpoint = 'http://pickup.loc'
+  t.context.legacyClusterIpfsUrl = 'http://indexer.loc'
+  t.context.pickupUrl = 'http://pickup.loc'
 })
 
 test('get pin router handler basic auth fail', async t => {
@@ -31,8 +31,8 @@ test('get pin router handler basic auth fail', async t => {
 
 test('get pin router handler without cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
 
   const cid = ''
 
@@ -54,8 +54,8 @@ test('get pin router handler without cid', async t => {
 
 test('get pin router handler with invalid cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
 
   const cid = '123123123'
 
@@ -75,10 +75,10 @@ test('get pin router handler with invalid cid', async t => {
   })
 })
 
-test('get pin router handler with invalid pickupEndpoint', async t => {
+test('get pin router handler with invalid pickupUrl', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = ''
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = ''
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
   const event = {
@@ -93,14 +93,14 @@ test('get pin router handler with invalid pickupEndpoint', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_ENDPOINT not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_URL not defined"}}'
   })
 })
 
-test('get pin router handler with invalid legacyClusterIpfsEndpoint', async t => {
+test('get pin router handler with invalid legacyClusterIpfsUrl', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.LEGACY_CLUSTER_IPFS_URL = ''
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.PICKUP_URL = t.context.pickupUrl
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
   const event = {
@@ -121,12 +121,12 @@ test('get pin router handler with invalid legacyClusterIpfsEndpoint', async t =>
 
 test('get pin router handler with result from pickup', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockPickup = nock(t.context.pickupEndpoint)
+  const nockPickup = nock(t.context.pickupUrl)
   nockPickup
     .get(`/internal/pins/${cid}`)
     .reply(200, responseGetPinPinned)
@@ -147,17 +147,17 @@ test('get pin router handler with result from pickup', async t => {
 
 test('get pin router handler with non valid result from pickup', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsUrl)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
 
-  const nockPickup = nock(t.context.pickupEndpoint)
+  const nockPickup = nock(t.context.pickupUrl)
   nockPickup
     .get(`/internal/pins/${cid}`)
     .reply(500, responseGetPinQueued)
@@ -181,17 +181,17 @@ test('get pin router handler with non valid result from pickup', async t => {
 
 test('get pin router handler with unpinned result from pickup', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
-  process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
+  process.env.PICKUP_URL = t.context.pickupUrl
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsUrl)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
 
-  const nockPickup = nock(t.context.pickupEndpoint)
+  const nockPickup = nock(t.context.pickupUrl)
   nockPickup
     .get(`/internal/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)

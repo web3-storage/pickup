@@ -26,11 +26,11 @@ export function validateSQSConfiguration ({ queueUrl }: { queueUrl: string }): R
 }
 
 export function validateRoutingConfiguration ({
-  legacyClusterIpfsEndpoint,
-  pickupEndpoint
-}: { legacyClusterIpfsEndpoint: string, pickupEndpoint: string }): Response | undefined {
+  legacyClusterIpfsUrl,
+  pickupUrl
+}: { legacyClusterIpfsUrl: string, pickupUrl: string }): Response | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!legacyClusterIpfsEndpoint) {
+  if (!legacyClusterIpfsUrl) {
     return {
       statusCode: 500,
       body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'LEGACY_CLUSTER_IPFS_URL not defined' } }
@@ -38,10 +38,10 @@ export function validateRoutingConfiguration ({
   }
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!pickupEndpoint) {
+  if (!pickupUrl) {
     return {
       statusCode: 500,
-      body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'PICKUP_ENDPOINT not defined' } }
+      body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'PICKUP_URL not defined' } }
     }
   }
 }

@@ -18,8 +18,8 @@ import {
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
   const {
     CLUSTER_BASIC_AUTH_TOKEN: token = '',
-    LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsEndpoint = '',
-    PICKUP_ENDPOINT: pickupEndpoint = ''
+    LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsUrl = '',
+    PICKUP_URL: pickupUrl = ''
   } = process.env
 
   const authError = doAuth(event.headers.authorization)
@@ -31,8 +31,8 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const validationError: Response | undefined =
     validateRoutingConfiguration({
-      legacyClusterIpfsEndpoint,
-      pickupEndpoint
+      legacyClusterIpfsUrl,
+      pickupUrl
     }) ||
     validateEventParameters({ cid })
 
@@ -41,13 +41,13 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   }
 
   try {
-    const pickupResponse = await fetchGetPin({ cid, endpoint: pickupEndpoint, isInternal: true, token })
+    const pickupResponse = await fetchGetPin({ cid, endpoint: pickupUrl, isInternal: true, token })
 
     if (pickupResponse.statusCode === 200 && (Object.values(pickupResponse.body?.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)) {
       return { ...pickupResponse, body: JSON.stringify(pickupResponse.body) }
     }
 
-    const legacyClusterIpfsResponse = await fetchGetPin({ cid, endpoint: legacyClusterIpfsEndpoint, token })
+    const legacyClusterIpfsResponse = await fetchGetPin({ cid, endpoint: legacyClusterIpfsUrl, token })
 
     return { ...legacyClusterIpfsResponse, body: JSON.stringify(legacyClusterIpfsResponse.body) }
   } catch (error) {

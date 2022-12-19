@@ -45,7 +45,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     QUEUE_URL: queue.queueUrl,
     CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? '',
     LEGACY_CLUSTER_IPFS_URL: process.env.INDEXER_BASE_URL ?? '',
-    PICKUP_ENDPOINT: (customDomain !== undefined) ? `https://${customDomain.domainName}` : '',
+    PICKUP_URL: (customDomain !== undefined) ? `https://${customDomain.domainName}` : '',
     BALANCER_RATE: process.env.BALANCER_RATE ?? '100'
   }
   const AUTH_TOKEN = new Config.Secret(stack, 'AUTH_TOKEN')
