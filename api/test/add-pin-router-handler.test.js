@@ -39,7 +39,7 @@ test.before(async t => {
   t.context.dynamo = dynamo
   t.context.table = table
 
-  t.context.indexerEndpoint = 'http://indexer.loc'
+  t.context.legacyClusterIpfsEndpoint = 'http://indexer.loc'
   t.context.pickupEndpoint = 'http://pickup.loc'
 })
 
@@ -66,13 +66,13 @@ test('add pin router handler basic auth success', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockIndexer = nock(t.context.indexerEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
@@ -101,7 +101,7 @@ test('add pin router handler without table', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = ''
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -127,7 +127,7 @@ test('add pin router handler without cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -153,7 +153,7 @@ test('add pin router handler with invalid cid', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -179,7 +179,7 @@ test('add pin router handler with invalid multiaddress', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -202,11 +202,11 @@ test('add pin router handler with invalid multiaddress', async t => {
   })
 })
 
-test('add pin router handler with invalid indexerEndpoint', async t => {
+test('add pin router handler with invalid legacyClusterIpfsEndpoint', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = t.context.indexerEndpoint + '/api'
+  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsEndpoint + '/api'
   process.env.PICKUP_ENDPOINT = ''
   process.env.BALANCER_RATE = 100
 
@@ -231,7 +231,7 @@ test('add pin router handler with invalid pickupEndpoint', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = t.context.table
-  process.env.INDEXER_ENDPOINT = ''
+  process.env.LEGACY_CLUSTER_IPFS_URL = ''
   process.env.PICKUP_ENDPOINT = t.context.pickupEndpoint
   process.env.BALANCER_RATE = 100
 
@@ -248,6 +248,6 @@ test('add pin router handler with invalid pickupEndpoint', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"INDEXER_ENDPOINT not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"LEGACY_CLUSTER_IPFS_URL not defined"}}'
   })
 })

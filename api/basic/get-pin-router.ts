@@ -18,7 +18,7 @@ import {
 export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
   const {
     CLUSTER_BASIC_AUTH_TOKEN: token = '',
-    INDEXER_ENDPOINT: indexerEndpoint = '',
+    LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsEndpoint = '',
     PICKUP_ENDPOINT: pickupEndpoint = ''
   } = process.env
 
@@ -31,7 +31,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const validationError: Response | undefined =
     validateRoutingConfiguration({
-      indexerEndpoint,
+      legacyClusterIpfsEndpoint,
       pickupEndpoint
     }) ||
     validateEventParameters({ cid })
@@ -47,9 +47,9 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
       return { ...pickupResponse, body: JSON.stringify(pickupResponse.body) }
     }
 
-    const indexerResponse = await fetchGetPin({ cid, endpoint: indexerEndpoint, token })
+    const legacyClusterIpfsResponse = await fetchGetPin({ cid, endpoint: legacyClusterIpfsEndpoint, token })
 
-    return { ...indexerResponse, body: JSON.stringify(indexerResponse.body) }
+    return { ...legacyClusterIpfsResponse, body: JSON.stringify(legacyClusterIpfsResponse.body) }
   } catch (error) {
     console.log(error)
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }

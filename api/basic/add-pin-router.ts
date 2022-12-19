@@ -17,7 +17,7 @@ interface AddPinInput {
   origins: string[]
   dynamo: DynamoDBClient
   table: string
-  indexerEndpoint: string
+  legacyClusterIpfsEndpoint: string
   pickupEndpoint: string
   token: string
   balancerRate: number
@@ -36,7 +36,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     CLUSTER_BASIC_AUTH_TOKEN: token = '',
     // set for testing
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined,
-    INDEXER_ENDPOINT: indexerEndpoint = '',
+    LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsEndpoint = '',
     PICKUP_ENDPOINT: pickupEndpoint = '',
     BALANCER_RATE: balancerRate = 100
   } = process.env
@@ -52,7 +52,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   const validationError: Response | undefined =
     validateDynamoDBConfiguration({ table }) ||
     validateRoutingConfiguration({
-      indexerEndpoint,
+      legacyClusterIpfsEndpoint,
       pickupEndpoint
     }) ||
     validateEventParameters({ cid, origins })
@@ -64,7 +64,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
   try {
     const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
     const res = await addPin({
-      cid, origins, dynamo, table, indexerEndpoint, pickupEndpoint, token, balancerRate: Number(balancerRate)
+      cid, origins, dynamo, table, legacyClusterIpfsEndpoint, pickupEndpoint, token, balancerRate: Number(balancerRate)
     })
     return { ...res, body: JSON.stringify(res.body) }
   } catch (error) {
@@ -84,7 +84,7 @@ export async function addPin ({
   origins,
   dynamo,
   table,
-  indexerEndpoint,
+  legacyClusterIpfsEndpoint,
   pickupEndpoint,
   token,
   balancerRate
@@ -96,10 +96,10 @@ export async function addPin ({
     return { statusCode: 200, body: toClusterResponse(pinFromDynamo, origins) }
   }
 
-  // Verify if the CID exists in the indexer
-  const indexerResultJSON = await fetchGetPin({ cid, endpoint: indexerEndpoint, token })
+  // Verify if the CID exists in the legacy ipfs cluster
+  const legacyClusterIpfsResponse = await fetchGetPin({ cid, endpoint: legacyClusterIpfsEndpoint, token })
 
-  const notUnpinnedPeerMaps = Object.values(indexerResultJSON.body?.peer_map).filter(pin => pin.status !== 'unpinned')
+  const notUnpinnedPeerMaps = Object.values(legacyClusterIpfsResponse.body?.peer_map).filter(pin => pin.status !== 'unpinned')
   if (notUnpinnedPeerMaps.length > 0) {
     const peerMap = ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) || notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
     return {
@@ -114,7 +114,7 @@ export async function addPin ({
     return await fetchAddPin({ origins, cid, endpoint: pickupEndpoint, token, isInternal: true })
   }
 
-  return await fetchAddPin({ origins, cid, endpoint: indexerEndpoint, token })
+  return await fetchAddPin({ origins, cid, endpoint: legacyClusterIpfsEndpoint, token })
 }
 
 export function toClusterResponse (pin: Pin, origins: string[]): ClusterAddResponse {

@@ -5,7 +5,7 @@ CLUSTER_IPFS_ADDR="/dns4/elastic.dag.house/tcp/443/wss/p2p/bafzbeibhqavlasjc7dvb
 CLUSTER_BASIC_AUTH_TOKEN="???"
 
 # Indexer base url (The example below is referred to staging)
-INDEXER_BASE_URL="https://nft.storage.ipfscluster.io/api"
+LEGACY_CLUSTER_IPFS_URL="https://nft.storage.ipfscluster.io/api"
 
 # Indexer base url
 # 0 -> all request to Indexer

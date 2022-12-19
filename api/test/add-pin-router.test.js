@@ -42,7 +42,7 @@ test.before(async t => {
   t.context.dynamo = dynamo
   t.context.table = table
 
-  t.context.indexerEndpoint = 'http://indexer.loc'
+  t.context.legacyClusterIpfsEndpoint = 'http://indexer.loc'
   t.context.pickupEndpoint = 'http://pickup.loc'
 })
 
@@ -52,7 +52,7 @@ test('addPin with CID not in the system and fallback on pickup', async t => {
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
   const token = 'abcdfefg'
 
-  const nockIndexer = nock(t.context.indexerEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
@@ -68,7 +68,7 @@ test('addPin with CID not in the system and fallback on pickup', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint + '/api',
+    legacyClusterIpfsEndpoint: t.context.legacyClusterIpfsEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 100
@@ -89,7 +89,7 @@ test('addPin with CID not in the system and fallback on pickup withoput origins'
   const origins = []
   const token = 'abcdfefg'
 
-  const nockIndexer = nock(t.context.indexerEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
@@ -104,7 +104,7 @@ test('addPin with CID not in the system and fallback on pickup withoput origins'
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint + '/api',
+    legacyClusterIpfsEndpoint: t.context.legacyClusterIpfsEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 100
@@ -125,7 +125,7 @@ test('addPin with CID not in the system and fallback on indexer', async t => {
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
   const token = 'abcdfefg'
 
-  const nockIndexer = nock(t.context.indexerEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
@@ -138,7 +138,7 @@ test('addPin with CID not in the system and fallback on indexer', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint + '/api',
+    legacyClusterIpfsEndpoint: t.context.legacyClusterIpfsEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -158,7 +158,7 @@ test('addPin with CID not in the system and fallback on indexer with empty origi
   const origins = []
   const token = 'abcdfefg'
 
-  const nockIndexer = nock(t.context.indexerEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
@@ -170,7 +170,7 @@ test('addPin with CID not in the system and fallback on indexer with empty origi
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint + '/api',
+    legacyClusterIpfsEndpoint: t.context.legacyClusterIpfsEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -208,7 +208,7 @@ test('addPin with CID existent in pickup', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint + '/api',
+    legacyClusterIpfsEndpoint: t.context.legacyClusterIpfsEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -231,7 +231,7 @@ test('addPin with CID existent in Indexer with pinned state', async t => {
   const origins = []
   const token = 'abcdfefg'
 
-  const nockIndexer = nock(t.context.indexerEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
@@ -241,7 +241,7 @@ test('addPin with CID existent in Indexer with pinned state', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint + '/api',
+    legacyClusterIpfsEndpoint: t.context.legacyClusterIpfsEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0
@@ -261,7 +261,7 @@ test('addPin with CID existent in Indexer with queued state', async t => {
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
   const token = 'abcdfefg'
 
-  const nockIndexer = nock(t.context.indexerEndpoint)
+  const nockIndexer = nock(t.context.legacyClusterIpfsEndpoint)
   nockIndexer
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinQueued)
@@ -271,7 +271,7 @@ test('addPin with CID existent in Indexer with queued state', async t => {
     origins,
     dynamo,
     table,
-    indexerEndpoint: t.context.indexerEndpoint + '/api',
+    legacyClusterIpfsEndpoint: t.context.legacyClusterIpfsEndpoint + '/api',
     pickupEndpoint: t.context.pickupEndpoint,
     token,
     balancerRate: 0

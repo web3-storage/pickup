@@ -26,14 +26,14 @@ export function validateSQSConfiguration ({ queueUrl }: { queueUrl: string }): R
 }
 
 export function validateRoutingConfiguration ({
-  indexerEndpoint,
+  legacyClusterIpfsEndpoint,
   pickupEndpoint
-}: { indexerEndpoint: string, pickupEndpoint: string }): Response | undefined {
+}: { legacyClusterIpfsEndpoint: string, pickupEndpoint: string }): Response | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-  if (!indexerEndpoint) {
+  if (!legacyClusterIpfsEndpoint) {
     return {
       statusCode: 500,
-      body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'INDEXER_ENDPOINT not defined' } }
+      body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'LEGACY_CLUSTER_IPFS_URL not defined' } }
     }
   }
 
