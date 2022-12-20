@@ -39,7 +39,7 @@ test.before(async t => {
   t.context.dynamo = dynamo
   t.context.table = table
 
-  t.context.legacyClusterIpfsUrl = 'http://indexer.loc'
+  t.context.legacyClusterIpfsUrl = 'http://legacy-cluster.loc'
   t.context.pickupUrl = 'http://pickup.loc'
 })
 
@@ -72,8 +72,8 @@ test('add pin router handler basic auth success', async t => {
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockIndexer = nock(t.context.legacyClusterIpfsUrl)
-  nockIndexer
+  const nockLegacyClusterIpfs = nock(t.context.legacyClusterIpfsUrl)
+  nockLegacyClusterIpfs
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinUnpinned)
 
@@ -93,7 +93,7 @@ test('add pin router handler basic auth success', async t => {
   const response = await handler(event)
   t.is(response.statusCode, 200)
 
-  nockIndexer.done()
+  nockLegacyClusterIpfs.done()
   nockPickup.done()
 })
 

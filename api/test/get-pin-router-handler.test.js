@@ -8,7 +8,7 @@ import responseGetPinPinned from './__data/response-get-pin-pinned.js'
 import responseGetPinQueued from './__data/response-get-pin-queued.js'
 
 test.before(async t => {
-  t.context.legacyClusterIpfsUrl = 'http://indexer.loc'
+  t.context.legacyClusterIpfsUrl = 'http://legacy-cluster.loc'
   t.context.pickupUrl = 'http://pickup.loc'
 })
 
@@ -152,8 +152,8 @@ test('get pin router handler with non valid result from pickup', async t => {
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockIndexer = nock(t.context.legacyClusterIpfsUrl)
-  nockIndexer
+  const nockLegacyClusterIpfs = nock(t.context.legacyClusterIpfsUrl)
+  nockLegacyClusterIpfs
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
 
@@ -176,7 +176,7 @@ test('get pin router handler with non valid result from pickup', async t => {
   t.is(response.body, JSON.stringify(responseGetPinPinned))
 
   nockPickup.done()
-  nockIndexer.done()
+  nockLegacyClusterIpfs.done()
 })
 
 test('get pin router handler with unpinned result from pickup', async t => {
@@ -186,8 +186,8 @@ test('get pin router handler with unpinned result from pickup', async t => {
 
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
 
-  const nockIndexer = nock(t.context.legacyClusterIpfsUrl)
-  nockIndexer
+  const nockLegacyClusterIpfs = nock(t.context.legacyClusterIpfsUrl)
+  nockLegacyClusterIpfs
     .get(`/api/pins/${cid}`)
     .reply(200, responseGetPinPinned)
 
@@ -210,5 +210,5 @@ test('get pin router handler with unpinned result from pickup', async t => {
   t.is(response.body, JSON.stringify(responseGetPinPinned))
 
   nockPickup.done()
-  nockIndexer.done()
+  nockLegacyClusterIpfs.done()
 })
