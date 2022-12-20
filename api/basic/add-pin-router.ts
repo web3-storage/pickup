@@ -93,6 +93,7 @@ export async function addPin ({
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (pinFromDynamo) {
+    console.log('CID exists on pickup')
     return { statusCode: 200, body: toClusterResponse(pinFromDynamo, origins) }
   }
 
@@ -101,6 +102,7 @@ export async function addPin ({
 
   const notUnpinnedPeerMaps = Object.values(legacyClusterIpfsResponse.body?.peer_map).filter(pin => pin.status !== 'unpinned')
   if (notUnpinnedPeerMaps.length > 0) {
+    console.log('CID exists on legacy cluster')
     const peerMap = ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) || notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
     return {
       statusCode: 200,
@@ -109,11 +111,14 @@ export async function addPin ({
     }
   }
 
+  console.log('CID not exists')
   // The CID is not pinned anywere, run the balance function and return based on the result
   if (usePickup(balancerRate)) {
+    console.log('AddPin to pickup')
     return await fetchAddPin({ origins, cid, endpoint: pickupUrl, token, isInternal: true })
   }
 
+  console.log('AddPin to legacy cluster')
   return await fetchAddPin({ origins, cid, endpoint: legacyClusterIpfsUrl, token })
 }
 
