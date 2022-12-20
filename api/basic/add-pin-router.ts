@@ -63,9 +63,12 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
 
   try {
     const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
+    console.log('Add pin')
     const res = await addPin({
       cid, origins, dynamo, table, legacyClusterIpfsUrl, pickupUrl, token, balancerRate: Number(balancerRate)
     })
+    console.log(res)
+    console.log({ ...res, body: JSON.stringify(res.body) })
     return { ...res, body: JSON.stringify(res.body) }
   } catch (error) {
     console.log(error)
