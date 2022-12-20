@@ -54,7 +54,10 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     BUCKET_NAME: bucket.bucketName,
     TABLE_NAME: table.tableName,
     QUEUE_URL: queue.queueUrl,
-    CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? ''
+    CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? '',
+    LEGACY_CLUSTER_IPFS_URL: process.env.LEGACY_CLUSTER_IPFS_URL ?? '',
+    PICKUP_URL: (customDomain !== undefined) ? `https://${customDomain.domainName}` : '',
+    BALANCER_RATE: process.env.BALANCER_RATE ?? '100'
   }
   const AUTH_TOKEN = new Config.Secret(stack, 'AUTH_TOKEN')
   configureAuth(apiFunctionBindList, apiFunctionEnvironment, AUTH_TOKEN)
@@ -69,8 +72,10 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       }
     },
     routes: {
-      'GET    /pins/{cid}': 'basic/get-pin.handler',
-      'POST   /pins/{cid}': 'basic/add-pin.handler'
+      'GET    /pins/{cid}': 'basic/get-pin-router.handler',
+      'POST   /pins/{cid}': 'basic/add-pin-router.handler',
+      'GET    /internal/pins/{cid}': 'basic/get-pin.handler',
+      'POST   /internal/pins/{cid}': 'basic/add-pin.handler'
     }
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
