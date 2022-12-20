@@ -44,7 +44,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     TABLE_NAME: table.tableName,
     QUEUE_URL: queue.queueUrl,
     CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? '',
-    LEGACY_CLUSTER_IPFS_URL: process.env.INDEXER_BASE_URL ?? '',
+    LEGACY_CLUSTER_IPFS_URL: process.env.LEGACY_CLUSTER_IPFS_URL ?? '',
     PICKUP_URL: (customDomain !== undefined) ? `https://${customDomain.domainName}` : '',
     BALANCER_RATE: process.env.BALANCER_RATE ?? '100'
   }
