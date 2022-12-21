@@ -29,6 +29,7 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
   })
 
   app.on('error', (err) => {
+    // TODO: Log Receive Count (Retries): ${msg.Attributes?.ApproximateReceiveCount}
     console.error(err.message)
   })
 
