@@ -11,6 +11,7 @@ async function start () {
     queueUrl: SQS_QUEUE_URL
   })
   app.on('message_received', msg => {
+    console.log(msg)
     const { requestid, cid } = JSON.parse(msg.Body)
     console.log(`Processing req: ${requestid} cid: ${cid}`)
     console.log(`Failing to test retries and DLQ. SQS MessageReceiveCount = ${msg.Attributes?.ApproximateReceiveCount}`)
