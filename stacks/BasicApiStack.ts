@@ -47,7 +47,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     LEGACY_CLUSTER_IPFS_URL: process.env.LEGACY_CLUSTER_IPFS_URL ?? '',
     PICKUP_URL: (customDomain !== undefined) ? `https://${customDomain.domainName}` : '',
     BALANCER_RATE: process.env.BALANCER_RATE ?? '100',
-    LOG_LEVEL: process.env.LAMBDA_LOG_LEVEL ?? '100'
+    LOG_LEVEL: process.env.LAMBDA_LOG_LEVEL ?? 'info'
   }
   const AUTH_TOKEN = new Config.Secret(stack, 'AUTH_TOKEN')
   configureAuth(apiFunctionBindList, apiFunctionEnvironment, AUTH_TOKEN)
