@@ -15,6 +15,7 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
     batchSize: 1, // 1 to 10
     visibilityTimeout: 20, // seconds, how long to hide message from queue after reading.
     heartbeatInterval: 10, // seconds, must be lower than `visibilityTimeout`. how long before increasing the `visibilityTimeout`
+    messageAttributeNames: ['ApproximateReceiveCount'], // log retries
     // allow 4hrs before timeout. 2/3rs of the world can upload faster than
     // 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs.
     // we can make this more or less generous, but note it ties up a worker.
