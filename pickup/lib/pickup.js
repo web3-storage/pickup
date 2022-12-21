@@ -43,7 +43,7 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3 
   const res = await Promise.allSettled(jobs.map(async job => {
     const { message, cid, upload } = job
     const body = await fetchCar(cid, ipfsApiUrl)
-    console.log(`got car for ${cid}`)
+    console.log(`IPFS node responded, downloading the car for ${cid}`)
     await upload({ body })
     console.log(`uploaded car for ${cid} to s3`)
     return message // hand back msg so we can ack all that succeded
@@ -54,6 +54,9 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3 
 
   // find the ones that worked
   const ok = res.filter(r => r.status === 'fulfilled').map(r => r.value)
+
+  // If a download fails for an unexpected error it should return the message on the queue
+  // If a download fails for timeout, not found error it should just set the error on dynamodb (status FAILED)
 
   console.log(`Done processing batch ${jobs[0].cid}. ${ok.length}/${messages.length} OK`)
 

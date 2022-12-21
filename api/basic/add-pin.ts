@@ -42,8 +42,8 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     QUEUE_URL: queueUrl = '',
     // set for testing
     SQS_ENDPOINT: sqsEndpoint = undefined,
-    DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
-    , LOG_LEVEL: logLevel = 'info'
+    DYNAMO_DB_ENDPOINT: dbEndpoint = undefined,
+    LOG_LEVEL: logLevel = 'info'
   } = process.env
 
   logger.level = logLevel

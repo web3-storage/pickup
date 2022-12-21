@@ -194,7 +194,7 @@ test('updatePinStatus', async t => {
     }]
   }
 
-  const [res4] = await updatePin(s3Event)
+  const [res4] = await updatePin(s3Event, t.context.lambdaContext)
   t.is(res4.cid, cid)
   t.is(res4.status, 'pinned')
   t.is(res4.created, res2.created)
