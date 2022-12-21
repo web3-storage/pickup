@@ -13,10 +13,9 @@ async function start () {
   app.on('message_received', msg => {
     const { requestid, cid } = JSON.parse(msg.Body)
     console.log(`Processing req: ${requestid} cid: ${cid}`)
-    console.log(JSON.stringify(msg, null, 4));
-    // console.log(`Failing to test retries and DLQ. SQS MessageReceiveCount = ${msg.attributes?.ApproximateReceiveCount}`)
-    // console.error(`Failing to test retries and DLQ. SQS MessageReceiveCount = ${msg.attributes?.ApproximateReceiveCount}`)
-    // throw new Error(`Failing to test retries and DLQ. SQS MessageReceiveCount = ${msg.attributes?.ApproximateReceiveCount}`)
+    console.log(`Failing to test retries and DLQ. SQS MessageReceiveCount = ${msg.Attributes?.ApproximateReceiveCount}`)
+    console.error(`Failing to test retries and DLQ. SQS MessageReceiveCount = ${msg.Attributes?.ApproximateReceiveCount}`)
+    throw new Error(`Failing to test retries and DLQ. SQS MessageReceiveCount = ${msg.Attributes?.ApproximateReceiveCount}`)
   })
   app.start()
   console.log(`Pickup subscribed to ${SQS_QUEUE_URL}`)
