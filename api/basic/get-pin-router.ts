@@ -1,7 +1,8 @@
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 import { Response } from './schema.js'
 
 import { doAuth } from './helper/auth-basic.js'
+import { logger, withLambdaRequest } from './helper/logger.js'
 import { fetchGetPin } from './helper/fetchers.js'
 import {
   validateEventParameters,
@@ -15,12 +16,18 @@ import {
  * We provide responses in Payload format v2.0
  * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
  */
-export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
+export async function handler (event: APIGatewayProxyEventV2, context: Context): Promise<Response> {
   const {
     CLUSTER_BASIC_AUTH_TOKEN: token = '',
     LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsUrl = '',
-    PICKUP_URL: pickupUrl = ''
+    PICKUP_URL: pickupUrl = '',
+    LOG_LEVEL: logLevel = 'info'
   } = process.env
+
+  logger.level = logLevel
+  withLambdaRequest(event, context)
+
+  logger.info('Get pin request')
 
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
