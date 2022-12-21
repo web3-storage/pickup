@@ -26,7 +26,6 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3 
   const jobs = []
   const allOrigins = []
   for (const message of messages) {
-    // console.log(JSON.stringify(message, null, 4));
     const { cid, origins, bucket, key, requestid } = JSON.parse(message.Body)
     jobs.push({ message, requestid, cid, upload: createS3Uploader({ bucket, key, client: s3 }) })
     allOrigins.concat(origins)
