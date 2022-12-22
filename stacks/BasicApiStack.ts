@@ -2,7 +2,18 @@ import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverl
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
-  const queue = new Queue(stack, 'Pin')
+  const dlq = new Queue(stack, 'PinDlq')
+
+  const queue = new Queue(stack, 'Pin', {
+    cdk: {
+      queue: {
+        deadLetterQueue: {
+          queue: dlq.cdk.queue,
+          maxReceiveCount: 2
+        }
+      }
+    }
+  })
 
   const table = new Table(stack, 'BasicV2', {
     fields: {
@@ -13,17 +24,34 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     }
   })
 
-  const s3Topic = new Topic(stack, 'S3Events', {
-    subscribers: {
-      updatePin: {
-        function: {
-          handler: 'basic/update-pin.snsEventHandler',
-          bind: [table],
-          environment: {
-            TABLE_NAME: table.tableName
-          }
+  const updatePinDlq = new Queue(stack, 'UpdatePinDlq')
+  const updatePinQueue = new Queue(stack, 'UpdatePinQueue', {
+    consumer: {
+      function: {
+        handler: 'basic/update-pin.sqsEventHandler',
+        bind: [table],
+        environment: {
+          TABLE_NAME: table.tableName
+        }
+      },
+      cdk: {
+        eventSource: {
+          batchSize: 1
         }
       }
+    },
+    cdk: {
+      queue: {
+        deadLetterQueue: {
+          queue: updatePinDlq.cdk.queue,
+          maxReceiveCount: 2
+        }
+      }
+    }
+  })
+  const s3Topic = new Topic(stack, 'S3Events', {
+    subscribers: {
+      updatePinQueue: updatePinQueue
     }
   })
 
