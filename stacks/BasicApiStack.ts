@@ -2,7 +2,7 @@ import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverl
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
-  const dlq = new Queue(stack, 'Pin-Dlq')
+  const dlq = new Queue(stack, 'PinDlq')
 
   const queue = new Queue(stack, 'Pin', {
     cdk: {
