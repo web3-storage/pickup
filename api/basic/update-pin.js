@@ -16,6 +16,18 @@ export async function snsEventHandler (snsEvent) {
 }
 
 /**
+ * Deal with the horror of S3Events wrapped up as strings in SQSEvents.
+ *
+ * @param {import('aws-lambda').SQSEvent} sqsEvent
+ */
+export async function sqsEventHandler (sqsEvent) {
+  for (const record of sqsEvent.Records) {
+    const s3Event = JSON.parse(JSON.parse(record.body).Message)
+    await s3EventHandler(s3Event)
+  }
+}
+
+/**
  * Set pin status to pinned when receiving an
  * S3 `object_created` event for a .car file.
  *
