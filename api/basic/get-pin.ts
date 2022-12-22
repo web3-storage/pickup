@@ -1,8 +1,9 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 import { ClusterStatusResponse, Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
+import { logger, withLambdaRequest } from './helper/logger.js'
 
 interface GetPinInput {
   cid: string
@@ -17,14 +18,20 @@ interface GetPinInput {
  * We provide responses in Payload format v2.0
  * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
  */
-export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
+export async function handler (event: APIGatewayProxyEventV2, context: Context): Promise<Response> {
   const {
     TABLE_NAME: table = '',
     CLUSTER_IPFS_ADDR: ipfsAddr = undefined,
     CLUSTER_IPFS_PEERID: ipfsPeerId = undefined,
     // set for testing
-    DYNAMO_DB_ENDPOINT: dbEndpoint = undefined
+    DYNAMO_DB_ENDPOINT: dbEndpoint = undefined,
+    LOG_LEVEL: logLevel = 'info'
   } = process.env
+
+  logger.level = logLevel
+  withLambdaRequest(event, context)
+
+  logger.info('Get pin request')
 
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError

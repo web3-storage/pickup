@@ -1,10 +1,11 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
-import { APIGatewayProxyEventV2 } from 'aws-lambda'
+import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 
 import { ClusterAddResponse, PeerMapValue, Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
 import usePickup from './helper/use-pickup.js'
+import { logger, withLambdaRequest } from './helper/logger.js'
 import { fetchAddPin, fetchGetPin } from './helper/fetchers.js'
 import {
   validateDynamoDBConfiguration,
@@ -30,7 +31,7 @@ interface AddPinInput {
  * We provide responses in Payload format v2.0
  * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
  */
-export async function handler (event: APIGatewayProxyEventV2): Promise<Response> {
+export async function handler (event: APIGatewayProxyEventV2, context: Context): Promise<Response> {
   const {
     TABLE_NAME: table = '',
     CLUSTER_BASIC_AUTH_TOKEN: token = '',
@@ -38,8 +39,15 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined,
     LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsUrl = '',
     PICKUP_URL: pickupUrl = '',
-    BALANCER_RATE: balancerRate = 100
+    BALANCER_RATE: balancerRate = 100,
+    LOG_LEVEL: logLevel = 'info'
   } = process.env
+
+  logger.level = logLevel
+  withLambdaRequest(event, context)
+
+  logger.info('Add pin request')
+  logger.info({ ...event, headers: { ...event.headers, authorization: 'XXXXXXXXXXXXX' } })
 
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
@@ -58,6 +66,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     validateEventParameters({ cid, origins })
 
   if (validationError != null) {
+    logger.error(validationError, 'Validation error')
     return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
   }
 
@@ -68,7 +77,7 @@ export async function handler (event: APIGatewayProxyEventV2): Promise<Response>
     })
     return { ...res, body: JSON.stringify(res.body) }
   } catch (error) {
-    console.log(error)
+    logger.error(error, 'Internal server error')
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
   }
 }
@@ -93,16 +102,18 @@ export async function addPin ({
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (pinFromDynamo) {
-    console.log('CID exists on pickup')
+    logger.debug('CID exists on dynamo')
+    logger.trace(pinFromDynamo, 'Dynamo item content')
     return { statusCode: 200, body: toClusterResponse(pinFromDynamo, origins) }
   }
 
   // Verify if the CID exists in the legacy ipfs cluster
+  logger.debug('Load CID entry from legacy cluster')
   const legacyClusterIpfsResponse = await fetchGetPin({ cid, endpoint: legacyClusterIpfsUrl, token })
 
   const notUnpinnedPeerMaps = Object.values(legacyClusterIpfsResponse.body?.peer_map).filter(pin => pin.status !== 'unpinned')
   if (notUnpinnedPeerMaps.length > 0) {
-    console.log('CID exists on legacy cluster')
+    logger.debug('CID exists on legacy cluster')
     const peerMap = ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) || notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
     return {
       statusCode: 200,
@@ -111,14 +122,14 @@ export async function addPin ({
     }
   }
 
-  console.log('CID not exists')
+  logger.debug({ balancerRate }, 'CID not exists, route the request using the balancer')
   // The CID is not pinned anywere, run the balance function and return based on the result
   if (usePickup(balancerRate)) {
-    console.log('AddPin to pickup')
+    logger.debug('Call POST addPin on pickup')
     return await fetchAddPin({ origins, cid, endpoint: pickupUrl, token, isInternal: true })
   }
 
-  console.log('AddPin to legacy cluster')
+  logger.debug('Call POST addPin on legacy cluster')
   return await fetchAddPin({ origins, cid, endpoint: legacyClusterIpfsUrl, token })
 }
 

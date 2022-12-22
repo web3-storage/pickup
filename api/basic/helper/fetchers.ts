@@ -2,6 +2,7 @@ import * as querystring from 'node:querystring'
 import fetch from 'node-fetch'
 
 import { ClusterAddResponse, ClusterStatusResponse } from '../schema.js'
+import { logger } from './logger.js'
 
 export interface AddPinResult {
   statusCode: number
@@ -38,9 +39,11 @@ export async function fetchAddPin ({
   const baseUrl = (new URL(endpoint))
   const query = (origins.length > 0) ? `?${querystring.stringify({ origins: origins.join(',') })}` : ''
   const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}${query}`, baseUrl.origin)
+  logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchAddPin')
   const result = await fetch(myURL.href, { method: 'POST', headers: { Authorization: `Basic ${token}` } })
-
-  return { statusCode: result.status, body: (await result.json()) as ClusterAddResponse }
+  const resultJSON = (await result.json()) as ClusterAddResponse
+  logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchAddPin SUCCESS')
+  return { statusCode: result.status, body: resultJSON }
 }
 
 export async function fetchGetPin ({
@@ -51,7 +54,11 @@ export async function fetchGetPin ({
 }: FetchGetPinParams): Promise<GetPinResult> {
   const baseUrl = (new URL(endpoint))
   const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}`, baseUrl.origin)
+  logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPin')
   const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
-  return { statusCode: result.status, body: (await result.json()) as ClusterStatusResponse }
+  const resultJSON = (await result.json()) as ClusterStatusResponse
+  logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchGetPin SUCCESS')
+
+  return { statusCode: result.status, body: resultJSON }
 }
