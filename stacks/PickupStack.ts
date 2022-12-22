@@ -20,7 +20,7 @@ export function PickupStack ({ stack }: StackContext): void {
       platform: Platform.LINUX_AMD64
     }),
     containerName: 'pickup',
-    maxScalingCapacity: 3,
+    maxScalingCapacity: 10,
     cpu: 4096,
     memoryLimitMiB: 8192,
     ephemeralStorageGiB: 64, // max 200
