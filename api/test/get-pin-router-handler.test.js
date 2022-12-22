@@ -8,8 +8,14 @@ import responseGetPinPinned from './__data/response-get-pin-pinned.js'
 import responseGetPinQueued from './__data/response-get-pin-queued.js'
 
 test.before(async t => {
+  process.env.LOG_LEVEL = 'silent'
+
   t.context.legacyClusterIpfsUrl = 'http://legacy-cluster.loc'
   t.context.pickupUrl = 'http://pickup.loc'
+
+  t.context.lambdaContext = {
+    awsRequestId: 123123
+  }
 })
 
 test('get pin router handler basic auth fail', async t => {
@@ -23,7 +29,7 @@ test('get pin router handler basic auth fail', async t => {
       cid: 'bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354'
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
   t.is(response.statusCode, 401)
   t.true(typeof response.body === 'string')
   t.deepEqual(JSON.parse(response.body), { error: { reason: 'UNAUTHORIZED' } })
@@ -44,7 +50,7 @@ test('get pin router handler without cid', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 400,
@@ -67,7 +73,7 @@ test('get pin router handler with invalid cid', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 400,
@@ -89,7 +95,7 @@ test('get pin router handler with invalid pickupUrl', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 500,
@@ -111,7 +117,7 @@ test('get pin router handler with invalid legacyClusterIpfsUrl', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 500,
@@ -139,7 +145,7 @@ test('get pin router handler with result from pickup', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
   t.is(response.statusCode, 200)
 
   nockPickup.done()
@@ -170,7 +176,7 @@ test('get pin router handler with non valid result from pickup', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.is(response.statusCode, 200)
   t.is(response.body, JSON.stringify(responseGetPinPinned))
@@ -204,7 +210,7 @@ test('get pin router handler with unpinned result from pickup', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.is(response.statusCode, 200)
   t.is(response.body, JSON.stringify(responseGetPinPinned))

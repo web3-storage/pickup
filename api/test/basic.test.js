@@ -10,6 +10,8 @@ import test from 'ava'
 test.before(async t => {
   t.timeout(1000 * 60)
 
+  process.env.LOG_LEVEL = 'silent'
+
   const dbContainer = await new Container('amazon/dynamodb-local:latest')
     .withExposedPorts(8000)
     .start()
@@ -45,6 +47,10 @@ test.before(async t => {
   t.context.sqsEndpoint = sqsEndpoint
   t.context.sqs = sqs
   t.context.createQueue = createQueue.bind(null, sqsContainer.getMappedPort(9324), sqs)
+
+  t.context.lambdaContext = {
+    awsRequestId: 123123
+  }
 })
 
 test('getPin', async t => {
@@ -127,13 +133,13 @@ test('getPin basic auth', async t => {
       cid: 'bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354'
     }
   }
-  const unauth = await getPinHandler(event)
+  const unauth = await getPinHandler(event, t.context.lambdaContext)
   t.is(unauth.statusCode, 401)
   t.true(typeof unauth.body === 'string')
   t.deepEqual(JSON.parse(unauth.body), { error: { reason: 'UNAUTHORIZED' } })
 
   event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
-  const auth = await getPinHandler(event)
+  const auth = await getPinHandler(event, t.context.lambdaContext)
   t.is(auth.statusCode, 200)
 })
 
@@ -152,13 +158,13 @@ test('addPin basic auth', async t => {
       cid: 'bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354'
     }
   }
-  const unauth = await addPinHandler(event)
+  const unauth = await addPinHandler(event, t.context.lambdaContext)
   t.is(unauth.statusCode, 401)
   t.true(typeof unauth.body === 'string')
   t.deepEqual(JSON.parse(unauth.body), { error: { reason: 'UNAUTHORIZED' } })
 
   event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
-  const auth = await addPinHandler(event)
+  const auth = await addPinHandler(event, t.context.lambdaContext)
   t.is(auth.statusCode, 200)
 })
 
@@ -188,7 +194,7 @@ test('updatePinStatus', async t => {
     }]
   }
 
-  const [res4] = await updatePin(s3Event)
+  const [res4] = await updatePin(s3Event, t.context.lambdaContext)
   t.is(res4.cid, cid)
   t.is(res4.status, 'pinned')
   t.is(res4.created, res2.created)

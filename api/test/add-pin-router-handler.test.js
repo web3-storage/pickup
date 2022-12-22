@@ -12,6 +12,8 @@ import responseAddPin from './__data/response-add-pin.js'
 test.before(async t => {
   t.timeout(1000 * 60)
 
+  process.env.LOG_LEVEL = 'silent'
+
   const dbContainer = await new Container('amazon/dynamodb-local:latest')
     .withExposedPorts(8000)
     .start()
@@ -38,6 +40,9 @@ test.before(async t => {
   t.context.dbEndpoint = dbEndpoint
   t.context.dynamo = dynamo
   t.context.table = table
+  t.context.lambdaContext = {
+    awsRequestId: 123123
+  }
 
   t.context.legacyClusterIpfsUrl = 'http://legacy-cluster.loc'
   t.context.pickupUrl = 'http://pickup.loc'
@@ -56,7 +61,7 @@ test('add pin router handler basic auth fail', async t => {
       cid: 'bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354'
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
   t.is(response.statusCode, 401)
   t.true(typeof response.body === 'string')
   t.deepEqual(JSON.parse(response.body), { error: { reason: 'UNAUTHORIZED' } })
@@ -90,7 +95,7 @@ test('add pin router handler basic auth success', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
   t.is(response.statusCode, 200)
 
   nockLegacyClusterIpfs.done()
@@ -115,7 +120,7 @@ test('add pin router handler without table', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 500,
@@ -141,7 +146,7 @@ test('add pin router handler without cid', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 400,
@@ -167,7 +172,7 @@ test('add pin router handler with invalid cid', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 400,
@@ -194,7 +199,7 @@ test('add pin router handler with invalid multiaddress', async t => {
     },
     queryStringParameters: { origins }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 400,
@@ -219,7 +224,7 @@ test('add pin router handler with invalid legacyClusterIpfsUrl', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 500,
@@ -244,7 +249,7 @@ test('add pin router handler with invalid pickupUrl', async t => {
       cid
     }
   }
-  const response = await handler(event)
+  const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 500,
