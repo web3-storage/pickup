@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 import { Response } from './schema.js'
 
-import { doAuth } from './helper/auth-basic.js'
+import { doAuth, getValidCredentials } from './helper/auth-basic.js'
 import { logger, withLambdaRequest } from './helper/logger.js'
 import { fetchGetPin } from './helper/fetchers.js'
 import {
@@ -18,7 +18,7 @@ import {
  */
 export async function handler (event: APIGatewayProxyEventV2, context: Context): Promise<Response> {
   const {
-    CLUSTER_BASIC_AUTH_TOKEN: token = '',
+    CLUSTER_BASIC_AUTH_TOKEN: token = getValidCredentials(),
     LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsUrl = '',
     PICKUP_URL: pickupUrl = '',
     LOG_LEVEL: logLevel = 'info'

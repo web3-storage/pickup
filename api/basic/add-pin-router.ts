@@ -3,7 +3,7 @@ import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 
 import { ClusterAddResponse, PeerMapValue, Pin, Response } from './schema.js'
-import { doAuth } from './helper/auth-basic.js'
+import { doAuth, getValidCredentials } from './helper/auth-basic.js'
 import usePickup from './helper/use-pickup.js'
 import { logger, withLambdaRequest } from './helper/logger.js'
 import { fetchAddPin, fetchGetPin } from './helper/fetchers.js'
@@ -34,7 +34,7 @@ interface AddPinInput {
 export async function handler (event: APIGatewayProxyEventV2, context: Context): Promise<Response> {
   const {
     TABLE_NAME: table = '',
-    CLUSTER_BASIC_AUTH_TOKEN: token = '',
+    CLUSTER_BASIC_AUTH_TOKEN: token = getValidCredentials(),
     // set for testing
     DYNAMO_DB_ENDPOINT: dbEndpoint = undefined,
     LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsUrl = '',
