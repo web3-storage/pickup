@@ -17,7 +17,7 @@ export function doAuth (
   }
 }
 
-function getValidCredentials (): string {
+export function getValidCredentials (): string {
   let validCredentials = process.env.CLUSTER_BASIC_AUTH_TOKEN
   if (emptyOrNil(validCredentials)) {
     // If not set as environment variable, get it from AWS SSM parameter store
