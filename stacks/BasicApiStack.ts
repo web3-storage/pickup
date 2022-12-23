@@ -1,5 +1,6 @@
 import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverless-stack/resources'
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
+import { ApiGatewayV2Client, UpdateStageCommand } from '@aws-sdk/client-apigatewayv2'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const dlq = new Queue(stack, 'PinDlq')
@@ -98,9 +99,27 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
 
+  const apiGatewayClient = new ApiGatewayV2Client({ region: app.region })
+  const updateCmd = new UpdateStageCommand({
+    ApiId: api.httpApiId,
+    StageName: '$default',
+    DefaultRouteSettings: {
+      DetailedMetricsEnabled: true
+    }
+  })
+
+  apiGatewayClient.send(updateCmd).then((data) => {
+    console.log('Successfully updated API stage')
+    console.log(data.DefaultRouteSettings)
+  }).catch((error) => {
+    console.log('Failed to update API stage')
+    console.log(error)
+  })
+
   stack.addOutputs({
     S3EventsTopicARN: s3Topic.topicArn,
     ApiEndpoint: api.url,
+    HttpApiId: api.httpApiId,
     CustomDomain: (customDomain !== undefined) ? `https://${customDomain.domainName}` : 'Set HOSTED_ZONE in env to deploy to a custom domain'
   })
 

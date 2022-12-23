@@ -17,8 +17,8 @@
   },
   "devDependencies": {
     "@serverless-stack/cli": "^1.18.4",
-    "@serverless-stack/resources": "^1.18.4",
     "@serverless-stack/node": "^1.18.4",
+    "@serverless-stack/resources": "^1.18.4",
     "@tsconfig/node16": "^1.0.2",
     "@typescript-eslint/experimental-utils": "^5.29.0",
     "ava": "^4.3.1",
@@ -33,6 +33,7 @@
     "pickup"
   ],
   "dependencies": {
+    "@aws-sdk/client-apigatewayv2": "^3.236.0",
     "aws-cdk-lib": "2.50.0"
   },
   "ts-standard": {
