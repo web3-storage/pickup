@@ -29,6 +29,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     consumer: {
       function: {
         handler: 'basic/update-pin.sqsEventHandler',
+        functionName: formatResourceName(app.stage, 'updatePin'),
         bind: [table],
         environment: {
           TABLE_NAME: table.tableName
@@ -90,10 +91,30 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       }
     },
     routes: {
-      'GET    /pins/{cid}': 'basic/get-pin-router.handler',
-      'POST   /pins/{cid}': 'basic/add-pin-router.handler',
-      'GET    /internal/pins/{cid}': 'basic/get-pin.handler',
-      'POST   /internal/pins/{cid}': 'basic/add-pin.handler'
+      'GET    /pins/{cid}': {
+        function: {
+          handler: 'basic/get-pin-router.handler',
+          functionName: formatResourceName(app.stage, 'getPinRouter')
+        }
+      },
+      'POST   /pins/{cid}': {
+        function: {
+          handler: 'basic/add-pin-router.handler',
+          functionName: formatResourceName(app.stage, 'postPinRouter')
+        }
+      },
+      'GET    /internal/pins/{cid}': {
+        function: {
+          handler: 'basic/get-pin.handler',
+          functionName: formatResourceName(app.stage, 'getPin')
+        }
+      },
+      'POST   /internal/pins/{cid}': {
+        function: {
+          handler: 'basic/add-pin.handler',
+          functionName: formatResourceName(app.stage, 'postPin')
+        }
+      }
     }
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
@@ -124,4 +145,8 @@ function getCustomDomain (stage: string, hostedZone?: string): { domainName: str
   }
   const domainName = stage === 'prod' ? hostedZone : `${stage}.${hostedZone}`
   return { domainName, hostedZone }
+}
+
+function formatResourceName (stage: string, name: string): string {
+  return `${stage}-pickup-${name}`
 }
