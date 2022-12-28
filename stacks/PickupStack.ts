@@ -1,12 +1,16 @@
 import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { ContainerImage } from 'aws-cdk-lib/aws-ecs'
+import { ContainerImage, LogDriver, AwsLogDriver, LogDrivers, FireLensLogDriver, Secret, FirelensLogRouter, FirelensLogRouterProps, FirelensLogRouterType, Scope} from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
+import { Group } from 'aws-cdk-lib/aws-iam'
+import { servicesVersion } from 'typescript'
+import { urlSource } from 'ipfs/dist/src'
+import { aws_secretsmanager, SecretValue } from 'aws-cdk-lib'
 
 export function PickupStack ({ stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
-
+  
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
     // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
@@ -31,10 +35,43 @@ export function PickupStack ({ stack }: StackContext): void {
     enableExecuteCommand: true
   })
 
+  // configure the custom image to log router
+
+  service.taskDefinition.addFirelensLogRouter('log-router',{
+    firelensConfig: {
+      type: FirelensLogRouterType.FLUENTBIT,
+    },
+    image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64'),
+  })
+
+  // const grafanasecret = new aws_secretsmanager.Secret(stack,"grafanahost",);
+
+  const grafanasecret = aws_secretsmanager.Secret.fromSecretNameV2(
+    stack,
+    'gf-id',
+    'grafanahost',
+  );
+
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
-    logging: service.logDriver,
+    // route logs to grafana
+    // environment: {
+    //   URL: grafanasecret.toString()
+    // },
+    logging: LogDrivers.firelens({    
+      options: {
+        Name: "loki",
+        labels: "{job=\"firelens\"}",
+        remove_keys: "container_id,ecs_task_arn",
+        label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
+        line_format: "key_value",
+        url: grafanasecret.secretValue.toString()
+      },
+      // secretOptions: {
+      //   url: Secret.fromSecretsManager(grafanasecret)
+      // }
+    }),
     image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
       platform: Platform.LINUX_AMD64
     })
