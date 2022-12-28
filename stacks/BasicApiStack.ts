@@ -1,5 +1,7 @@
 import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverless-stack/resources'
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
+import * as cfnApig from 'aws-cdk-lib/aws-apigatewayv2'
+import * as apig from '@aws-cdk/aws-apigatewayv2-alpha'
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const dlq = new Queue(stack, 'PinDlq')
@@ -118,6 +120,12 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
     }
     // adding a 404 default route handler means CORS OPTION not work without extra config.
   })
+  const defaultStage = api.cdk.httpApi.defaultStage as apig.HttpStage
+  const cfnDefaultStage = defaultStage.node.defaultChild as cfnApig.CfnStage
+  cfnDefaultStage.defaultRouteSettings = {
+    ...cfnDefaultStage.defaultRouteSettings,
+    detailedMetricsEnabled: true
+  }
 
   stack.addOutputs({
     S3EventsTopicARN: s3Topic.topicArn,
