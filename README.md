@@ -92,6 +92,12 @@ npm start
 
 See: https://docs.sst.dev for more info on how things get deployed.
 
+To remove dev services yo our aws accout:
+
+```console
+npm run remove
+```
+
 ## Overview
 
 Project structure:
