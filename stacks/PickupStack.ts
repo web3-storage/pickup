@@ -44,8 +44,6 @@ export function PickupStack ({ stack }: StackContext): void {
     image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64'),
   })
 
-  // const grafanasecret = new aws_secretsmanager.Secret(stack,"grafanahost",);
-
   const grafanasecret = aws_secretsmanager.Secret.fromSecretNameV2(
     stack,
     'gf-id',
@@ -55,22 +53,16 @@ export function PickupStack ({ stack }: StackContext): void {
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
-    // route logs to grafana
-    // environment: {
-    //   URL: grafanasecret.toString()
-    // },
+  // route logs to grafana loki
     logging: LogDrivers.firelens({    
       options: {
         Name: "loki",
-        labels: "{job=\"firelens\"}",
+        labels: "{job=\"pickup_production\"}",
         remove_keys: "container_id,ecs_task_arn",
         label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
         line_format: "key_value",
         url: grafanasecret.secretValue.toString()
       },
-      // secretOptions: {
-      //   url: Secret.fromSecretsManager(grafanasecret)
-      // }
     }),
     image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
       platform: Platform.LINUX_AMD64
