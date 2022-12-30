@@ -3,7 +3,7 @@ import { BasicApiStack } from './BasicApiStack'
 import { ContainerImage, LogDriver, AwsLogDriver, LogDrivers, FireLensLogDriver, Secret, FirelensLogRouter, FirelensLogRouterProps, FirelensLogRouterType, Scope} from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
-import { Group } from 'aws-cdk-lib/aws-iam'
+import { Group, ManagedPolicy } from 'aws-cdk-lib/aws-iam'
 import { servicesVersion } from 'typescript'
 import { urlSource } from 'ipfs/dist/src'
 import { aws_secretsmanager, SecretValue } from 'aws-cdk-lib'
@@ -34,9 +34,8 @@ export function PickupStack ({ stack }: StackContext): void {
     // for debug!
     enableExecuteCommand: true
   })
-
+  service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'))
   // configure the custom image to log router
-
   service.taskDefinition.addFirelensLogRouter('log-router',{
     firelensConfig: {
       type: FirelensLogRouterType.FLUENTBIT,
@@ -79,3 +78,7 @@ export function PickupStack ({ stack }: StackContext): void {
   basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
   basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
 }
+
+
+
+
