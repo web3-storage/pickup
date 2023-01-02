@@ -10,7 +10,6 @@ import { aws_secretsmanager, SecretValue } from 'aws-cdk-lib'
 
 export function PickupStack ({ stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
-  
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
     // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
