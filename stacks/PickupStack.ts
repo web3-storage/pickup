@@ -77,7 +77,3 @@ export function PickupStack ({ stack }: StackContext): void {
   basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
   basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
 }
-
-
-
-
