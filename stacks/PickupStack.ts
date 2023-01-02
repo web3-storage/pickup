@@ -55,6 +55,7 @@ export function PickupStack ({ stack }: StackContext): void {
     logging: LogDrivers.firelens({    
       options: {
         Name: "loki",
+        env: basicApi.queue.queueName.toString(),
         labels: "{job=\"pickup_production\"}",
         remove_keys: "container_id,ecs_task_arn",
         label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
