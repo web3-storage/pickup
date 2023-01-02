@@ -92,7 +92,7 @@ npm start
 
 See: https://docs.sst.dev for more info on how things get deployed.
 
-To remove dev services yo our aws accout:
+To remove dev services to your aws account:
 
 ```console
 npm run remove
