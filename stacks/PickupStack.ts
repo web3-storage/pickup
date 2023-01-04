@@ -47,7 +47,9 @@ export function PickupStack ({ stack }: StackContext): void {
     'gf-id',
     'grafanahost',
   );
-
+  
+  var labelname = new String(stack);
+  labelname = labelname.slice(0, -12)
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
@@ -55,8 +57,8 @@ export function PickupStack ({ stack }: StackContext): void {
     logging: LogDrivers.firelens({    
       options: {
         Name: "loki",
-        env: basicApi.queue.queueName.toString(),
-        labels: "{job=\"pickup_production\"}",
+        env: labelname,
+        labels: "{job=\"" + labelname + "\"}",
         remove_keys: "container_id,ecs_task_arn",
         label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
         line_format: "key_value",
