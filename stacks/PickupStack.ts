@@ -33,49 +33,60 @@ export function PickupStack ({ stack }: StackContext): void {
     // for debug!
     enableExecuteCommand: true
   })
-  service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'))
-  // configure the custom image to log router
-  service.taskDefinition.addFirelensLogRouter('log-router',{
-    firelensConfig: {
-      type: FirelensLogRouterType.FLUENTBIT,
-    },
-    image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64'),
-  })
 
-  const grafanasecret = aws_secretsmanager.Secret.fromSecretNameV2(
-    stack,
-    'gf-id',
-    'grafanahost',
-  );
   
   var labelname = new String(stack);
   labelname = labelname.slice(0, -12)
+
+    if (labelname == "prod-pickup" || labelname == "staging-pickup") {
+      // add role to read secrets
+      service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'))
+      // configure the custom image to log router
+      service.taskDefinition.addFirelensLogRouter('log-router',{
+        firelensConfig: {
+          type: FirelensLogRouterType.FLUENTBIT,
+        },
+        image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64'),
+      })
+      // read secret
+      const grafanasecret = aws_secretsmanager.Secret.fromSecretNameV2(
+        stack,
+        'gf-id',
+        'grafanahost',
+      );
+
+      service.taskDefinition.addContainer('ipfs', {
+        // route logs to grafana loki
+          logging: LogDrivers.firelens({    
+            options: {
+              Name: "loki",
+              env: labelname,
+              labels: "{job=\"" + labelname + "\"}",
+              remove_keys: "container_id,ecs_task_arn",
+              label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
+              line_format: "key_value",
+              url: grafanasecret.secretValue.toString()
+            },
+          }),
+          image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
+            platform: Platform.LINUX_AMD64
+          })
+        })
+
+    } else { 
+
+      service.taskDefinition.addContainer('ipfs', {
+        // route logs to grafana loki
+          logging: service.logDriver,
+          image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
+            platform: Platform.LINUX_AMD64
+          })
+        })
+        
+    }
   // go-ipfs as sidecar!
   // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
-  service.taskDefinition.addContainer('ipfs', {
-  // route logs to grafana loki
-    logging: LogDrivers.firelens({    
-      options: {
-        Name: "loki",
-        env: labelname,
-        labels: "{job=\"" + labelname + "\"}",
-        remove_keys: "container_id,ecs_task_arn",
-        label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
-        line_format: "key_value",
-        url: grafanasecret.secretValue.toString()
-      },
-    }),
-    image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
-      platform: Platform.LINUX_AMD64
-    })
-    // command: [
-    //   'daemon',
-    //   '--profile=server' // Disables local host discovery. https://github.com/ipfs/kubo/blob/master/docs/config.md#profiles
-    //   // '--migrate=true',         // upgrade the repo if needed. copied from the default command. https://github.com/ipfs/kubo/blob/a6687744c703c5c020f4c004ca73f024c3bae4f7/Dockerfile#L120
-    //   // '--routing=dhtclient'     // Node will query the DHT as a client but will not respond to requests from other peers. This mode is less resource-intensive than server mode. https://github.com/ipfs/kubo/blob/master/docs/config.md#routingtype
-    //   // '--enable-namesys-pubsub' // web3.storage cluster default
-    // ]
-  })
+
 
   basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
   basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
