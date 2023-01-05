@@ -6,7 +6,7 @@ import { QueueProcessingFargateService } from './lib/queue-processing-fargate-se
 import { Group, ManagedPolicy } from 'aws-cdk-lib/aws-iam'
 import { servicesVersion } from 'typescript'
 import { urlSource } from 'ipfs/dist/src'
-import { aws_secretsmanager, SecretValue } from 'aws-cdk-lib'
+import { aws_ssm } from 'aws-cdk-lib'
 
 export function PickupStack ({ stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
@@ -38,9 +38,9 @@ export function PickupStack ({ stack }: StackContext): void {
   var labelname = new String(stack);
   labelname = labelname.slice(0, -12)
 
-    if (labelname == "prod-pickup" || labelname == "staging-pickup") {
+    if (labelname == "prod-pickup" || labelname == "pr58-pickup") {
       // add role to read secrets
-      service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('SecretsManagerReadWrite'))
+      service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
       // configure the custom image to log router
       service.taskDefinition.addFirelensLogRouter('log-router',{
         firelensConfig: {
@@ -48,13 +48,13 @@ export function PickupStack ({ stack }: StackContext): void {
         },
         image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64'),
       })
-      // read secret
-      const grafanasecret = aws_secretsmanager.Secret.fromSecretNameV2(
+      // read secret url from parameter store
+      const grafanasecret = aws_ssm.StringParameter.fromStringParameterName(
         stack,
         'gf-id',
         'grafanahost',
       );
-
+      
       service.taskDefinition.addContainer('ipfs', {
         // route logs to grafana loki
           logging: LogDrivers.firelens({    
@@ -65,8 +65,10 @@ export function PickupStack ({ stack }: StackContext): void {
               remove_keys: "container_id,ecs_task_arn",
               label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
               line_format: "key_value",
-              url: grafanasecret.secretValue.toString()
             },
+            secrets: {
+              url: grafanasecret.stringValue
+            }
           }),
           image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
             platform: Platform.LINUX_AMD64
