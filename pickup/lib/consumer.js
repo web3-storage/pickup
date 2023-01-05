@@ -3,7 +3,7 @@ import { Consumer } from 'sqs-consumer'
 import { createS3Uploader } from './s3.js'
 import { testIpfsApi } from './ipfs.js'
 import { pickupBatch } from './pickup.js'
-// import { Traceroute } from 'nodejs-traceroute'
+import Traceroute from 'nodejs-traceroute'
 
 export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
   // throws if can't connect
@@ -26,7 +26,6 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
     handleMessageTimeout: 4 * 60 * 60 * 1000, // ms, error if processing takes longer than this.
     handleMessageBatch: async (messages) => {
       try {
-        const Traceroute = require('nodejs-traceroute')
         const tracer = new Traceroute()
         tracer
           .on('pid', (pid) => {
