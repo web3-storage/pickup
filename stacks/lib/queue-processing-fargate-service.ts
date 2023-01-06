@@ -129,7 +129,7 @@ export class QueueProcessingFargateService extends QueueProcessingServiceBase {
   /**
    * Constructs a new instance of the QueueProcessingFargateService class.
    */
-  constructor (scope: Construct, id: string, props: QueueProcessingFargateServiceProps & { ephemeralStorageGiB: number }) {
+  constructor (scope: Construct, id: string, props: QueueProcessingFargateServiceProps & {ephemeralStorageGiB: number}) {
     super(scope, id, props)
 
     // Call S3 and dynamodb through internal network
