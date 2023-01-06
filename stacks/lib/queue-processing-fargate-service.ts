@@ -129,8 +129,11 @@ export class QueueProcessingFargateService extends QueueProcessingServiceBase {
   /**
    * Constructs a new instance of the QueueProcessingFargateService class.
    */
-  constructor (scope: Construct, id: string, props: QueueProcessingFargateServiceProps & {ephemeralStorageGiB: number}) {
+  constructor (scope: Construct, id: string, props: QueueProcessingFargateServiceProps & { ephemeralStorageGiB: number }) {
     super(scope, id, props)
+
+    // Call S3 and dynamodb through internal network
+    createVPCGateways(props.vpc)
 
     // Create a Task Definition for the container to start
     this.taskDefinition = new FargateTaskDefinition(this, 'QueueProcessingTaskDef', {
@@ -174,5 +177,27 @@ export class QueueProcessingFargateService extends QueueProcessingServiceBase {
 
     this.configureAutoscalingForService(this.service)
     this.grantPermissionsToService(this.service)
+  }
+}
+function createVPCGateways (vpc: ec2.IVpc | undefined): void {
+  console.log('**********')
+  console.log('VPC')
+  console.log(vpc)
+  if (vpc != null) {
+    const subnets = [
+      { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }
+    ]
+    vpc?.addGatewayEndpoint('DynamoDbEndpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+      subnets
+    })
+    vpc?.addGatewayEndpoint('S3Endpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+      subnets
+    })
+  } else {
+    const errMessage = 'Can\'t add gateway to undefined VPC'
+    console.error(errMessage)
+    throw new Error('Can\'t add gateway to undefined VPC')
   }
 }
