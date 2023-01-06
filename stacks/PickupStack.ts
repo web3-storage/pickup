@@ -7,6 +7,7 @@ import { Group, ManagedPolicy } from 'aws-cdk-lib/aws-iam'
 import { servicesVersion } from 'typescript'
 import { urlSource } from 'ipfs/dist/src'
 import { aws_ssm } from 'aws-cdk-lib'
+import { aws_secretsmanager, SecretValue } from 'aws-cdk-lib'
 
 export function PickupStack ({ stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
@@ -38,8 +39,8 @@ export function PickupStack ({ stack }: StackContext): void {
   var labelname = new String(stack);
   labelname = labelname.slice(0, -12)
 
-    if (labelname == "prod-pickup" || labelname == "staging-pickup") {
-      // add role to read secrets
+    if (labelname == "prod-pickup" || labelname == "pr58-pickup") {
+      // add role to read parameter
       service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
       // configure the custom image to log router
       service.taskDefinition.addFirelensLogRouter('log-router',{
@@ -57,7 +58,7 @@ export function PickupStack ({ stack }: StackContext): void {
       
       service.taskDefinition.addContainer('ipfs', {
         // route logs to grafana loki
-          logging: LogDrivers.firelens({    
+          logging: LogDrivers.firelens({
             options: {
               Name: "loki",
               env: labelname,
@@ -65,7 +66,9 @@ export function PickupStack ({ stack }: StackContext): void {
               remove_keys: "container_id,ecs_task_arn",
               label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
               line_format: "key_value",
-              url: grafanasecret.stringValue
+            },
+            secretOptions: { // Retrieved from AWS Systems Manager Parameter Store
+              url: Secret.fromSsmParameter(grafanasecret),
             },
           }),
           image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
