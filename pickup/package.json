@@ -20,7 +20,8 @@
     "multiformats": "^9.6.5",
     "node-fetch": "^3.2.10",
     "p-retry": "^5.1.1",
-    "sqs-consumer": "^5.7.0"
+    "sqs-consumer": "^5.7.0",
+    "nodejs-traceroute": "^2.0.1"
   },
   "devDependencies": {
     "@aws-sdk/client-sqs": "^3.118.1",
