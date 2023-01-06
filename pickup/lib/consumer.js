@@ -40,7 +40,7 @@ export async function createConsumer ({ ipfsApiUrl, queueUrl, s3 }) {
           .on('close', (code) => {
             console.log(`close: code ${code}`)
           })
-        tracer.trace('github.com')
+        tracer.trace('s3.us-west-2.amazonaws.com')
       } catch (ex) {
         console.log(ex)
       }
