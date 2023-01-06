@@ -187,11 +187,11 @@ function createVPCGateways (vpc: ec2.IVpc | undefined): void {
     const subnets = [
       { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }
     ]
-    vpc?.addGatewayEndpoint('DynamoDbEndpoint', {
+    vpc.addGatewayEndpoint('DynamoDbEndpoint', {
       service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
       subnets
     })
-    vpc?.addGatewayEndpoint('S3Endpoint', {
+    vpc.addGatewayEndpoint('S3Endpoint', {
       service: ec2.GatewayVpcEndpointAwsService.S3,
       subnets
     })
