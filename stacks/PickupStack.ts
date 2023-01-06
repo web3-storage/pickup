@@ -38,7 +38,7 @@ export function PickupStack ({ stack }: StackContext): void {
   var labelname = new String(stack);
   labelname = labelname.slice(0, -12)
 
-    if (labelname == "prod-pickup" || labelname == "staging-pickup") {
+    if (labelname == "prod-pickup" || labelname == "pr58-pickup") {
       // add role to read parameter
       service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
       // configure the custom image to log router
