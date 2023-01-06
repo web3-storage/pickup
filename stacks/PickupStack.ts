@@ -65,10 +65,8 @@ export function PickupStack ({ stack }: StackContext): void {
               remove_keys: "container_id,ecs_task_arn",
               label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
               line_format: "key_value",
-            },
-            secrets: {
               url: grafanasecret.stringValue
-            }
+            },
           }),
           image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
             platform: Platform.LINUX_AMD64
