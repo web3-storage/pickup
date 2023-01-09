@@ -3,13 +3,17 @@ import { BasicApiStack } from './BasicApiStack'
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
+import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
-export function PickupStack ({ stack }: StackContext): void {
+export function PickupStack({ stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
 
   const cluster = new Cluster(stack, 'ipfs', {
     containerInsights: true
   })
+
+  // Network calls to S3 and dynamodb through internal network
+  createVPCGateways(cluster.vpc)
 
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
@@ -54,4 +58,24 @@ export function PickupStack ({ stack }: StackContext): void {
 
   basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
   basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+}
+
+function createVPCGateways (vpc: ec2.IVpc): void {
+  if (vpc != null) {
+    const subnets = [
+      { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }
+    ]
+    vpc.addGatewayEndpoint('DynamoDbEndpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+      subnets
+    })
+    vpc.addGatewayEndpoint('S3Endpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+      subnets
+    })
+  } else {
+    const errMessage = 'Can\'t add gateway to undefined VPC'
+    console.error(errMessage)
+    throw new Error('Can\'t add gateway to undefined VPC')
+  }
 }
