@@ -35,7 +35,6 @@
   "dependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
     "aws-cdk-lib": "2.50.0",
-    "nodejs-traceroute": "^2.0.1"
   },
   "ts-standard": {
     "ignore": [

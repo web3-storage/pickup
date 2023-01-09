@@ -180,9 +180,6 @@ export class QueueProcessingFargateService extends QueueProcessingServiceBase {
   }
 }
 function createVPCGateways (vpc: ec2.IVpc): void {
-  console.log('**********')
-  console.log('VPC')
-  console.log(vpc)
   if (vpc != null) {
     const subnets = [
       { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }
