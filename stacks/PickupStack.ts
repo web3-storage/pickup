@@ -35,7 +35,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     enableExecuteCommand: true
   })
 
-    if (app.stage == "prod" || app.stage =="pr58") {
+    if (app.stage == "prod" || app.stage =="staging") {
       // add role to read parameter
       service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
       // configure the custom image to log router
