@@ -1,6 +1,6 @@
 import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { ContainerImage, LogDriver, AwsLogDriver, LogDrivers, FireLensLogDriver, Secret, FirelensLogRouter, FirelensLogRouterProps, FirelensLogRouterType, Scope} from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDriver, AwsLogDriver, LogDrivers, FireLensLogDriver, Secret, FirelensLogRouter, FirelensLogRouterProps, FirelensLogRouterType, Scope} from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import { Group, ManagedPolicy } from 'aws-cdk-lib/aws-iam'
@@ -11,6 +11,11 @@ import { aws_secretsmanager, SecretValue } from 'aws-cdk-lib'
 
 export function PickupStack ({ app, stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
+
+  const cluster = new Cluster(stack, 'ipfs', {
+    containerInsights: true
+  })
+
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
     // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
@@ -20,7 +25,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       platform: Platform.LINUX_AMD64
     }),
     containerName: 'pickup',
-    maxScalingCapacity: 3,
+    maxScalingCapacity: 10,
     cpu: 4096,
     memoryLimitMiB: 8192,
     ephemeralStorageGiB: 64, // max 200
@@ -32,7 +37,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
     // retentionPeriod: Duration.days(1),
     // visibilityTimeout: Duration.minutes(5),
     // for debug!
-    enableExecuteCommand: true
+    enableExecuteCommand: true,
+    cluster
   })
 
     if (app.stage == "prod" || app.stage =="staging") {

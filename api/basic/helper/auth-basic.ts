@@ -1,5 +1,6 @@
 import { Config } from '@serverless-stack/node/config/index.js'
 import { Response } from '../schema.js'
+import { logger } from './logger.js'
 
 export function doAuth (
   authorizationHeader: string | undefined
@@ -8,6 +9,7 @@ export function doAuth (
     authorizationHeader !== `Basic ${getValidCredentials()}` ||
     emptyOrNil(authorizationHeader)
   ) {
+    logger.info('User not authorized')
     return {
       statusCode: 401,
       body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } })
@@ -15,7 +17,7 @@ export function doAuth (
   }
 }
 
-function getValidCredentials (): string {
+export function getValidCredentials (): string {
   let validCredentials = process.env.CLUSTER_BASIC_AUTH_TOKEN
   if (emptyOrNil(validCredentials)) {
     // If not set as environment variable, get it from AWS SSM parameter store
