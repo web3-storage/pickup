@@ -9,7 +9,7 @@ import { urlSource } from 'ipfs/dist/src'
 import { aws_ssm } from 'aws-cdk-lib'
 import { aws_secretsmanager, SecretValue } from 'aws-cdk-lib'
 
-export function PickupStack ({ stack }: StackContext): void {
+export function PickupStack ({ app, stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   const service = new QueueProcessingFargateService(stack, 'Service', {
@@ -35,10 +35,7 @@ export function PickupStack ({ stack }: StackContext): void {
     enableExecuteCommand: true
   })
 
-  var labelname = new String(stack);
-  labelname = labelname.slice(0, -12)
-
-    if (labelname == "prod-pickup" || labelname == "staging-pickup") {
+    if (app.stage == "prod" || app.stage =="pr58") {
       // add role to read parameter
       service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
       // configure the custom image to log router
@@ -54,14 +51,15 @@ export function PickupStack ({ stack }: StackContext): void {
         'gf-id',
         'grafanahost',
       );
-      
+        // go-ipfs as sidecar!
+        // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
       service.taskDefinition.addContainer('ipfs', {
         // route logs to grafana loki
           logging: LogDrivers.firelens({
             options: {
               Name: "loki",
-              env: labelname,
-              labels: "{job=\"" + labelname + "\"}",
+              env: app.stage,
+              labels: "{job=\"" + app.stage + "-pickup\"}",
               remove_keys: "container_id,ecs_task_arn",
               label_keys: "container_name,ecs_task_definition,source,ecs_cluster",
               line_format: "key_value",
@@ -76,7 +74,8 @@ export function PickupStack ({ stack }: StackContext): void {
         })
 
     } else { 
-
+       // go-ipfs as sidecar!
+      // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
       service.taskDefinition.addContainer('ipfs', {
         // route logs to grafana loki
           logging: service.logDriver,
@@ -86,9 +85,6 @@ export function PickupStack ({ stack }: StackContext): void {
         })
         
     }
-  // go-ipfs as sidecar!
-  // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
-
 
   basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
   basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
