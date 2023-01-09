@@ -133,7 +133,7 @@ export class QueueProcessingFargateService extends QueueProcessingServiceBase {
     super(scope, id, props)
 
     // Call S3 and dynamodb through internal network
-    createVPCGateways(props.vpc)
+    createVPCGateways(this.cluster.vpc)
 
     // Create a Task Definition for the container to start
     this.taskDefinition = new FargateTaskDefinition(this, 'QueueProcessingTaskDef', {
@@ -179,7 +179,7 @@ export class QueueProcessingFargateService extends QueueProcessingServiceBase {
     this.grantPermissionsToService(this.service)
   }
 }
-function createVPCGateways (vpc: ec2.IVpc | undefined): void {
+function createVPCGateways (vpc: ec2.IVpc): void {
   console.log('**********')
   console.log('VPC')
   console.log(vpc)
