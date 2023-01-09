@@ -5,7 +5,7 @@ import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
-export function PickupStack({ stack }: StackContext): void {
+export function PickupStack ({ stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
 
   const cluster = new Cluster(stack, 'ipfs', {
