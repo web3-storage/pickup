@@ -185,7 +185,7 @@ function createVPCGateways (vpc: ec2.IVpc): void {
   console.log(vpc)
   if (vpc != null) {
     const subnets = [
-      { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }
+      { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }
     ]
     vpc.addGatewayEndpoint('DynamoDbEndpoint', {
       service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
