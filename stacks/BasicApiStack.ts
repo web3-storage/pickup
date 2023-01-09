@@ -67,6 +67,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       }
     }
   })
+  bucket.cdk.bucket.enableEventBridgeNotification()
 
   const customDomain = getCustomDomain(app.stage, process.env.HOSTED_ZONE)
   const apiFunctionBindList: SSTConstruct[] = [bucket, table, queue]
