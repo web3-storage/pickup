@@ -83,6 +83,11 @@ export function validateGetPinsParameters ({
     return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: '"cids" parameter not found' } } }
   }
 
+  // eslint-ignore-next-line
+  if (typeof (cids) !== 'string') {
+    return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: '"cids" parameter should be a comma separated string' } } }
+  }
+
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const errors = cids.split(',').map(cid => !isCID(cid) ? `${cid} is not a valid CID` : null).filter(error => !!error)
   if (errors.length > 0) {

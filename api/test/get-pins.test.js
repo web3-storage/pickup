@@ -68,8 +68,6 @@ test.before(async t => {
   t.context.lambdaContext = {
     awsRequestId: 123123
   }
-
-  console.log('Table', table)
 })
 
 test('get pins handler basic auth fail', async t => {
@@ -80,9 +78,6 @@ test('get pins handler basic auth fail', async t => {
   const event = {
     headers: {
       authorization: 'nope'
-    },
-    pathParameters: {
-      cid: 'bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354'
     }
   }
   const response = await handler(event, t.context.lambdaContext)
@@ -91,7 +86,7 @@ test('get pins handler basic auth fail', async t => {
   t.deepEqual(JSON.parse(response.body), { error: { reason: 'UNAUTHORIZED' } })
 })
 
-test('get pins handler with no dyamo set', async t => {
+test('get pins handler with no dynamo set', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
   process.env.TABLE_NAME = ''
@@ -184,5 +179,28 @@ test('get pins handler with non valid cids', async t => {
   t.is(response.statusCode, 400)
   t.deepEqual(response.body, {
     error: { reason: 'BAD_REQUEST', details: '123 is not a valid CID, 456 is not a valid CID' }
+  })
+})
+
+test('get pins handler with non string cids', async t => {
+  process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
+  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
+  process.env.TABLE_NAME = t.context.table
+  process.env.BATCH_ITEM_COUNT = 3
+
+  const event = {
+    headers: {
+      authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
+    },
+    queryStringParameters: {
+      cids
+    }
+  }
+
+  const response = await handler(event, t.context.lambdaContext)
+
+  t.is(response.statusCode, 400)
+  t.deepEqual(response.body, {
+    error: { reason: 'BAD_REQUEST', details: '"cids" parameter should be a comma separated string' }
   })
 })

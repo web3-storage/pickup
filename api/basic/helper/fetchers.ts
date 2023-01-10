@@ -14,6 +14,11 @@ export interface GetPinResult {
   body: ClusterStatusResponse
 }
 
+export interface GetPinsResult {
+  statusCode: number
+  body: ClusterStatusResponse[]
+}
+
 export interface FetchAddPinParams {
   cid: string
   endpoint: string
@@ -24,6 +29,13 @@ export interface FetchAddPinParams {
 
 export interface FetchGetPinParams {
   cid: string
+  endpoint: string
+  token: string
+  isInternal?: boolean
+}
+
+export interface FetchGetPinsParams {
+  cids: string
   endpoint: string
   token: string
   isInternal?: boolean
@@ -61,4 +73,22 @@ export async function fetchGetPin ({
   logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchGetPin SUCCESS')
 
   return { statusCode: result.status, body: resultJSON }
+}
+
+export async function fetchGetPins ({
+  cids,
+  endpoint,
+  token,
+  isInternal = false
+}: FetchGetPinsParams): Promise<GetPinsResult> {
+  const baseUrl = (new URL(endpoint))
+  const query = querystring.stringify({ cids })
+  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins?${query}`, baseUrl.origin)
+  logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPins')
+  const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
+
+  const resultText = await result.text()
+  logger.trace({ endpoint, isInternal, href: myURL.href, result: resultText, statusCode: result.status }, 'fetchGetPins SUCCESS')
+
+  return { statusCode: result.status, body: resultText.split('\n').map(row => JSON.parse(row)) }
 }
