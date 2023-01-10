@@ -14,7 +14,10 @@ export function validateDynamoDBConfiguration ({ table }: { table: string }): Re
 export function validateS3Configuration ({ bucket }: { bucket: string }): Response | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!bucket) {
-    return { statusCode: 500, body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'BUCKET_NAME must be set in ENV' } } }
+    return {
+      statusCode: 500,
+      body: { error: { reason: 'INTERNAL_SERVER_ERROR', details: 'BUCKET_NAME must be set in ENV' } }
+    }
   }
 }
 
@@ -68,6 +71,24 @@ export function validateEventParameters ({
         statusCode: 400,
         body: { error: { reason: 'BAD_REQUEST', details: `${str} in origins is not a valid multiaddr` } }
       }
+    }
+  }
+}
+
+export function validateGetPinsParameters ({
+  cids
+}: { cids: string }): Response | undefined {
+  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+  if (!cids) {
+    return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: '"cids" parameter not found' } } }
+  }
+
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const errors = cids.split(',').map(cid => !isCID(cid) ? `${cid} is not a valid CID` : null).filter(error => !!error)
+  if (errors.length > 0) {
+    return {
+      statusCode: 400,
+      body: { error: { reason: 'BAD_REQUEST', details: errors.join(', ') } }
     }
   }
 }
