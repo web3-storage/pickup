@@ -8,7 +8,6 @@ import {
   validateGetPinsParameters,
   validateRoutingConfiguration
 } from './helper/validators.js'
-import { toGetPinResponse } from './helper/to-get-pin-response'
 
 /**
  * AWS API Gateway handler for GET /pins/${cid}
@@ -33,10 +32,10 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
 
-  const cids = event.queryStringParameters?.cids || ''
-
   /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cids = event.queryStringParameters?.cids || ''
+
   const validationError: Response | undefined =
     validateRoutingConfiguration({
       legacyClusterIpfsUrl,
@@ -81,7 +80,9 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
     const returnContent = cids.split(',').map(cid =>
       (foundInPickup[cid] && (Object.values(foundInPickup[cid].peer_map)
-          .filter(pin => pin.status !== 'unpinned').length > 0)) ? foundInPickup[cid] : foundInLegacy[cid]
+        .filter(pin => pin.status !== 'unpinned').length > 0))
+        ? foundInPickup[cid]
+        : foundInLegacy[cid]
     ).map(pin => JSON.stringify(pin)).join('\n')
 
     return {

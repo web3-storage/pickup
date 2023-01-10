@@ -1,7 +1,7 @@
 import test from 'ava'
 import nock from 'nock'
 
-import {handler} from '../basic/get-pins-router.js'
+import { handler } from '../basic/get-pins-router.js'
 
 import responseGetPins from './__data/response-get-pins.js'
 import responseGetPinsLegacy from './__data/response-get-pins-legacy.js'
@@ -39,7 +39,7 @@ test('get pins router handler basic auth fail', async t => {
   const response = await handler(event, t.context.lambdaContext)
   t.is(response.statusCode, 401)
   t.true(typeof response.body === 'string')
-  t.deepEqual(JSON.parse(response.body), {error: {reason: 'UNAUTHORIZED'}})
+  t.deepEqual(JSON.parse(response.body), { error: { reason: 'UNAUTHORIZED' } })
 })
 
 test('get pins router handler without cids', async t => {
@@ -110,7 +110,6 @@ test('get pins router handler with invalid legacyClusterIpfsUrl', async t => {
   process.env.LEGACY_CLUSTER_IPFS_URL = ''
   process.env.PICKUP_URL = t.context.pickupUrl
 
-  const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
   const event = {
     headers: {
       authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
@@ -178,7 +177,6 @@ test('get pins router handler with result from pickup and legacy', async t => {
   nockLegacyClusterIpfs.done()
 })
 
-
 test('get pins router handler with result only from pickup', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
@@ -188,7 +186,7 @@ test('get pins router handler with result only from pickup', async t => {
   const nockPickup = nock(t.context.pickupUrl)
   nockPickup
     .get(`/internal/pins?cids=${cids[0]},${cids[4]}`)
-    .reply(200, expectedResultsPickup[0] + "\n" + expectedResultsPickup[4])
+    .reply(200, expectedResultsPickup[0] + '\n' + expectedResultsPickup[4])
 
   const event = {
     headers: {
@@ -201,7 +199,6 @@ test('get pins router handler with result only from pickup', async t => {
   const response = await handler(event, t.context.lambdaContext)
 
   t.is(response.statusCode, 200)
-
 
   const checkValues = response.body.split('\n')
 
