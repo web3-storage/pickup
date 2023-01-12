@@ -90,5 +90,5 @@ export async function fetchGetPins ({
   const resultText = await result.text()
   logger.trace({ endpoint, isInternal, href: myURL.href, result: resultText, statusCode: result.status }, 'fetchGetPins SUCCESS')
 
-  return { statusCode: result.status, body: resultText.split('\n').map(row => JSON.parse(row)) }
+  return { statusCode: result.status, body: resultText.split('\n').filter(row => !!row).map(row => JSON.parse(row)) }
 }

@@ -27,7 +27,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   logger.level = logLevel
   withLambdaRequest(event, context)
 
-  logger.info('Get pins request')
+  logger.info('Get pins request 1')
 
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
