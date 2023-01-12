@@ -67,15 +67,15 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     return {
       statusCode: 200,
       body: cids.map(
-        cid => JSON.stringify(toGetPinResponse(cid, pins[cid], ipfsAddr, ipfsPeerId))).join('\n')
+        cid => JSON.stringify(toGetPinResponse(cid, pins[cid] as Pin, ipfsAddr, ipfsPeerId))).join('\n')
     }
   } catch (error) {
-    console.log(error)
+    logger.error(error)
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
   }
 }
 
-export const getPins = async ({ cids, dynamo, table, batchItemCount }: GetPinInput): Promise<Record<string, Pin>> => {
+export const getPins = async ({ cids, dynamo, table, batchItemCount }: GetPinInput): Promise<Record<string, Pin | {cid: string} | undefined>> => {
   const client = DynamoDBDocumentClient.from(dynamo)
 
   const chunkSize = batchItemCount
@@ -86,9 +86,8 @@ export const getPins = async ({ cids, dynamo, table, batchItemCount }: GetPinInp
     chunks.push(chunk)
   }
 
-  const response: Pin[] = []
-  for (const chunk of chunks) {
-    const data = await client.send(new BatchGetCommand({
+  const results = await Promise.all(chunks.map(async chunk =>
+    await client.send(new BatchGetCommand({
       RequestItems: {
         [table]: {
           Keys: chunk.map(cid => ({ cid }))
@@ -96,13 +95,17 @@ export const getPins = async ({ cids, dynamo, table, batchItemCount }: GetPinInp
       },
       ReturnConsumedCapacity: ReturnConsumedCapacity.TOTAL
     }))
+  ))
 
+  const response = results.map((data, chunkIndex) => {
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    data?.Responses?.[table].forEach((item, index) => item ? response.push(item as unknown as Pin) : { cid: chunk[index] })
-  }
+    return data?.Responses?.[table].map((item, index) => item ? (item as unknown as Pin) : { cid: chunks[chunkIndex][index] })
+  }).flatMap(item => item)
 
-  return response.reduce((acc: Record<string, Pin>, next) => {
-    acc[next.cid] = next
+  return response.reduce((acc: Record<string, Pin | {cid: string} | undefined>, next) => {
+    if (next) {
+      acc[next.cid] = next
+    }
     return acc
   }, {})
 }

@@ -26,9 +26,11 @@ test.before(async t => {
     .start()
   const table = nanoid()
   const dbEndpoint = `http://${dbContainer.getHost()}:${dbContainer.getMappedPort(8000)}`
+
   const dynamo = new DynamoDBClient({
     endpoint: dbEndpoint
   })
+
   await dynamo.send(new CreateTableCommand({
     TableName: table,
     AttributeDefinitions: [
@@ -109,33 +111,6 @@ test('get pins handler with no dynamo set', async t => {
   })
 })
 
-test('get pins handler basic auth success', async t => {
-  process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
-  process.env.TABLE_NAME = t.context.table
-  process.env.BATCH_ITEM_COUNT = 3
-
-  const event = {
-    headers: {
-      authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
-    },
-    queryStringParameters: {
-      cids: cids.join(',')
-    }
-  }
-
-  const response = await handler(event, t.context.lambdaContext)
-
-  t.is(response.statusCode, 200)
-
-  const expectedResults = responseGetPins.split('\n')
-
-  response.body.split('\n').forEach((result, i) => {
-    t.is(result.cid, expectedResults[i].cid)
-    t.is(result.status, expectedResults[i].status)
-  })
-})
-
 test('get pins handler with no cids', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
@@ -202,5 +177,40 @@ test('get pins handler with non string cids', async t => {
   t.is(response.statusCode, 400)
   t.deepEqual(response.body, {
     error: { reason: 'BAD_REQUEST', details: '"cids" parameter should be a comma separated string' }
+  })
+})
+
+test('get pins handler basic auth success', async t => {
+  process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
+  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
+  process.env.TABLE_NAME = t.context.table
+  process.env.BATCH_ITEM_COUNT = 3
+
+  const event = {
+    headers: {
+      authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
+    },
+    queryStringParameters: {
+      cids: cids.join(',')
+    }
+  }
+
+  const response = await handler(event, t.context.lambdaContext)
+
+  t.is(response.statusCode, 200)
+
+  const expectedResults = responseGetPins.split('\n').map(row => JSON.parse(row))
+  const responseRows = response.body.split('\n').map(row => JSON.parse(row))
+
+  t.is(responseRows.length, 5)
+  responseRows.forEach((result, i) => {
+    t.truthy(result.cid)
+    t.truthy(Object.values(result.peer_map)[0].status)
+
+    t.is(result.cid, expectedResults[i].cid)
+    t.is(
+      Object.values(result.peer_map)[0].status,
+      Object.values(expectedResults[i].peer_map)[0].status
+    )
   })
 })

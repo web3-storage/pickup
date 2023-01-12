@@ -134,12 +134,12 @@ test('get pins router handler with result from pickup and legacy', async t => {
   const nockPickup = nock(t.context.pickupUrl)
   nockPickup
     .get(`/internal/pins?cids=${cids.join(',')}`)
-    .reply(200, responseGetPins)
+    .reply(200, responseGetPins + '\n')
 
   const nockLegacyClusterIpfs = nock(t.context.legacyClusterIpfsUrl)
   nockLegacyClusterIpfs
     .get(`/api/pins?cids=${cids[1]},${cids[2]},${cids[3]}`)
-    .reply(200, responseGetPinsLegacy)
+    .reply(200, responseGetPinsLegacy + '\n')
 
   const event = {
     headers: {
@@ -153,25 +153,26 @@ test('get pins router handler with result from pickup and legacy', async t => {
 
   t.is(response.statusCode, 200)
 
-  const expectedResultsPickup = responseGetPins.split('\n')
-  const expectedResultsLegacy = responseGetPinsLegacy.split('\n')
+  const expectedResultsPickup = responseGetPins.split('\n').map(row => JSON.parse(row))
+  const expectedResultsLegacy = responseGetPinsLegacy.split('\n').map(row => JSON.parse(row))
 
-  const checkValues = response.body.split('\n')
+  const checkValues = response.body.split('\n').map(row => JSON.parse(row))
 
-  t.is(checkValues[0].cid, expectedResultsPickup[0].cid)
-  t.is(checkValues[0].status, expectedResultsPickup[0].status)
+  function checkEntry (result, expected) {
+    t.truthy(result.cid)
+    t.truthy(Object.values(result.peer_map)[0].status)
+    t.is(result.cid, expected.cid)
+    t.is(
+      Object.values(result.peer_map)[0].status,
+      Object.values(expected.peer_map)[0].status
+    )
+  }
 
-  t.is(checkValues[1].cid, expectedResultsLegacy[0].cid)
-  t.is(checkValues[1].status, expectedResultsLegacy[0].status)
-
-  t.is(checkValues[2].cid, expectedResultsLegacy[1].cid)
-  t.is(checkValues[2].status, expectedResultsLegacy[1].status)
-
-  t.is(checkValues[3].cid, expectedResultsLegacy[2].cid)
-  t.is(checkValues[3].status, expectedResultsLegacy[2].status)
-
-  t.is(checkValues[4].cid, expectedResultsPickup[4].cid)
-  t.is(checkValues[4].status, expectedResultsPickup[4].status)
+  checkEntry(checkValues[0], expectedResultsPickup[0])
+  checkEntry(checkValues[1], expectedResultsLegacy[0])
+  checkEntry(checkValues[2], expectedResultsLegacy[1])
+  checkEntry(checkValues[3], expectedResultsLegacy[2])
+  checkEntry(checkValues[4], expectedResultsPickup[4])
 
   nockPickup.done()
   nockLegacyClusterIpfs.done()

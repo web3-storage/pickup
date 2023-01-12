@@ -27,7 +27,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   logger.level = logLevel
   withLambdaRequest(event, context)
 
-  logger.info('Get pins request 1')
+  logger.info('Get pins request')
 
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
@@ -44,15 +44,14 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     }) ||
     validateGetPinsParameters({ cids })
 
-
   if (validationError != null) {
     return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
   }
 
-  logger.trace(`Parameters are valid`)
+  logger.trace('Parameters are valid')
 
   try {
-    logger.trace(`Get from pickup`)
+    logger.trace('Get from pickup')
     const pickupResponse = await fetchGetPins({ cids, endpoint: pickupUrl, isInternal: true, token })
 
     logger.trace(pickupResponse, 'Pickup response')
@@ -77,7 +76,6 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
         body: pickupResponse.body.map(pin => JSON.stringify(pin)).join('\n')
       }
     }
-
 
     const legacyClusterIpfsResponse = await fetchGetPins({
       cids: cidNotFound.join(','),
