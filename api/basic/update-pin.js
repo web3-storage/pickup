@@ -1,6 +1,9 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { logger } from './helper/logger.js'
+import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
+import { toResponse, toResponseError } from './helper/response.js'
+import { ErrorCode } from './schema.js'
+
 
 /**
  * Deal with the horror of S3Events wrapped up as strings in SNSEvents.
@@ -30,6 +33,7 @@ export async function sqsEventHandler (sqsEvent) {
 /**
  * Set pin status to pinned when receiving an
  * S3 `object_created` event for a .car file.
+ * We assume params are fine because it's triggered from S3 events
  *
  * @param {import('aws-lambda').S3Event} event
  */
@@ -42,26 +46,35 @@ export async function s3EventHandler (event) {
   } = process.env
 
   logger.level = logLevel
+  context.functionName = 'UPDATE_PIN_LAMBDA'
+  setLoggerWithLambdaRequest(event, context)
 
-  logger.info('Update pin request')
+  logger.info({ code: 'INVOKE' }, 'Update pin invokation')
 
-  const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
+  try {
+    const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
 
-  const res = []
-  for (const record of event.Records) {
-    const { key } = record.s3.object
-    if (!key.endsWith('.car') || !record.eventName.startsWith('ObjectCreated')) {
-      logger.error({
-        recordEventName: record.eventName,
-        key
-      }, `Ignoring '${record.eventName}' event for ${key} - Expected ObjectCreated event for .car file`)
-      continue
+    const res = []
+    for (const record of event.Records) {
+      const { key } = record.s3.object
+      if (!key.endsWith('.car') || !record.eventName.startsWith('ObjectCreated')) {
+        logger.error({
+          recordEventName: record.eventName,
+          key,
+          code: 'INVALID_RECORD'
+        }, `Ignoring invalid record - Expected ObjectCreated event for .car file`)
+        continue
+      }
+      const file = key.split('/').at(-1)
+      const cid = file.split('.').at(0)
+      // TODO promise.all/allSettled
+      res.push(await updatePinStatus(dynamo, table, cid))
     }
-    const file = key.split('/').at(-1)
-    const cid = file.split('.').at(0)
-    res.push(await updatePinStatus(dynamo, table, cid))
+    return toResponse(res)
+  } catch (err) {
+    logger.error({ err, code: err.code }, 'Error on update pin')
+    return toResponseError(500, 'INTERNAL_SERVER_ERROR', err.message)
   }
-  return res
 }
 
 /**
@@ -72,19 +85,24 @@ export async function s3EventHandler (event) {
  * @param {string} status
  */
 export async function updatePinStatus (dynamo, table, cid, status = 'pinned') {
-  logger.info({ cid, status }, 'Update pin status')
-  const client = DynamoDBDocumentClient.from(dynamo)
-  const res = await client.send(new UpdateCommand({
-    TableName: table,
-    Key: { cid },
-    ExpressionAttributeNames: {
-      '#status': 'status'
-    },
-    ExpressionAttributeValues: {
-      ':s': status
-    },
-    UpdateExpression: 'set #status = :s',
-    ReturnValues: 'ALL_NEW'
-  }))
-  return res.Attributes
+  try {
+    logger.info({ cid, status }, 'Update pin status')
+    const client = DynamoDBDocumentClient.from(dynamo)
+    const res = await client.send(new UpdateCommand({
+      TableName: table,
+      Key: { cid },
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
+      ExpressionAttributeValues: {
+        ':s': status
+      },
+      UpdateExpression: 'set #status = :s',
+      ReturnValues: 'ALL_NEW'
+    }))
+    return res.Attributes
+  } catch (err) {
+    logger.error({ err }, 'Dynamo error')
+  }
+  throw new ErrorCode('DYNAMO_UPDATE_PIN')
 }

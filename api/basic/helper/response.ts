@@ -1,4 +1,33 @@
-import { ClusterStatusResponse, Pin } from '../schema'
+import { ClusterAddResponseBody, ClusterGetResponseBody, Pin } from "../schema"
+
+export function toResponseError(code = 500, reason: string, details?: string) {
+  return { statusCode: code, body: JSON.stringify({ error: { reason, details } }) }
+}
+
+export function toResponse(body: Object) {
+  return { statusCode: 200, body: JSON.stringify(body) }
+}
+
+export function toAddPinResponse(pin: Pin, origins: string[]): ClusterAddResponseBody {
+  return {
+    replication_factor_min: -1,
+    replication_factor_max: -1,
+    name: '',
+    mode: 'recursive',
+    shard_size: 0,
+    user_allocations: null,
+    expire_at: '0001-01-01T00:00:00Z',
+    metadata: {},
+    pin_update: null,
+    origins: origins,
+    cid: pin.cid,
+    type: 'pin',
+    allocations: [],
+    max_depth: -1,
+    reference: null,
+    timestamp: pin.created
+  }
+}
 
 /**
  * Hardcodes much of a cluster shaped response as if it was a single node cluster
@@ -13,7 +42,7 @@ export function toGetPinResponse (
   pin?: Pin,
   ipfsAddr = '/dns4/elastic.dag.house/tcp/443/wss/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm',
   ipfsPeerId = ipfsAddr.split('/').at(-1)
-): ClusterStatusResponse {
+): ClusterGetResponseBody {
   if (ipfsPeerId === undefined) {
     throw new Error('CLUSTER_IPFS_ADDR must be a valid multiaddr')
   }

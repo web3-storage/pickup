@@ -77,7 +77,7 @@ test('get pin router handler with invalid cid', async t => {
 
   t.deepEqual(response, {
     statusCode: 400,
-    body: '{"error":{"reason":"BAD_REQUEST","details":"123123123 is not a valid CID"}}'
+    body: '{"error":{"reason":"BAD_REQUEST","details":"Invalid CID"}}'
   })
 })
 
@@ -99,7 +99,7 @@ test('get pin router handler with invalid pickupUrl', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 
@@ -121,7 +121,7 @@ test('get pin router handler with invalid legacyClusterIpfsUrl', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"LEGACY_CLUSTER_IPFS_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 
@@ -178,8 +178,7 @@ test('get pin router handler with non valid result from pickup', async t => {
   }
   const response = await handler(event, t.context.lambdaContext)
 
-  t.is(response.statusCode, 200)
-  t.is(response.body, JSON.stringify(responseGetPinPinned))
+  t.deepEqual(JSON.parse(response.body), responseGetPinPinned)
 
   nockPickup.done()
   nockLegacyClusterIpfs.done()

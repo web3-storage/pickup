@@ -3,6 +3,11 @@ export interface Response {
   body: any
 }
 
+export interface ValidationError {
+  code: string
+  message: string
+}
+
 export interface Pin {
   cid: string
   status: 'queued' | 'pinning' | 'pinned' | 'failed' | 'unpinned'
@@ -20,7 +25,7 @@ export interface PeerMapValue {
   'priority_pin': boolean
 }
 
-export interface ClusterStatusResponse {
+export interface ClusterGetResponseBody {
   'cid': string
   'name': ''
   'allocations': []
@@ -30,7 +35,7 @@ export interface ClusterStatusResponse {
   'peer_map': Record<string, PeerMapValue>
 }
 
-export interface ClusterAddResponse {
+export interface ClusterAddResponseBody {
   replication_factor_min: -1
   replication_factor_max: -1
   name: string
@@ -47,4 +52,15 @@ export interface ClusterAddResponse {
   max_depth: -1
   reference: null
   timestamp: string // "2022-08-11T12:39:50.772359472Z"
+}
+
+export type ResponseBody = Object;
+
+export class ErrorCode extends Error {
+  code: string
+  
+  constructor(code: string, message: string) {
+    super(message)
+    this.code = code
+  }
 }

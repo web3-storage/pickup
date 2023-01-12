@@ -2,18 +2,20 @@ import pino from 'pino'
 import { LambdaContext, LambdaEvent, lambdaRequestTracker, pinoLambdaDestination } from 'pino-lambda'
 
 const destination = pinoLambdaDestination()
-export const logger = pino(destination)
+export const logger = pino({
+  serializers: {
+    err: (e) => `[${e.code || e.constructor.name}] ${e.message}\n${e.stack}`
+  }
+}, destination)
 
-export const withLambdaRequest = lambdaRequestTracker({
-  requestMixin: (event: LambdaEvent, _context?: LambdaContext) => {
-    const cid = event.pathParameters?.cid ?? ''
-    const origins = event.queryStringParameters?.origins?.split(',') ?? []
-
+export const setLoggerWithLambdaRequest = lambdaRequestTracker({
+  requestMixin: (event: LambdaEvent, context: LambdaContext) => {
     return {
+      source: context.functionName,
       host: event.headers?.host,
-      cid,
-      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-      ...(origins.length ? { origins } : {})
+      pathParameters: event.pathParameters,
+      queryStringParameters: event.queryStringParameters,
+      records: event.Records
     }
   }
 })

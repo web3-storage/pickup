@@ -74,10 +74,9 @@ test('addPin with CID not in the system and fallback on pickup', async t => {
     balancerRate: 100
   })
 
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.deepEqual(res.body.origins, origins)
-  t.is(res.body.type, 'pin')
+  t.is(res.cid, cid)
+  t.deepEqual(res.origins, origins)
+  t.is(res.type, 'pin')
 
   nockLegacyClusterIpfs.done()
   nockPickup.done()
@@ -110,10 +109,9 @@ test('addPin with CID not in the system and fallback on pickup withoput origins'
     balancerRate: 100
   })
 
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.is(res.body.origins.length, 0)
-  t.is(res.body.type, 'pin')
+  t.is(res.cid, cid)
+  t.is(res.origins.length, 0)
+  t.is(res.type, 'pin')
 
   nockLegacyClusterIpfs.done()
   nockPickup.done()
@@ -144,10 +142,9 @@ test('addPin with CID not in the system and fallback on legacy cluster', async t
     balancerRate: 0
   })
 
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.deepEqual(res.body.origins, origins)
-  t.is(res.body.type, 'pin')
+  t.is(res.cid, cid)
+  t.deepEqual(res.origins, origins)
+  t.is(res.type, 'pin')
 
   nockLegacyClusterIpfs.done()
 })
@@ -176,10 +173,9 @@ test('addPin with CID not in the system and fallback on legacy cluster with empt
     balancerRate: 0
   })
 
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.is(res.body.origins.length, 0)
-  t.is(res.body.type, 'pin')
+  t.is(res.cid, cid)
+  t.is(res.origins.length, 0)
+  t.is(res.type, 'pin')
 
   nockLegacyClusterIpfs.done()
 })
@@ -214,10 +210,9 @@ test('addPin with CID existent in pickup', async t => {
     balancerRate: 0
   })
 
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.is(res.body.origins.length, 0)
-  t.is(res.body.type, 'pin')
+  t.is(res.cid, cid)
+  t.is(res.origins.length, 0)
+  t.is(res.type, 'pin')
 
   await client.send(new DeleteCommand({
     TableName: table,
@@ -247,10 +242,9 @@ test('addPin with CID existent in l egacy cluster ipfs with pinned state', async
     balancerRate: 0
   })
 
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.is(res.body.origins.length, 0)
-  t.is(res.body.type, 'pin')
+  t.is(res.cid, cid)
+  t.is(res.origins.length, 0)
+  t.is(res.type, 'pin')
 
   nockLegacyClusterIpfs.done()
 })
@@ -277,10 +271,9 @@ test('addPin with CID existent in l egacy cluster ipfs with queued state', async
     balancerRate: 0
   })
 
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.deepEqual(res.body.origins, origins)
-  t.is(res.body.type, 'pin')
+  t.is(res.cid, cid)
+  t.deepEqual(res.origins, origins)
+  t.is(res.type, 'pin')
 
   nockLegacyClusterIpfs.done()
 })
