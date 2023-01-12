@@ -6,30 +6,23 @@ import { QueueProcessingFargateService } from './lib/queue-processing-fargate-se
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
 import { aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
-import { servicesVersion } from 'typescript'
 
 export function PickupStack ({ app, stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
-
   const cluster = new Cluster(stack, 'ipfs', {
     containerInsights: true
   })
-
   // Network calls to S3 and dynamodb through internal network
   createVPCGateways(cluster.vpc)
-
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
-  
   // export logs to loki just on prod and stg environments
-  if (app.stage === 'prod' || app.stage === 'pr70') {
-
+  if (app.stage === 'prod' || app.stage === 'staging') {
   // read secret url from parameter store
     const grafanasecret = aws_ssm.StringParameter.fromStringParameterName(
       stack,
       'gf-id',
       'grafanahost'
     )
-
     const lokilogs = LogDrivers.firelens({
       options: {
         Name: 'loki',
@@ -43,7 +36,6 @@ export function PickupStack ({ app, stack }: StackContext): void {
         url: Secret.fromSsmParameter(grafanasecret)
       }
     })
-
     const service = new QueueProcessingFargateService(stack, 'Service', {
       // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
       // Requires Docker running locally
@@ -89,7 +81,6 @@ export function PickupStack ({ app, stack }: StackContext): void {
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
-
   } else {
     const service = new QueueProcessingFargateService(stack, 'Service', {
       image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
@@ -120,7 +111,6 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
   }
 }
-
 function createVPCGateways (vpc: ec2.IVpc): void {
   if (vpc != null) {
     const subnets = [
