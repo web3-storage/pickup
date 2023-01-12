@@ -36,6 +36,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const cids = event.queryStringParameters?.cids || ''
 
+  logger.trace(`Pins requested: ${cids}`)
   const validationError: Response | undefined =
     validateRoutingConfiguration({
       legacyClusterIpfsUrl,
@@ -43,12 +44,18 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     }) ||
     validateGetPinsParameters({ cids })
 
+
   if (validationError != null) {
     return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
   }
 
+  logger.trace(`Parameters are valid`)
+
   try {
+    logger.trace(`Get from pickup`)
     const pickupResponse = await fetchGetPins({ cids, endpoint: pickupUrl, isInternal: true, token })
+
+    logger.trace(pickupResponse)
 
     const foundInPickup = pickupResponse.body?.filter(item => (Object.values(item.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)).reduce((acc: Record<string, ClusterStatusResponse>, next) => {
       acc[next.cid] = next
@@ -90,6 +97,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
       body: returnContent
     }
   } catch (error) {
+    logger.error(error)
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
   }
 }
