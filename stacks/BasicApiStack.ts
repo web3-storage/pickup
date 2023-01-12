@@ -2,6 +2,7 @@ import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverl
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 import * as cfnApig from 'aws-cdk-lib/aws-apigatewayv2'
 import * as apig from '@aws-cdk/aws-apigatewayv2-alpha'
+import {Duration} from "aws-cdk-lib";
 
 export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
   const dlq = new Queue(stack, 'PinDlq')
@@ -103,13 +104,14 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       'GET    /pins': {
         function: {
           handler: 'basic/get-pins-router.handler',
-          functionName: formatResourceName(app.stage, 'getPinsRouter')
+          functionName: formatResourceName(app.stage, 'getPinsRouter'),
+          timeout: '60 seconds'
         }
       },
       'POST   /pins/{cid}': {
         function: {
           handler: 'basic/add-pin-router.handler',
-          functionName: formatResourceName(app.stage, 'postPinRouter')
+          functionName: formatResourceName(app.stage, 'postPinRouter'),
         }
       },
       'GET    /internal/pins/{cid}': {
