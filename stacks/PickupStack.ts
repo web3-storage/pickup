@@ -21,7 +21,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   
   // export logs to loki just on prod and stg environments
-  if (app.stage === 'prod' || app.stage === 'staging') {
+  if (app.stage === 'prod' || app.stage === 'pr70') {
+
+  // read secret url from parameter store
     const grafanasecret = aws_ssm.StringParameter.fromStringParameterName(
       stack,
       'gf-id',
@@ -76,8 +78,6 @@ export function PickupStack ({ app, stack }: StackContext): void {
       },
       image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
     })
-    // read secret url from parameter store
-
     // go-ipfs as sidecar!
     // see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
     service.taskDefinition.addContainer('ipfs', {
