@@ -97,7 +97,8 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       'GET    /pins/{cid}': {
         function: {
           handler: 'basic/get-pin-router.handler',
-          functionName: formatResourceName(app.stage, 'getPinRouter')
+          functionName: formatResourceName(app.stage, 'getPinRouter'),
+          timeout: '60 seconds'
         }
       },
       'GET    /pins': {
@@ -110,7 +111,8 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       'POST   /pins/{cid}': {
         function: {
           handler: 'basic/add-pin-router.handler',
-          functionName: formatResourceName(app.stage, 'postPinRouter')
+          functionName: formatResourceName(app.stage, 'postPinRouter'),
+          timeout: '60 seconds'
         }
       },
       'GET    /internal/pins/{cid}': {
