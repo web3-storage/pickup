@@ -55,17 +55,21 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     logger.trace(`Get from pickup`)
     const pickupResponse = await fetchGetPins({ cids, endpoint: pickupUrl, isInternal: true, token })
 
-    logger.trace(pickupResponse)
+    logger.trace(pickupResponse, 'Pickup response')
 
     const foundInPickup = pickupResponse.body?.filter(item => (Object.values(item.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)).reduce((acc: Record<string, ClusterStatusResponse>, next) => {
       acc[next.cid] = next
       return acc
     }, {})
 
+    logger.trace(foundInPickup, 'Found in pickup')
+
     const cidNotFound = pickupResponse.body?.filter(item =>
       (Object.values(item.peer_map)
         .filter(pin => pin.status !== 'unpinned').length === 0)
     ).map(item => item.cid)
+
+    logger.trace(cidNotFound, 'Cid not found in pickup')
 
     if (!cidNotFound.length) {
       return {
@@ -74,16 +78,21 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
       }
     }
 
+
     const legacyClusterIpfsResponse = await fetchGetPins({
       cids: cidNotFound.join(','),
       endpoint: legacyClusterIpfsUrl,
       token
     })
 
+    logger.trace(legacyClusterIpfsResponse, 'Legacy response')
+
     const foundInLegacy = legacyClusterIpfsResponse.body?.reduce((acc: Record<string, ClusterStatusResponse>, next) => {
       acc[next.cid] = next
       return acc
     }, {})
+
+    logger.trace(foundInLegacy, 'Found in legacy response')
 
     const returnContent = cids.split(',').map(cid =>
       (foundInPickup[cid] && (Object.values(foundInPickup[cid].peer_map)
