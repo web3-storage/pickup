@@ -80,7 +80,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
       cidsNotFound = cids.filter(cid => !foundInPickup[cid])
 
-      logger.trace(cidsNotFound, 'Cid not found in pickup')
+      logger.trace(cidsNotFound, 'Cids not found in pickup')
 
       if (cidsNotFound.length === 0) {
         logger.info({ code: 'FROM_PICKUP', cids }, 'Get pins from pickup')
@@ -93,7 +93,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   try {
     const legacyClusterIpfsResponse = await fetchGetPins({
-      cids: cidNotFound,
+      cids: cidsNotFound,
       endpoint: legacyClusterIpfsUrl,
       token
     })

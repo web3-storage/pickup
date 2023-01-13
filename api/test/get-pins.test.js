@@ -198,7 +198,7 @@ test('get pins handler basic auth success', async t => {
   t.is(response.statusCode, 200)
 
   const expectedResults = responseGetPins.split('\n').map(row => JSON.parse(row))
-  const responseRows = JSON.parse(response.body).split('\n').map(row => JSON.parse(row))
+  const responseRows = response.body.split('\n').map(row => JSON.parse(row))
 
   t.is(responseRows.length, 5)
   responseRows.forEach((result, i) => {
