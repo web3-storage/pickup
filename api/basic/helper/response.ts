@@ -8,6 +8,10 @@ export function toResponse (body: Object): Response {
   return { statusCode: 200, body: JSON.stringify(body) }
 }
 
+export function toResponseFromString (body: string): Response {
+  return { statusCode: 200, body }
+}
+
 export function toAddPinResponse (pin: Pin, origins: string[]): ClusterAddResponseBody {
   return {
     replication_factor_min: -1,

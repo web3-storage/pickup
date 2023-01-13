@@ -9,7 +9,7 @@ import {
   validateGetPinsParameters
 } from './helper/validators.js'
 import { sanitizeCid } from './helper/cid.js'
-import { toGetPinResponse, toResponse, toResponseError } from './helper/response.js'
+import { toGetPinResponse, toResponseError, toResponseFromString } from './helper/response.js'
 
 interface GetPinInput {
   cids: string[]
@@ -71,16 +71,16 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     : []
 
   if (cids.length === 0) {
-    return toResponse('')
+    return toResponseFromString('')
   }
 
   try {
     const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
     const pins = await getPins({ cids, dynamo, table, batchItemCount: Number(batchItemCount) })
 
-    return toResponse(cids.map(
-      cid => JSON.stringify(toGetPinResponse(cid, pins[cid] as Pin, ipfsAddr, ipfsPeerId))).join('\n')
-    )
+    return toResponseFromString(cids.map(
+      cid => JSON.stringify(toGetPinResponse(cid, pins[cid] as Pin, ipfsAddr, ipfsPeerId))
+    ).join('\n'))
   } catch (err: any) {
     logger.error({ err, code: err.code }, 'Error on get pins')
     return toResponseError(500, 'INTERNAL_SERVER_ERROR', err.message)

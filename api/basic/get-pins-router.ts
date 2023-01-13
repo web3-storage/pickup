@@ -9,7 +9,7 @@ import {
   validateRoutingConfiguration
 } from './helper/validators.js'
 import { sanitizeCid } from './helper/cid.js'
-import { toResponse, toResponseError } from './helper/response.js'
+import { toResponseError, toResponseFromString } from './helper/response.js'
 
 /**
  * AWS API Gateway handler for GET /pins/${cid}
@@ -44,7 +44,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     return toResponseError(401, 'UNAUTHORIZED')
   }
 
-  logger.trace({ cids }, `Pins requested`)
+  logger.trace({ cids }, 'Pins requested')
 
   /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
@@ -62,27 +62,30 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     return toResponseError(400, 'BAD_REQUEST', validationError.message)
   }
 
-  let cidNotFound: any, foundInPickup: any
+  let cidsNotFound: any[] = []
+  let foundInPickup: Record<string, ClusterGetResponseBody> = {}
   try {
     logger.trace('Get from pickup')
     const pickupResponse = await fetchGetPins({ cids, endpoint: pickupUrl, isInternal: true, token })
 
     logger.trace(pickupResponse, 'Pickup response')
 
-    foundInPickup = pickupResponse?.filter(item => (Object.values(item.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)).reduce((acc: Record<string, ClusterGetResponseBody>, next) => {
-      acc[next.cid] = next
-      return acc
-    }, {})
+    if (pickupResponse) {
+      foundInPickup = pickupResponse.filter(item => (Object.values(item.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)).reduce((acc: Record<string, ClusterGetResponseBody>, next) => {
+        acc[next.cid] = next
+        return acc
+      }, {})
 
-    logger.trace(foundInPickup, 'Found in pickup')
+      logger.trace(foundInPickup, 'Found in pickup')
 
-    cidNotFound = cids.filter(cid => !foundInPickup[cid])
+      cidsNotFound = cids.filter(cid => !foundInPickup[cid])
 
-    logger.trace(cidNotFound, 'Cid not found in pickup')
+      logger.trace(cidsNotFound, 'Cid not found in pickup')
 
-    if (cidNotFound.length === 0) {
-      logger.info({ code: 'FROM_PICKUP', cids }, 'Get pins from pickup')
-      return toResponse(pickupResponse.map(pin => JSON.stringify(pin)).join('\n'))
+      if (cidsNotFound.length === 0) {
+        logger.info({ code: 'FROM_PICKUP', cids }, 'Get pins from pickup')
+        return toResponseFromString(pickupResponse.map(pin => JSON.stringify(pin)).join('\n'))
+      }
     }
   } catch (err: any) {
     logger.error({ err, code: 'FROM_PICKUP' }, 'Error on get pins router - pickup')
@@ -109,7 +112,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
       .join('\n')
 
     logger.info({ code: 'FROM_LEGACY', cids }, 'Get pins from legacy')
-    return toResponse(returnContent)
+    return toResponseFromString(returnContent)
   } catch (err: any) {
     logger.error({ err, code: 'FROM_LEGACY' }, 'Error on get pins router - legacy')
   }
