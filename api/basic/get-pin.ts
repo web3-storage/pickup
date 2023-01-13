@@ -57,7 +57,6 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
     const pin = await getPin({ cid, dynamo, table })
     const res = toGetPinResponse(cid, pin, ipfsAddr, ipfsPeerId)
-    // TODO should we respond 404 on missing pin?
     return toResponse(res)
   } catch (err: any) {
     logger.error({ err, code: err.code }, 'Error on get pin')

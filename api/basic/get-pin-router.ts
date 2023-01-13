@@ -59,6 +59,7 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
   try {
     const pickupResponse = await fetchGetPin({ cid, endpoint: pickupUrl, isInternal: true, token })
     if (pickupResponse && (Object.values(pickupResponse?.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)) {
+      logger.info({ code: 'FROM_PICKUP', cid }, 'Get pin from pickup')
       return toResponse(pickupResponse)
     }
   } catch (err: any) {
@@ -67,6 +68,7 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
 
   try {
     const legacyClusterIpfsResponse = await fetchGetPin({ cid, endpoint: legacyClusterIpfsUrl, token })
+    logger.info({ code: 'FROM_LEGACY', cid }, 'Get pin from legacy')
     return toResponse(legacyClusterIpfsResponse || {})
   } catch (err: any) {
     logger.error({ err, code: 'FROM_LEGACY' }, 'Error on get pin router - legacy')

@@ -1,14 +1,15 @@
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
-import { ClusterStatusResponse, Response } from './schema.js'
+import { ClusterGetResponseBody, Response, ValidationError } from './schema.js'
 
 import { doAuth, getValidCredentials } from './helper/auth-basic.js'
-import { logger, withLambdaRequest } from './helper/logger.js'
+import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
 import { fetchGetPins } from './helper/fetchers.js'
 import {
   validateGetPinsParameters,
   validateRoutingConfiguration
 } from './helper/validators.js'
 import { sanitizeCid } from './helper/cid.js'
+import { toResponse, toResponseError } from './helper/response.js'
 
 /**
  * AWS API Gateway handler for GET /pins/${cid}
@@ -25,58 +26,68 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     LOG_LEVEL: logLevel = 'info'
   } = process.env
 
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cids = event.queryStringParameters?.cids
+    ? event.queryStringParameters.cids.split(',').map(cid => sanitizeCid(cid))
+    : []
+
   logger.level = logLevel
-  withLambdaRequest(event, context)
+  context.functionName = 'GET_PINS_ROUTER_LAMBDA'
+  setLoggerWithLambdaRequest(event, context)
 
-  logger.info('Get pins request')
+  logger.info({ code: 'INVOKE' }, 'get pins router invokation')
 
-  const authError = doAuth(event.headers.authorization)
-  if (authError != null) return authError
-
-  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/strict-boolean-expressions */
-  const validationError: Response | undefined =
-    validateRoutingConfiguration({
-      legacyClusterIpfsUrl,
-      pickupUrl
-    }) ||
-    validateGetPinsParameters({ cids: event.queryStringParameters?.cids || '' })
-
-  if (validationError != null) {
-    return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
+  if (!doAuth(event.headers.authorization)) {
+    logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on get pins router')
+    return toResponseError(401, 'UNAUTHORIZED')
   }
 
-  logger.trace('Parameters are valid')
+  logger.trace({ cids }, `Pins requested`)
 
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  let validationError: ValidationError | undefined = validateRoutingConfiguration({ legacyClusterIpfsUrl, pickupUrl })
+
+  if (validationError != null) {
+    logger.error({ err: validationError, code: validationError.code }, 'Validation config error on get pin router')
+    return toResponseError(500, 'INTERNAL_SERVER_ERROR')
+  }
+
+  validationError = validateGetPinsParameters({ cids: event.queryStringParameters?.cids })
+
+  if (validationError) {
+    logger.error({ err: validationError, code: validationError.code }, 'Validation event params error on get pin router')
+    return toResponseError(400, 'BAD_REQUEST', validationError.message)
+  }
+
+  let cidNotFound: any, foundInPickup: any
   try {
-    /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-    /* eslint-disable @typescript-eslint/strict-boolean-expressions */
-    const cids = event.queryStringParameters?.cids
-      ? event.queryStringParameters.cids.split(',').map(cid => sanitizeCid(cid))
-      : []
-
     logger.trace('Get from pickup')
     const pickupResponse = await fetchGetPins({ cids, endpoint: pickupUrl, isInternal: true, token })
 
     logger.trace(pickupResponse, 'Pickup response')
 
-    const foundInPickup = pickupResponse.body?.filter(item => (Object.values(item.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)).reduce((acc: Record<string, ClusterStatusResponse>, next) => {
+    foundInPickup = pickupResponse?.filter(item => (Object.values(item.peer_map).filter(pin => pin.status !== 'unpinned').length > 0)).reduce((acc: Record<string, ClusterGetResponseBody>, next) => {
       acc[next.cid] = next
       return acc
     }, {})
 
     logger.trace(foundInPickup, 'Found in pickup')
 
-    const cidNotFound = cids.filter(cid => !foundInPickup[cid])
+    cidNotFound = cids.filter(cid => !foundInPickup[cid])
 
     logger.trace(cidNotFound, 'Cid not found in pickup')
 
     if (cidNotFound.length === 0) {
-      return {
-        statusCode: 200,
-        body: pickupResponse.body.map(pin => JSON.stringify(pin)).join('\n')
-      }
+      logger.info({ code: 'FROM_PICKUP', cids }, 'Get pins from pickup')
+      return toResponse(pickupResponse.map(pin => JSON.stringify(pin)).join('\n'))
     }
+  } catch (err: any) {
+    logger.error({ err, code: 'FROM_PICKUP' }, 'Error on get pins router - pickup')
+  }
 
+  try {
     const legacyClusterIpfsResponse = await fetchGetPins({
       cids: cidNotFound,
       endpoint: legacyClusterIpfsUrl,
@@ -85,7 +96,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
     logger.trace(legacyClusterIpfsResponse, 'Legacy response')
 
-    const foundInLegacy = legacyClusterIpfsResponse.body?.reduce((acc: Record<string, ClusterStatusResponse>, next) => {
+    const foundInLegacy = legacyClusterIpfsResponse?.reduce((acc: Record<string, ClusterGetResponseBody>, next) => {
       acc[next.cid] = next
       return acc
     }, {})
@@ -96,12 +107,11 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
       .map(cid => foundInPickup[cid] ? JSON.stringify(foundInPickup[cid]) : JSON.stringify(foundInLegacy[cid]))
       .join('\n')
 
-    return {
-      statusCode: 200,
-      body: returnContent
-    }
-  } catch (error) {
-    logger.error(error)
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
+    logger.info({ code: 'FROM_LEGACY', cids }, 'Get pins from legacy')
+    return toResponse(returnContent)
+  } catch (err: any) {
+    logger.error({ err, code: 'FROM_LEGACY' }, 'Error on get pins router - legacy')
   }
+  
+  return toResponseError(500, 'INTERNAL_SERVER_ERROR')
 }

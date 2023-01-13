@@ -1,15 +1,15 @@
 import { DynamoDBClient, ReturnConsumedCapacity } from '@aws-sdk/client-dynamodb'
 import { BatchGetCommand, DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
-import { Pin, Response } from './schema.js'
+import { ErrorCode, Pin, Response, ValidationError } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
-import { logger, withLambdaRequest } from './helper/logger.js'
-import { toGetPinResponse } from './helper/to-get-pin-response.js'
+import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
 import {
   validateDynamoDBConfiguration,
   validateGetPinsParameters
 } from './helper/validators.js'
 import { sanitizeCid } from './helper/cid.js'
+import { toGetPinResponse, toResponse, toResponseError } from './helper/response.js'
 
 interface GetPinInput {
   cids: string[]
@@ -37,24 +37,32 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   } = process.env
 
   logger.level = logLevel
-  withLambdaRequest(event, context)
+  context.functionName = 'GET_PINS_LAMBDA'
+  setLoggerWithLambdaRequest(event, context)
 
-  logger.info('Get pins request')
+  logger.info({ code: 'INVOKE' }, 'Get pins invokation')
 
-  const authError = doAuth(event.headers.authorization)
-  if (authError != null) return authError
-
+  if (!doAuth(event.headers.authorization)) {
+    logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on get pin')
+    return toResponseError(401, 'UNAUTHORIZED')
+  }
+  
   /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
-  const validationError: Response | undefined =
-    validateDynamoDBConfiguration({ table }) ||
-    validateGetPinsParameters({ cids: event.queryStringParameters?.cids || '' })
+  let validationError: ValidationError | undefined = validateDynamoDBConfiguration({ table })
 
   if (validationError != null) {
-    return validationError
+    logger.error({ err: validationError, code: validationError.code }, 'Validation config error on get pin router')
+    return toResponseError(500, 'INTERNAL_SERVER_ERROR')
   }
 
-  const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
+  validationError = validateGetPinsParameters({ cids: event.queryStringParameters?.cids })
+  
+  if (validationError) {
+    logger.error({ err: validationError, code: validationError.code }, 'Validation event params error on get pin router')
+    return toResponseError(400, 'BAD_REQUEST', validationError.message)
+  }
+
   /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const cids = event.queryStringParameters?.cids
@@ -62,54 +70,58 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     : []
 
   if (cids.length === 0) {
-    return { statusCode: 200, body: '' }
+    return toResponse('')
   }
-
+  
   try {
+    const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
     const pins = await getPins({ cids, dynamo, table, batchItemCount: Number(batchItemCount) })
 
-    return {
-      statusCode: 200,
-      body: cids.map(
+    return toResponse(cids.map(
         cid => JSON.stringify(toGetPinResponse(cid, pins[cid] as Pin, ipfsAddr, ipfsPeerId))).join('\n')
-    }
-  } catch (error) {
-    logger.error(error)
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
+    )
+  } catch (err: any) {
+    logger.error({ err, code: err.code }, 'Error on get pins')
+    return toResponseError(500, 'INTERNAL_SERVER_ERROR', err.message)
   }
 }
 
 export const getPins = async ({ cids, dynamo, table, batchItemCount }: GetPinInput): Promise<Record<string, Pin | {cid: string} | undefined>> => {
-  const client = DynamoDBDocumentClient.from(dynamo)
+  try {
+    const client = DynamoDBDocumentClient.from(dynamo)
 
-  const chunkSize = batchItemCount
-  const chunks: string[][] = []
+    const chunkSize = batchItemCount
+    const chunks: string[][] = []
 
-  for (let i = 0; i < cids.length; i += chunkSize) {
-    const chunk = cids.slice(i, i + chunkSize)
-    chunks.push(chunk)
-  }
-
-  const results = await Promise.all(chunks.map(async chunk =>
-    await client.send(new BatchGetCommand({
-      RequestItems: {
-        [table]: {
-          Keys: chunk.map(cid => ({ cid }))
-        }
-      },
-      ReturnConsumedCapacity: ReturnConsumedCapacity.TOTAL
-    }))
-  ))
-
-  const response = results.map((data, chunkIndex) => {
-    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    return data?.Responses?.[table].map((item, index) => item ? (item as unknown as Pin) : { cid: chunks[chunkIndex][index] })
-  }).flatMap(item => item)
-
-  return response.reduce((acc: Record<string, Pin | {cid: string} | undefined>, next) => {
-    if (next) {
-      acc[next.cid] = next
+    for (let i = 0; i < cids.length; i += chunkSize) {
+      const chunk = cids.slice(i, i + chunkSize)
+      chunks.push(chunk)
     }
-    return acc
-  }, {})
+
+    const results = await Promise.all(chunks.map(async chunk =>
+      await client.send(new BatchGetCommand({
+        RequestItems: {
+          [table]: {
+            Keys: chunk.map(cid => ({ cid }))
+          }
+        },
+        ReturnConsumedCapacity: ReturnConsumedCapacity.TOTAL
+      }))
+    ))
+
+    const response = results.map((data, chunkIndex) => {
+      // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+      return data?.Responses?.[table].map((item, index) => item ? (item as unknown as Pin) : { cid: chunks[chunkIndex][index] })
+    }).flatMap(item => item)
+
+    return response.reduce((acc: Record<string, Pin | {cid: string} | undefined>, next) => {
+      if (next) {
+        acc[next.cid] = next
+      }
+      return acc
+    }, {})
+  } catch (err) {
+    logger.error({ err }, 'Dynamo error')
+  }
+  throw new ErrorCode('DYNAMO_GET_PINS', 'Failed to get Pins. Please try again')
 }

@@ -101,7 +101,7 @@ test('get pins router handler with invalid pickupUrl', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 
@@ -122,7 +122,7 @@ test('get pins router handler with invalid legacyClusterIpfsUrl', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"LEGACY_CLUSTER_IPFS_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 
@@ -156,7 +156,7 @@ test('get pins router handler with result from pickup and legacy', async t => {
   const expectedResultsPickup = responseGetPins.split('\n').map(row => JSON.parse(row))
   const expectedResultsLegacy = responseGetPinsLegacy.split('\n').map(row => JSON.parse(row))
 
-  const checkValues = response.body.split('\n').map(row => JSON.parse(row))
+  const checkValues = JSON.parse(response.body).split('\n').map(row => JSON.parse(row))
 
   function checkEntry (result, expected) {
     t.truthy(result.cid)
@@ -201,7 +201,7 @@ test('get pins router handler with result only from pickup', async t => {
 
   t.is(response.statusCode, 200)
 
-  const checkValues = response.body.split('\n')
+  const checkValues = JSON.parse(response.body).split('\n')
 
   t.is(checkValues[0].cid, expectedResultsPickup[0].cid)
   t.is(checkValues[0].status, expectedResultsPickup[0].status)

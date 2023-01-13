@@ -84,23 +84,29 @@ export function validateEventParameters({
 
 export function validateGetPinsParameters ({
   cids
-}: { cids: string }): Response | undefined {
+}: { cids: string | undefined }): ValidationError | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!cids) {
-    return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: '"cids" parameter not found' } } }
+    return {
+      code: 'INVALID_EVENT_PARAMS_INVALID_CIDS',
+      message: '"cids" parameter not found'
+    }
   }
 
   // eslint-ignore-next-line
   if (typeof (cids) !== 'string') {
-    return { statusCode: 400, body: { error: { reason: 'BAD_REQUEST', details: '"cids" parameter should be a comma separated string' } } }
+    return { 
+      code: 'INVALID_EVENT_PARAMS_INVALID_CIDS',
+      message: '"cids" parameter should be a comma separated string'
+    }
   }
 
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const errors = cids.split(',').map(cid => !isCID(cid) ? `${cid} is not a valid CID` : null).filter(error => !!error)
   if (errors.length > 0) {
     return {
-      statusCode: 400,
-      body: { error: { reason: 'BAD_REQUEST', details: errors.join(', ') } }
+      code: 'INVALID_EVENT_PARAMS_INVALID_CIDS',
+      message: errors.join(', ')
     }
   }
 }
