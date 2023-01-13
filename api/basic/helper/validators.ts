@@ -1,7 +1,7 @@
 import { ValidationError } from '../schema.js'
 import { isCID, isMultiaddr } from './cid.js'
 
-export function validateDynamoDBConfiguration({ table }: { table: string }): ValidationError | undefined {
+export function validateDynamoDBConfiguration ({ table }: { table: string }): ValidationError | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!table) {
     return {
@@ -11,7 +11,7 @@ export function validateDynamoDBConfiguration({ table }: { table: string }): Val
   }
 }
 
-export function validateS3Configuration({ bucket }: { bucket: string }): ValidationError | undefined {
+export function validateS3Configuration ({ bucket }: { bucket: string }): ValidationError | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!bucket) {
     return {
@@ -21,8 +21,7 @@ export function validateS3Configuration({ bucket }: { bucket: string }): Validat
   }
 }
 
-
-export function validateSQSConfiguration({ queueUrl }: { queueUrl: string }): ValidationError | undefined {
+export function validateSQSConfiguration ({ queueUrl }: { queueUrl: string }): ValidationError | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (!queueUrl) {
     return {
@@ -32,7 +31,7 @@ export function validateSQSConfiguration({ queueUrl }: { queueUrl: string }): Va
   }
 }
 
-export function validateRoutingConfiguration({
+export function validateRoutingConfiguration ({
   legacyClusterIpfsUrl,
   pickupUrl
 }: { legacyClusterIpfsUrl: string, pickupUrl: string }): ValidationError | undefined {
@@ -53,7 +52,7 @@ export function validateRoutingConfiguration({
   }
 }
 
-export function validateEventParameters({
+export function validateEventParameters ({
   cid,
   origins = []
 }: { cid: string, origins?: string[] }): ValidationError | undefined {
@@ -95,7 +94,7 @@ export function validateGetPinsParameters ({
 
   // eslint-ignore-next-line
   if (typeof (cids) !== 'string') {
-    return { 
+    return {
       code: 'INVALID_EVENT_PARAMS_INVALID_CIDS',
       message: '"cids" parameter should be a comma separated string'
     }

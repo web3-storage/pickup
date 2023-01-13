@@ -4,7 +4,6 @@ import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
 import { toResponse, toResponseError } from './helper/response.js'
 import { ErrorCode } from './schema.js'
 
-
 /**
  * Deal with the horror of S3Events wrapped up as strings in SNSEvents.
  *
@@ -46,8 +45,7 @@ export async function s3EventHandler (event) {
   } = process.env
 
   logger.level = logLevel
-  context.functionName = 'UPDATE_PIN_LAMBDA'
-  setLoggerWithLambdaRequest(event, context)
+  setLoggerWithLambdaRequest(event, { functionName: 'UPDATE_PIN_LAMBDA' })
 
   logger.info({ code: 'INVOKE' }, 'Update pin invokation')
 
@@ -62,7 +60,7 @@ export async function s3EventHandler (event) {
           recordEventName: record.eventName,
           key,
           code: 'INVALID_RECORD'
-        }, `Ignoring invalid record - Expected ObjectCreated event for .car file`)
+        }, 'Ignoring invalid record - Expected ObjectCreated event for .car file')
         continue
       }
       const file = key.split('/').at(-1)

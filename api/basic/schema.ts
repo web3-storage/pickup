@@ -54,12 +54,12 @@ export interface ClusterAddResponseBody {
   timestamp: string // "2022-08-11T12:39:50.772359472Z"
 }
 
-export type ResponseBody = Object;
+export type ResponseBody = Object
 
 export class ErrorCode extends Error {
   code: string
-  
-  constructor(code: string, message: string) {
+
+  constructor (code: string, message: string) {
     super(message)
     this.code = code
   }

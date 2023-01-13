@@ -45,7 +45,7 @@ export async function fetchAddPin ({
     if (result.status < 300) {
       return resultJSON
     }
-    
+
     logger.error({ code: 'FETCH_ADD_PIN', cid, endpoint, url: myURL }, 'Fetch for add pin failed')
   } catch (err) {
     logger.error({ code: 'FETCH_ADD_PIN', cid, endpoint, err }, 'Fetch for add pin failed')
@@ -71,7 +71,7 @@ export async function fetchGetPin ({
     if (result.status < 300) {
       return resultJSON
     }
-    
+
     logger.error({ code: 'FETCH_GET_PIN', cid, endpoint, url: myURL }, 'Fetch for get pin failed')
   } catch (err) {
     logger.error({ code: 'FETCH_GET_PIN', cid, endpoint, err }, 'Fetch for get pin failed')
@@ -97,9 +97,9 @@ export async function fetchGetPins ({
 
     if (result.status < 300) {
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    return resultText.split('\n').filter(row => !!row).map(row => JSON.parse(row))
+      return resultText.split('\n').filter(row => !!row).map(row => JSON.parse(row))
     }
-    
+
     logger.error({ code: 'FETCH_GET_PINS', cids, endpoint, url: myURL }, 'Fetch for get pins failed')
   } catch (err) {
     logger.error({ code: 'FETCH_GET_PINS', cids, endpoint, err }, 'Fetch for get pins failed')

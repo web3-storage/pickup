@@ -106,7 +106,7 @@ test('get pins handler with no dynamo set', async t => {
   const response = await handler(event, t.context.lambdaContext)
 
   t.is(response.statusCode, 500)
-  t.deepEqual(response.body, '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}' )
+  t.deepEqual(response.body, '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}')
 })
 
 test('get pins handler with no cids', async t => {

@@ -18,7 +18,7 @@ import { toResponse, toResponseError } from './helper/response.js'
  * We provide responses in Payload format v2.0
  * see: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
  */
-export async function handler(event: APIGatewayProxyEventV2, context: Context): Promise<Response> {
+export async function handler (event: APIGatewayProxyEventV2, context: Context): Promise<Response> {
   const {
     CLUSTER_BASIC_AUTH_TOKEN: token = getValidCredentials(),
     LEGACY_CLUSTER_IPFS_URL: legacyClusterIpfsUrl = '',
@@ -35,6 +35,7 @@ export async function handler(event: APIGatewayProxyEventV2, context: Context): 
 
   logger.info({ code: 'INVOKE' }, 'get pin router invokation')
 
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   if (!doAuth(event.headers.authorization)) {
     logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on get pin router')
     return toResponseError(401, 'UNAUTHORIZED')

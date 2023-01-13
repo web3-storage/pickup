@@ -1,6 +1,6 @@
 import { Config } from '@serverless-stack/node/config/index.js'
 
-export function doAuth(
+export function doAuth (
   authorizationHeader: string | undefined
 ): Boolean {
   return !(authorizationHeader !== `Basic ${getValidCredentials()}` ||

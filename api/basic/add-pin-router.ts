@@ -55,6 +55,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info({ code: 'INVOKE' }, 'Add pin router invokation')
 
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   if (!doAuth(event.headers.authorization)) {
     logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on add pin router')
     return toResponseError(401, 'UNAUTHORIZED')
@@ -138,7 +139,7 @@ export async function addPin ({
   return await fetchAddPin({ origins, cid, endpoint: legacyClusterIpfsUrl, token })
 }
 
-async function getPinFromDynamo(dynamo: DynamoDBClient, table: string, cid: string): Promise<Pin | undefined> {
+async function getPinFromDynamo (dynamo: DynamoDBClient, table: string, cid: string): Promise<Pin | undefined> {
   const client = DynamoDBDocumentClient.from(dynamo)
   const existing = await client.send(new GetCommand({
     TableName: table,

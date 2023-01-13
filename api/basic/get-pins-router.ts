@@ -38,6 +38,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info({ code: 'INVOKE' }, 'get pins router invokation')
 
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   if (!doAuth(event.headers.authorization)) {
     logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on get pins router')
     return toResponseError(401, 'UNAUTHORIZED')
@@ -112,6 +113,6 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   } catch (err: any) {
     logger.error({ err, code: 'FROM_LEGACY' }, 'Error on get pins router - legacy')
   }
-  
+
   return toResponseError(500, 'INTERNAL_SERVER_ERROR')
 }

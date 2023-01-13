@@ -42,11 +42,12 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info({ code: 'INVOKE' }, 'Get pins invokation')
 
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   if (!doAuth(event.headers.authorization)) {
     logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on get pin')
     return toResponseError(401, 'UNAUTHORIZED')
   }
-  
+
   /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   let validationError: ValidationError | undefined = validateDynamoDBConfiguration({ table })
@@ -57,7 +58,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   }
 
   validationError = validateGetPinsParameters({ cids: event.queryStringParameters?.cids })
-  
+
   if (validationError) {
     logger.error({ err: validationError, code: validationError.code }, 'Validation event params error on get pin router')
     return toResponseError(400, 'BAD_REQUEST', validationError.message)
@@ -72,13 +73,13 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   if (cids.length === 0) {
     return toResponse('')
   }
-  
+
   try {
     const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
     const pins = await getPins({ cids, dynamo, table, batchItemCount: Number(batchItemCount) })
 
     return toResponse(cids.map(
-        cid => JSON.stringify(toGetPinResponse(cid, pins[cid] as Pin, ipfsAddr, ipfsPeerId))).join('\n')
+      cid => JSON.stringify(toGetPinResponse(cid, pins[cid] as Pin, ipfsAddr, ipfsPeerId))).join('\n')
     )
   } catch (err: any) {
     logger.error({ err, code: err.code }, 'Error on get pins')

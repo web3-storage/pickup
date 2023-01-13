@@ -39,16 +39,17 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info({ code: 'INVOKE' }, 'Get pin invokation')
 
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   if (!doAuth(event.headers.authorization)) {
     logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on get pin')
     return toResponseError(401, 'UNAUTHORIZED')
   }
 
   // TODO validate here CLUSTER_IPFS_ADDR and CLUSTER_IPFS_PEERID
-  
+
   const validationError = validateEventParameters({ cid })
 
-  if (validationError) {
+  if (validationError != null) {
     logger.error({ err: validationError, code: validationError.code }, 'Validation event params error on get pin')
     return toResponseError(400, 'BAD_REQUEST', validationError.message)
   }

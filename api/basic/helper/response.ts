@@ -1,14 +1,14 @@
-import { ClusterAddResponseBody, ClusterGetResponseBody, Pin } from "../schema"
+import { ClusterAddResponseBody, ClusterGetResponseBody, Pin, Response } from '../schema'
 
-export function toResponseError(code = 500, reason: string, details?: string) {
+export function toResponseError (code = 500, reason: string, details?: string): Response {
   return { statusCode: code, body: JSON.stringify({ error: { reason, details } }) }
 }
 
-export function toResponse(body: Object) {
+export function toResponse (body: Object): Response {
   return { statusCode: 200, body: JSON.stringify(body) }
 }
 
-export function toAddPinResponse(pin: Pin, origins: string[]): ClusterAddResponseBody {
+export function toAddPinResponse (pin: Pin, origins: string[]): ClusterAddResponseBody {
   return {
     replication_factor_min: -1,
     replication_factor_max: -1,

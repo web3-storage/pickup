@@ -58,6 +58,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info({ code: 'INVOKE' }, 'Add pin invokation')
 
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   if (!doAuth(event.headers.authorization)) {
     logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on add pin')
     return toResponseError(401, 'UNAUTHORIZED')
@@ -99,7 +100,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
  * DynamoDB and adds a message to SQS to kick off a pickup of the requested CID
  * with optional source multiaddrs specified as origins list.
  */
-export async function addPin({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<ClusterAddResponseBody> {
+export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<ClusterAddResponseBody> {
   const pin = await putIfNotExists({ cid, dynamo, table })
   await addToQueue({ cid, origins, bucket, sqs, queueUrl })
   return toAddPinResponse(pin, origins)
@@ -155,6 +156,7 @@ async function addToQueue ({ cid, origins, sqs, queueUrl, bucket }: AddToQueueIn
       key: `pickup/${cid}/${cid}.root.car`
     }
     await sqs.send(new SendMessageCommand({ QueueUrl: queueUrl, MessageBody: JSON.stringify(message) }))
+    return
   } catch (err) {
     logger.error({ err }, 'SQS error')
   }
