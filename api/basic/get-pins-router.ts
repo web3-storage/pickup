@@ -73,7 +73,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
     logger.trace(cidNotFound, 'Cid not found in pickup')
 
-    if (!cidNotFound.length && pickupResponse.body.length === cids.length) {
+    if (!cidNotFound.length && pickupResponse.body?.length === cids.length) {
       return {
         statusCode: 200,
         body: pickupResponse.body.map(pin => JSON.stringify(pin)).join('\n')
