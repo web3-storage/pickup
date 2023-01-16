@@ -81,7 +81,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     }
 
     const legacyClusterIpfsResponse = await fetchGetPins({
-      cids: cidNotFound,
+      cids,
       endpoint: legacyClusterIpfsUrl,
       token
     })
