@@ -89,6 +89,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     }
   } catch (err: any) {
     logger.error({ err, code: 'FROM_PICKUP' }, 'Error on get pins router - pickup')
+    cidsNotFound = cids.split(',')
   }
 
   try {
