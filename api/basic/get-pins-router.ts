@@ -66,14 +66,11 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
     logger.trace(foundInPickup, 'Found in pickup')
 
-    const cidNotFound = pickupResponse.body?.filter(item =>
-      (Object.values(item.peer_map)
-        .filter(pin => pin.status !== 'unpinned').length === 0)
-    ).map(item => item.cid)
+    const cidNotFound = cids.filter(cid => !foundInPickup[cid])
 
     logger.trace(cidNotFound, 'Cid not found in pickup')
 
-    if (!cidNotFound.length && pickupResponse.body?.length === cids.length) {
+    if (cidNotFound.length === 0) {
       return {
         statusCode: 200,
         body: pickupResponse.body.map(pin => JSON.stringify(pin)).join('\n')
@@ -81,7 +78,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     }
 
     const legacyClusterIpfsResponse = await fetchGetPins({
-      cids,
+      cids: cidNotFound,
       endpoint: legacyClusterIpfsUrl,
       token
     })
@@ -95,12 +92,9 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
     logger.trace(foundInLegacy, 'Found in legacy response')
 
-    const returnContent = cids.map(cid =>
-      (foundInPickup[cid] && (Object.values(foundInPickup[cid].peer_map)
-        .filter(pin => pin.status !== 'unpinned').length > 0))
-        ? foundInPickup[cid]
-        : foundInLegacy[cid]
-    ).map(pin => JSON.stringify(pin)).join('\n')
+    const returnContent = cids
+      .map(cid => foundInPickup[cid] ? JSON.stringify(foundInPickup[cid]) : JSON.stringify(foundInLegacy[cid]))
+      .join('\n')
 
     return {
       statusCode: 200,
