@@ -156,8 +156,6 @@ test('get pins router handler with result from pickup and legacy', async t => {
   const expectedResultsPickup = responseGetPins.split('\n').map(row => JSON.parse(row))
   const expectedResultsLegacy = responseGetPinsLegacy.split('\n').map(row => JSON.parse(row))
 
-  console.log(response.body)
-
   const checkValues = response.body.split('\n').map(row => JSON.parse(row))
 
   function checkEntry (result, expected) {
