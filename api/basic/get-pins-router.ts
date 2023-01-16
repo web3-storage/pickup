@@ -8,6 +8,7 @@ import {
   validateGetPinsParameters,
   validateRoutingConfiguration
 } from './helper/validators.js'
+import { sanitizeCid } from './helper/cid.js'
 
 /**
  * AWS API Gateway handler for GET /pins/${cid}
@@ -32,17 +33,13 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
 
-  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
-  const cids = event.queryStringParameters?.cids || ''
-
-  logger.trace(`Pins requested: ${cids}`)
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/strict-boolean-expressions */
   const validationError: Response | undefined =
     validateRoutingConfiguration({
       legacyClusterIpfsUrl,
       pickupUrl
     }) ||
-    validateGetPinsParameters({ cids })
+    validateGetPinsParameters({ cids: event.queryStringParameters?.cids || '' })
 
   if (validationError != null) {
     return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
@@ -51,6 +48,12 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   logger.trace('Parameters are valid')
 
   try {
+    /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+    /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+    const cids = event.queryStringParameters?.cids
+      ? event.queryStringParameters.cids.split(',').map(cid => sanitizeCid(cid))
+      : []
+
     logger.trace('Get from pickup')
     const pickupResponse = await fetchGetPins({ cids, endpoint: pickupUrl, isInternal: true, token })
 
@@ -63,14 +66,11 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
     logger.trace(foundInPickup, 'Found in pickup')
 
-    const cidNotFound = pickupResponse.body?.filter(item =>
-      (Object.values(item.peer_map)
-        .filter(pin => pin.status !== 'unpinned').length === 0)
-    ).map(item => item.cid)
+    const cidNotFound = cids.filter(cid => !foundInPickup[cid])
 
     logger.trace(cidNotFound, 'Cid not found in pickup')
 
-    if (!cidNotFound.length) {
+    if (cidNotFound.length === 0) {
       return {
         statusCode: 200,
         body: pickupResponse.body.map(pin => JSON.stringify(pin)).join('\n')
@@ -78,7 +78,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     }
 
     const legacyClusterIpfsResponse = await fetchGetPins({
-      cids: cidNotFound.join(','),
+      cids: cidNotFound,
       endpoint: legacyClusterIpfsUrl,
       token
     })
@@ -92,12 +92,9 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
     logger.trace(foundInLegacy, 'Found in legacy response')
 
-    const returnContent = cids.split(',').map(cid =>
-      (foundInPickup[cid] && (Object.values(foundInPickup[cid].peer_map)
-        .filter(pin => pin.status !== 'unpinned').length > 0))
-        ? foundInPickup[cid]
-        : foundInLegacy[cid]
-    ).map(pin => JSON.stringify(pin)).join('\n')
+    const returnContent = cids
+      .map(cid => foundInPickup[cid] ? JSON.stringify(foundInPickup[cid]) : JSON.stringify(foundInLegacy[cid]))
+      .join('\n')
 
     return {
       statusCode: 200,

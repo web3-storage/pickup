@@ -9,6 +9,7 @@ import {
   validateDynamoDBConfiguration,
   validateGetPinsParameters
 } from './helper/validators.js'
+import { sanitizeCid } from './helper/cid.js'
 
 interface GetPinInput {
   cids: string[]
@@ -54,8 +55,11 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   }
 
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
-  // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions, @typescript-eslint/prefer-nullish-coalescing
-  const cids = (event.queryStringParameters?.cids || '').split(',')
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cids = event.queryStringParameters?.cids
+    ? event.queryStringParameters.cids.split(',').map(cid => sanitizeCid(cid))
+    : []
 
   if (cids.length === 0) {
     return { statusCode: 200, body: '' }

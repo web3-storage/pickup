@@ -12,6 +12,7 @@ import {
   validateRoutingConfiguration,
   validateEventParameters
 } from './helper/validators.js'
+import { sanitizeCid } from './helper/cid.js'
 
 interface AddPinInput {
   cid: string
@@ -52,11 +53,11 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
 
-  const cid = event.pathParameters?.cid ?? ''
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cid = event.pathParameters?.cid ? sanitizeCid(event.pathParameters.cid) : ''
   const origins = event.queryStringParameters?.origins?.split(',') ?? []
 
-  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/strict-boolean-expressions */
   const validationError: Response | undefined =
     validateDynamoDBConfiguration({ table }) ||
     validateRoutingConfiguration({

@@ -10,6 +10,7 @@ import {
   validateEventParameters, validateS3Configuration, validateSQSConfiguration
 } from './helper/validators.js'
 import { logger, withLambdaRequest } from './helper/logger.js'
+import { sanitizeCid } from './helper/cid.js'
 
 interface UpsertPinInput {
   cid: string
@@ -56,7 +57,8 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   const sqs = new SQSClient({ endpoint: sqsEndpoint })
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
-  const cid = event.pathParameters?.cid ?? ''
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cid = event.pathParameters?.cid ? sanitizeCid(event.pathParameters.cid) : ''
   const origins = event.queryStringParameters?.origins?.split(',') ?? []
   try {
     const res = await addPin({ cid, origins, bucket, sqs, queueUrl, dynamo, table })
