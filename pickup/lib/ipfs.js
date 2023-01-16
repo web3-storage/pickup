@@ -4,23 +4,31 @@ import { Multiaddr } from 'multiaddr'
 import debounce from 'debounce'
 import fetch from 'node-fetch'
 
-export async function fetchCar (cid, ipfsApiUrl, timeoutMs = 30000) {
+export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 4000) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
   const url = new URL(`/api/v0/dag/export?arg=${cid}`, ipfsApiUrl)
   const ctl = new AbortController()
-  const startCountdown = debounce(() => ctl.abort(), timeoutMs)
+  // timeoutMs = 2000
+  const startCountdown = debounce(() => {
+    console.log('Abort by timeout')
+    downloadError.code = 'TIMEOUT'
+    ctl.abort()
+  }, timeoutMs)
   startCountdown()
   const res = await fetch(url, { method: 'POST', signal: ctl.signal })
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText} ${url}`)
   }
   async function * restartCountdown (source) {
+    // startCountdown.clear()
+    // throw new Error('There was an error!!')
     for await (const chunk of source) {
       startCountdown()
       yield chunk
     }
+    startCountdown.clear()
   }
   return compose(res.body, restartCountdown)
 }

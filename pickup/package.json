@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "start-dev": "IPFS_API_URL=http://127.0.0.1:5001 SQS_QUEUE_URL=https://sqs.us-west-2.amazonaws.com/912147919779/test-protocol-lab-pickup-add-pin node index.js",
     "test": "ava --serial",
     "test:debug": "node test/_before && DEBUG=testcontainers* ava --serial",
     "lint": "standard"
