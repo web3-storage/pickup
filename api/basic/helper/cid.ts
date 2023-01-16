@@ -1,10 +1,11 @@
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
+import { base58btc } from 'multiformats/bases/base58'
 
 export function isCID (str = ''): boolean {
   try {
-    if (str[0] === 'z' && isCidV0(str.substring(1))) {
-      return true
+    if (str[0] === 'z') {
+      return isCidV0(str)
     }
     return Boolean(CID.parse(str))
   } catch (err) {
@@ -23,15 +24,17 @@ export function isMultiaddr (input = ''): boolean {
 }
 
 export function sanitizeCid (cid: string): string {
-  if (cid[0] === 'z' && isCidV0(cid.substring(1))) {
+  if (cid[0] === 'z' && isCidV0(cid)) {
     cid = cid.substring(1)
   }
   return cid
 }
 
 function isCidV0 (cid: string): boolean {
-  const c = CID.parse(cid.substring(1))
-  return c.version === 0
+  try {
+    const c = CID.parse(cid, base58btc)
+    return c.version === 0
+  } catch {
+    return false
+  }
 }
-
-// TODO test
