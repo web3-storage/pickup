@@ -4,6 +4,7 @@ import { base58btc } from 'multiformats/bases/base58'
 
 export function isCID (str = ''): boolean {
   try {
+    // multibase cid v0 starts with 'z'
     if (str[0] === 'z') {
       return isCidV0(str)
     }
