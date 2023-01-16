@@ -5,6 +5,7 @@ import { Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
 import { logger, withLambdaRequest } from './helper/logger.js'
 import { toGetPinResponse } from './helper/to-get-pin-response.js'
+import { sanitizeCid } from './helper/cid.js'
 
 interface GetPinInput {
   cid: string
@@ -38,7 +39,9 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   if (authError != null) return authError
 
   const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
-  const cid = event.pathParameters?.cid ?? ''
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cid = event.pathParameters?.cid ? sanitizeCid(event.pathParameters.cid) : ''
+
   try {
     const pin = await getPin({ cid, dynamo, table })
     const body = toGetPinResponse(cid, pin, ipfsAddr, ipfsPeerId)

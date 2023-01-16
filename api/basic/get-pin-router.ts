@@ -8,6 +8,7 @@ import {
   validateEventParameters,
   validateRoutingConfiguration
 } from './helper/validators.js'
+import { sanitizeCid } from './helper/cid.js'
 
 /**
  * AWS API Gateway handler for GET /pins/${cid}
@@ -32,10 +33,10 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
 
-  const cid = event.pathParameters?.cid ?? ''
-
-  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cid = event.pathParameters?.cid ? sanitizeCid(event.pathParameters.cid) : ''
+
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/strict-boolean-expressions */
   const validationError: Response | undefined =
     validateRoutingConfiguration({
       legacyClusterIpfsUrl,

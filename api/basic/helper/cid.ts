@@ -3,6 +3,9 @@ import { Multiaddr } from 'multiaddr'
 
 export function isCID (str = ''): boolean {
   try {
+    if (str[0] === 'z') {
+      return Boolean(CID.parse(str.substring(1)))
+    }
     return Boolean(CID.parse(str))
   } catch (err) {
     return false
@@ -18,3 +21,10 @@ export function isMultiaddr (input = ''): boolean {
     return false
   }
 }
+
+export function sanitizeCid (cid: string): string {
+  if (cid[0] === 'z') { cid = cid.substring(1) }
+  return cid
+}
+
+// TODO test

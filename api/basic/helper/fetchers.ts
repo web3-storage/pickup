@@ -35,7 +35,7 @@ export interface FetchGetPinParams {
 }
 
 export interface FetchGetPinsParams {
-  cids: string
+  cids: string[]
   endpoint: string
   token: string
   isInternal?: boolean
@@ -82,7 +82,7 @@ export async function fetchGetPins ({
   isInternal = false
 }: FetchGetPinsParams): Promise<GetPinsResult> {
   const baseUrl = (new URL(endpoint))
-  const query = querystring.stringify({ cids })
+  const query = querystring.stringify({ cids: cids.join(',') })
   const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins?${query}`, baseUrl.origin)
   logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPins')
   const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
