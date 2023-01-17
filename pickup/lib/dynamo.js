@@ -1,7 +1,5 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import {logger} from "pickup-api/basic/helper/logger.js"
-
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { logger } from './logger.js'
 
 /**
  * Update the pin status for a given CID
@@ -12,10 +10,11 @@ import {logger} from "pickup-api/basic/helper/logger.js"
  */
 export async function updatePinStatus (dynamo, table, cid, status = 'pinned') {
   try {
-    console.info({cid, status}, 'Update pin status')
+    logger.trace({ cid, status }, 'Dynamo try to update pin status')
+
     const res = await dynamo.send(new UpdateCommand({
       TableName: table,
-      Key: {cid},
+      Key: { cid },
       ExpressionAttributeNames: {
         '#status': 'status'
       },
@@ -25,12 +24,11 @@ export async function updatePinStatus (dynamo, table, cid, status = 'pinned') {
       UpdateExpression: 'set #status = :s',
       ReturnValues: 'ALL_NEW'
     }))
-    console.log('DYNAMO')
-    console.log(res)
-    return res.Attributes
-  } catch(e) {
-    console.log('DYNAMO ERROR')
 
-    console.log(e)
+    logger.trace({ res, cid, status }, 'Dynamo pin status updated')
+    return res.Attributes
+  } catch (err) {
+    logger.error({ cid, status }, 'Dynamo pin status error')
+    throw err
   }
 }

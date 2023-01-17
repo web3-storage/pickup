@@ -1,5 +1,6 @@
 import { S3Client } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
+import { logger } from './logger.js'
 
 export async function sendToS3 ({ client, bucket, key }, { body, cid, downloadError }) {
   const params = {
@@ -13,16 +14,10 @@ export async function sendToS3 ({ client, bucket, key }, { body, cid, downloadEr
   // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
   const s3Upload = new Upload({ client, params })
 
-  s3Upload.on('httpUploadProgress', (progress) => {
-    console.log('Progress', progress)
+  body.on('error', (err) => {
+    logger.error({ err, code: downloadError.code }, 'S3 upload error')
   })
 
-  body.on('error', (err) => {
-    console.log('err', err.message)
-    if (downloadError.code) {
-      console.log('Error by timeout')
-    }
-  })
   return s3Upload.done()
 }
 

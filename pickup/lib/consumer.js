@@ -4,7 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 
 import { createS3Uploader } from './s3.js'
 import { testIpfsApi } from './ipfs.js'
-import { pickupBatch } from './pickup.js'
+import { pickupBatch } from './pickupBatch.js'
 
 export async function createConsumer ({
   ipfsApiUrl,
@@ -40,32 +40,8 @@ export async function createConsumer ({
     // TODO: enforce 32GiB limit
     handleMessageTimeout, // ms, error if processing takes longer than this.
     handleMessageBatch: async (messages) => {
-      console.log('=========handleMessageBatch=========')
       return pickupBatch(messages, { ipfsApiUrl, createS3Uploader, s3, queueManager: app, dynamo, dynamoTable })
     }
-  })
-
-  app.on('stopped', (err, other) => {
-    // TODO: Log Receive Count (Retries): ${msg.Attributes?.ApproximateReceiveCount}
-    console.error('=========stopped=========')
-    console.error(err)
-    console.error(other)
-  })
-  app.on('response_processed', (err) => {
-    // TODO: Log Receive Count (Retries): ${msg.Attributes?.ApproximateReceiveCount}
-    console.error('=========response_processed=========')
-    console.error(err)
-  })
-  app.on('error', (err, other) => {
-    // TODO: Log Receive Count (Retries): ${msg.Attributes?.ApproximateReceiveCount}
-    console.error('=========error=========')
-    console.error(err.message)
-  })
-
-  app.on('processing_error', (err, other) => {
-    console.error('=========processing_error=========')
-    console.error(err.message)
-    console.error(other)
   })
 
   return app
