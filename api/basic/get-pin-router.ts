@@ -30,6 +30,9 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info('Get pin request')
 
+  setTimeout(function() {
+  }, 40000);
+
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
 
