@@ -30,7 +30,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info('Get pin request')
 
-  await delay(40000);
+  await delay(40000)
 
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
@@ -66,6 +66,6 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
   }
 }
 
-function delay(ms: number) {
-  return new Promise( resolve => setTimeout(resolve, ms) );
+async function delay (ms: number): Promise<void> {
+  return await new Promise(resolve => setTimeout(resolve, ms))
 }
