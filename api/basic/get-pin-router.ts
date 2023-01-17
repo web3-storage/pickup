@@ -30,7 +30,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   logger.info('Get pin request')
 
-  await new Promise(functionTime => setTimeout(functionTime, 40000))
+  await delay(40000);
 
   const authError = doAuth(event.headers.authorization)
   if (authError != null) return authError
@@ -64,4 +64,8 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     console.log(error)
     return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
   }
+}
+
+function delay(ms: number) {
+  return new Promise( resolve => setTimeout(resolve, ms) );
 }
