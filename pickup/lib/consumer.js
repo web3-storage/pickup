@@ -10,7 +10,7 @@ export async function createConsumer ({
   ipfsApiUrl,
   queueUrl,
   s3,
-  batchSize = 3,
+  batchSize = 10,
   visibilityTimeout = 20,
   heartbeatInterval = 10,
   handleMessageTimeout = 4 * 60 * 60 * 1000,
