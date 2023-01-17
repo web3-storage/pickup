@@ -64,7 +64,8 @@ export async function compose () {
     ipfsApiUrl,
     dynamoEndpoint,
     dynamoClient,
-    dynamoTable
+    dynamoTable,
+    sqsContainer
   }
 }
 
