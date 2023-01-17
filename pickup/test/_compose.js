@@ -1,9 +1,8 @@
-import { DockerComposeEnvironment, Wait } from 'testcontainers'
+import { DockerComposeEnvironment, Wait, GenericContainer as Container } from 'testcontainers'
 import { SQSClient, CreateQueueCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs'
 import { S3Client, CreateBucketCommand } from '@aws-sdk/client-s3'
 import { nanoid, customAlphabet } from 'nanoid'
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
-import { GenericContainer as Container } from 'testcontainers'
 
 export async function up () {
   return await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
@@ -40,8 +39,8 @@ export async function compose () {
   const dynamoTable = nanoid()
   const dynamoEndpoint = `http://${container.getHost()}:${container.getMappedPort(8000)}`
   const dynamoClient = new DynamoDBClient({
-      endpoint: dynamoEndpoint
-    })
+    endpoint: dynamoEndpoint
+  })
 
   await dynamoClient.send(new CreateTableCommand({
     TableName: dynamoTable,

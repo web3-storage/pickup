@@ -16,6 +16,7 @@ export async function createConsumer ({
   handleMessageTimeout = 4 * 60 * 60 * 1000,
   testMaxRetryTime = 1000 * 5,
   testTimeoutMs = 10000,
+  timeoutFetchMs = 30000,
   dynamoTable,
   dynamoEndpoint
 }) {
@@ -40,7 +41,7 @@ export async function createConsumer ({
     // TODO: enforce 32GiB limit
     handleMessageTimeout, // ms, error if processing takes longer than this.
     handleMessageBatch: async (messages) => {
-      return pickupBatch(messages, { ipfsApiUrl, createS3Uploader, s3, queueManager: app, dynamo, dynamoTable })
+      return pickupBatch(messages, { ipfsApiUrl, createS3Uploader, s3, queueManager: app, dynamo, dynamoTable, timeoutFetchMs })
     }
   })
 

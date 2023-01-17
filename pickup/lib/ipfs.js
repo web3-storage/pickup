@@ -8,7 +8,7 @@ import { logger } from './logger.js'
 
 export const ERROR_TIMEOUT = 'TIMEOUT'
 
-export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 4000) {
+export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 30000) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }

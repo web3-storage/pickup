@@ -11,7 +11,7 @@ import { logger } from './logger.js'
  * @param {import('@aws-sdk/client-s3'.S3Client)} opts.s3
  * @returns {Promise<SQSMessage[]>}
  */
-export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3, queueManager, dynamo, dynamoTable }) {
+export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3, queueManager, dynamo, dynamoTable, timeoutFetchMs }) {
   const jobs = []
   const allOrigins = []
 
@@ -51,7 +51,7 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
     const downloadError = {}
 
     try {
-      const body = await fetchCar(cid, ipfsApiUrl, downloadError)
+      const body = await fetchCar(cid, ipfsApiUrl, downloadError, timeoutFetchMs)
       logger.info({ cid, requestid, messageId: message.MessageId }, 'IPFS node responded, downloading the car')
       await upload({ body, cid, downloadError })
       logger.info({ cid, requestid, messageId: message.MessageId }, 'Car downloaded and stored in S3')
