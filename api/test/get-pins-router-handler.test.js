@@ -94,14 +94,14 @@ test('get pins router handler with invalid pickupUrl', async t => {
       authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
     },
     queryStringParameters: {
-      cids
+      cids: cids.join(',')
     }
   }
   const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 
@@ -115,14 +115,14 @@ test('get pins router handler with invalid legacyClusterIpfsUrl', async t => {
       authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
     },
     queryStringParameters: {
-      cids
+      cids: cids.join(',')
     }
   }
   const response = await handler(event, t.context.lambdaContext)
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"LEGACY_CLUSTER_IPFS_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 

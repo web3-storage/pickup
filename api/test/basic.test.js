@@ -74,33 +74,16 @@ test('addPin', async t => {
   const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
   const res = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl })
-  t.is(res.statusCode, 200)
-  t.is(res.body.cid, cid)
-  t.is(res.body.origins[0], origins[0])
-  t.is(res.body.type, 'pin')
+
+  t.is(res.cid, cid)
+  t.is(res.origins[0], origins[0])
+  t.is(res.type, 'pin')
   const msgs = await sqs.send(new ReceiveMessageCommand({ QueueUrl: queueUrl, WaitTimeSeconds: 0 }))
   const msg = JSON.parse(msgs.Messages[0].Body)
   t.is(msg.cid, cid)
   t.is(msg.origins[0], origins[0])
   t.is(msg.bucket, bucket)
   t.is(msg.key, `pickup/${cid}/${cid}.root.car`)
-})
-
-test('addPin bad cid', async t => {
-  const { dynamo, table, sqs } = t.context
-  const cid = 'bar'
-  const res = await addPin({ cid, origins: [], bucket: 'foo', dynamo, table, sqs, queueUrl: 'meh' })
-  t.is(res.statusCode, 400)
-  t.is(res.body.error.details, `${cid} is not a valid CID`)
-})
-
-test('addPin bad multiaddr', async t => {
-  const { dynamo, table, sqs } = t.context
-  const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
-  const origins = ['nope']
-  const res = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl: 'meh' })
-  t.is(res.statusCode, 400)
-  t.is(res.body.error.details, `${origins[0]} in origins is not a valid multiaddr`)
 })
 
 test('putIfNotExists', async t => {
@@ -194,7 +177,8 @@ test('updatePinStatus', async t => {
     }]
   }
 
-  const [res4] = await updatePin(s3Event, t.context.lambdaContext)
+  const res = await updatePin(s3Event, t.context.lambdaContext)
+  const [res4] = JSON.parse(res.body)
   t.is(res4.cid, cid)
   t.is(res4.status, 'pinned')
   t.is(res4.created, res2.created)

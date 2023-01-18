@@ -2,10 +2,10 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 
-import { ClusterAddResponse, PeerMapValue, Pin, Response } from './schema.js'
+import { PeerMapValue, Pin, Response, ResponseBody, ValidationError } from './schema.js'
 import { doAuth, getValidCredentials } from './helper/auth-basic.js'
 import usePickup from './helper/use-pickup.js'
-import { logger, withLambdaRequest } from './helper/logger.js'
+import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
 import { fetchAddPin, fetchGetPin } from './helper/fetchers.js'
 import {
   validateDynamoDBConfiguration,
@@ -13,6 +13,7 @@ import {
   validateEventParameters
 } from './helper/validators.js'
 import { sanitizeCid } from './helper/cid.js'
+import { toAddPinResponse, toResponse, toResponseError } from './helper/response.js'
 
 interface AddPinInput {
   cid: string
@@ -44,31 +45,38 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     LOG_LEVEL: logLevel = 'info'
   } = process.env
 
-  logger.level = logLevel
-  withLambdaRequest(event, context)
-
-  logger.info('Add pin request')
-  logger.info({ ...event, headers: { ...event.headers, authorization: 'XXXXXXXXXXXXX' } })
-
-  const authError = doAuth(event.headers.authorization)
-  if (authError != null) return authError
-
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const cid = event.pathParameters?.cid ? sanitizeCid(event.pathParameters.cid) : ''
   const origins = event.queryStringParameters?.origins?.split(',') ?? []
 
-  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing, @typescript-eslint/strict-boolean-expressions */
-  const validationError: Response | undefined =
+  logger.level = logLevel
+  context.functionName = 'ADD_PIN_ROUTER_LAMBDA'
+  setLoggerWithLambdaRequest(event, context)
+
+  logger.info({ code: 'INVOKE' }, 'Add pin router invokation')
+
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  if (!doAuth(event.headers.authorization)) {
+    logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on add pin router')
+    return toResponseError(401, 'UNAUTHORIZED')
+  }
+
+  /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  let validationError: ValidationError | undefined =
     validateDynamoDBConfiguration({ table }) ||
-    validateRoutingConfiguration({
-      legacyClusterIpfsUrl,
-      pickupUrl
-    }) ||
-    validateEventParameters({ cid, origins })
+    validateRoutingConfiguration({ legacyClusterIpfsUrl, pickupUrl })
 
   if (validationError != null) {
-    logger.error(validationError, 'Validation error')
-    return { statusCode: validationError.statusCode, body: JSON.stringify(validationError.body) }
+    logger.error({ err: validationError, code: validationError.code }, 'Validation config error on add pin router')
+    return toResponseError(500, 'INTERNAL_SERVER_ERROR')
+  }
+
+  validationError = validateEventParameters({ cid, origins })
+
+  if (validationError) {
+    logger.error({ err: validationError, code: validationError.code }, 'Validation event params error on add pin router')
+    return toResponseError(400, 'BAD_REQUEST', validationError.message)
   }
 
   try {
@@ -76,10 +84,10 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     const res = await addPin({
       cid, origins, dynamo, table, legacyClusterIpfsUrl, pickupUrl, token, balancerRate: Number(balancerRate)
     })
-    return { ...res, body: JSON.stringify(res.body) }
-  } catch (error) {
-    logger.error(error, 'Internal server error')
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
+    return toResponse(res)
+  } catch (err: any) {
+    logger.error({ err, code: err.code }, 'Error on add pin router')
+    return toResponseError(500, 'INTERNAL_SERVER_ERROR', err.message)
   }
 }
 
@@ -98,61 +106,37 @@ export async function addPin ({
   pickupUrl,
   token,
   balancerRate
-}: AddPinInput): Promise<Response> {
+}: AddPinInput): Promise<ResponseBody> {
   const pinFromDynamo = await getPinFromDynamo(dynamo, table, cid)
 
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (pinFromDynamo) {
-    logger.debug('CID exists on dynamo')
-    logger.trace(pinFromDynamo, 'Dynamo item content')
-    return { statusCode: 200, body: toClusterResponse(pinFromDynamo, origins) }
+    logger.info({ code: 'FROM_DYNAMO' }, 'CID exists on dynamo')
+    return toAddPinResponse(pinFromDynamo, origins)
   }
 
   // Verify if the CID exists in the legacy ipfs cluster
   logger.debug('Load CID entry from legacy cluster')
   const legacyClusterIpfsResponse = await fetchGetPin({ cid, endpoint: legacyClusterIpfsUrl, token })
 
-  const notUnpinnedPeerMaps = Object.values(legacyClusterIpfsResponse.body?.peer_map).filter(pin => pin.status !== 'unpinned')
-  if (notUnpinnedPeerMaps.length > 0) {
-    logger.debug('CID exists on legacy cluster')
+  const notUnpinnedPeerMaps = legacyClusterIpfsResponse && Object.values(legacyClusterIpfsResponse.peer_map).filter(pin => pin.status !== 'unpinned')
+  if (notUnpinnedPeerMaps && notUnpinnedPeerMaps.length > 0) {
+    logger.info({ code: 'FROM_LEGACY_CLUSTER' }, 'CID exists on legacy cluster')
     const peerMap = ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) || notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
-    return {
-      statusCode: 200,
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-      body: toClusterResponse({ cid, created: peerMap.timestamp } as Pin, origins)
-    }
+
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    return toAddPinResponse({ cid, created: peerMap.timestamp } as Pin, origins)
   }
 
   logger.debug({ balancerRate }, 'CID not exists, route the request using the balancer')
   // The CID is not pinned anywere, run the balance function and return based on the result
   if (usePickup(balancerRate)) {
-    logger.debug('Call POST addPin on pickup')
+    logger.info({ code: 'FROM_PICKUP' }, 'Call POST addPin on pickup')
     return await fetchAddPin({ origins, cid, endpoint: pickupUrl, token, isInternal: true })
   }
 
-  logger.debug('Call POST addPin on legacy cluster')
+  logger.info({ code: 'FROM_LEGACY' }, 'Call POST addPin on legacy cluster')
   return await fetchAddPin({ origins, cid, endpoint: legacyClusterIpfsUrl, token })
-}
-
-export function toClusterResponse (pin: Pin, origins: string[]): ClusterAddResponse {
-  return {
-    replication_factor_min: -1,
-    replication_factor_max: -1,
-    name: '',
-    mode: 'recursive',
-    shard_size: 0,
-    user_allocations: null,
-    expire_at: '0001-01-01T00:00:00Z',
-    metadata: {},
-    pin_update: null,
-    origins: origins,
-    cid: pin.cid,
-    type: 'pin',
-    allocations: [],
-    max_depth: -1,
-    reference: null,
-    timestamp: pin.created
-  }
 }
 
 async function getPinFromDynamo (dynamo: DynamoDBClient, table: string, cid: string): Promise<Pin | undefined> {

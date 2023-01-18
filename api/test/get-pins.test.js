@@ -106,9 +106,7 @@ test('get pins handler with no dynamo set', async t => {
   const response = await handler(event, t.context.lambdaContext)
 
   t.is(response.statusCode, 500)
-  t.deepEqual(response.body, {
-    error: { reason: 'INTERNAL_SERVER_ERROR', details: 'TABLE must be set in ENV' }
-  })
+  t.deepEqual(response.body, '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}')
 })
 
 test('get pins handler with no cids', async t => {
@@ -128,9 +126,9 @@ test('get pins handler with no cids', async t => {
 
   const response = await handler(event, t.context.lambdaContext)
 
-  t.is(response.statusCode, 400)
-  t.deepEqual(response.body, {
-    error: { reason: 'BAD_REQUEST', details: '"cids" parameter not found' }
+  t.deepEqual(response, {
+    statusCode: 400,
+    body: '{"error":{"reason":"BAD_REQUEST","details":"\\"cids\\" parameter not found"}}'
   })
 })
 
@@ -151,9 +149,9 @@ test('get pins handler with non valid cids', async t => {
 
   const response = await handler(event, t.context.lambdaContext)
 
-  t.is(response.statusCode, 400)
-  t.deepEqual(response.body, {
-    error: { reason: 'BAD_REQUEST', details: '123 is not a valid CID, 456 is not a valid CID' }
+  t.deepEqual(response, {
+    statusCode: 400,
+    body: '{"error":{"reason":"BAD_REQUEST","details":"123 is not a valid CID, 456 is not a valid CID"}}'
   })
 })
 
@@ -174,9 +172,9 @@ test('get pins handler with non string cids', async t => {
 
   const response = await handler(event, t.context.lambdaContext)
 
-  t.is(response.statusCode, 400)
-  t.deepEqual(response.body, {
-    error: { reason: 'BAD_REQUEST', details: '"cids" parameter should be a comma separated string' }
+  t.deepEqual(response, {
+    statusCode: 400,
+    body: '{"error":{"reason":"BAD_REQUEST","details":"\\"cids\\" parameter should be a comma separated string"}}'
   })
 })
 

@@ -1,20 +1,10 @@
 import { Config } from '@serverless-stack/node/config/index.js'
-import { Response } from '../schema.js'
-import { logger } from './logger.js'
 
 export function doAuth (
   authorizationHeader: string | undefined
-): Response | undefined {
-  if (
-    authorizationHeader !== `Basic ${getValidCredentials()}` ||
-    emptyOrNil(authorizationHeader)
-  ) {
-    logger.info('User not authorized')
-    return {
-      statusCode: 401,
-      body: JSON.stringify({ error: { reason: 'UNAUTHORIZED' } })
-    }
-  }
+): Boolean {
+  return !(authorizationHeader !== `Basic ${getValidCredentials()}` ||
+    emptyOrNil(authorizationHeader))
 }
 
 export function getValidCredentials (): string {
