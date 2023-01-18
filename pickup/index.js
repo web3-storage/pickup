@@ -5,7 +5,6 @@ const { IPFS_API_URL, SQS_QUEUE_URL, DYNAMO_TABLE_NAME, DYNAMO_DB_ENDPOINT, BATC
 if (!IPFS_API_URL) throw new Error('IPFS_API_URL not found in ENV')
 if (!SQS_QUEUE_URL) throw new Error('SQS_QUEUE_URL not found in ENV')
 if (!DYNAMO_TABLE_NAME) throw new Error('DYNAMO_TABLE_NAME not found in ENV')
-if (!DYNAMO_DB_ENDPOINT) throw new Error('DYNAMO_DB_ENDPOINT not found in ENV')
 
 async function start () {
   logger.info({}, 'Pickup starting...')
@@ -13,7 +12,7 @@ async function start () {
     ipfsApiUrl: IPFS_API_URL,
     queueUrl: SQS_QUEUE_URL,
     dynamoTable: DYNAMO_TABLE_NAME,
-    dynamoEndpoint: DYNAMO_DB_ENDPOINT,
+    dynamoEndpoint: DYNAMO_DB_ENDPOINT || undefined,
     batchSize: BATCH_SIZE || 1
   })
 

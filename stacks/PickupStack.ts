@@ -1,4 +1,4 @@
-import { StackContext, use, Queue, Bucket } from '@serverless-stack/resources'
+import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
 import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
@@ -8,7 +8,7 @@ import { aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
 export function PickupStack ({ app, stack }: StackContext): void {
-  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket }
+  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
   const cluster = new Cluster(stack, 'ipfs', {
     containerInsights: true
   })
@@ -52,7 +52,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
       ephemeralStorageGiB: 64, // max 200
       environment: {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
-        IPFS_API_URL: 'http://127.0.0.1:5001'
+        IPFS_API_URL: 'http://127.0.0.1:5001',
+        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
       },
       queue: basicApi.queue.cdk.queue,
       // retentionPeriod: Duration.days(1),
@@ -80,6 +81,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       })
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+    basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
   } else {
     const service = new QueueProcessingFargateService(stack, 'Service', {
@@ -93,7 +95,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
       ephemeralStorageGiB: 64, // max 200
       environment: {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
-        IPFS_API_URL: 'http://127.0.0.1:5001'
+        IPFS_API_URL: 'http://127.0.0.1:5001',
+        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,
@@ -108,6 +111,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       })
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+    basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
   }
 }
