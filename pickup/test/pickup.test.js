@@ -11,6 +11,10 @@ test.before(async t => {
   t.context = { ...(await compose()), ipfsApiUrl: 'http://mockipfs.loc:5001' }
 })
 
+test.after(async t => {
+  await t.context.shutDownDockers()
+})
+
 test('throw an error if can\'t connect to IPFS', async t => {
   const { createQueue } = t.context
   const queueUrl = await createQueue()

@@ -1,4 +1,4 @@
-import { DockerComposeEnvironment, Wait, GenericContainer as Container } from 'testcontainers'
+import { DockerComposeEnvironment } from 'testcontainers'
 import { SQSClient, CreateQueueCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs'
 import { S3Client, CreateBucketCommand } from '@aws-sdk/client-s3'
 import { nanoid, customAlphabet } from 'nanoid'
@@ -6,16 +6,14 @@ import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 
 export async function up () {
   return await new DockerComposeEnvironment(new URL('./', import.meta.url), 'docker-compose.yml')
-    .withWaitStrategy('ipfs', Wait.forLogMessage('Daemon is ready'))
-    .withNoRecreate()
     .up()
 }
 
 export async function compose () {
   const docker = await up()
-  const minio = docker.getContainer('minio')
+  const s3Container = docker.getContainer('minio')
   const s3 = new S3Client({
-    endpoint: `http://${minio.getHost()}:${minio.getMappedPort(9000)}`,
+    endpoint: `http://${s3Container.getHost()}:${s3Container.getMappedPort(9000)}`,
     forcePathStyle: true,
     region: 'us-east-1',
     credentials: {
@@ -32,12 +30,10 @@ export async function compose () {
   const ipfs = docker.getContainer('ipfs')
   const ipfsApiUrl = `http://${ipfs.getHost()}:${ipfs.getMappedPort(5001)}`
 
-  const container = await new Container('amazon/dynamodb-local:latest')
-    .withExposedPorts(8000)
-    .start()
+  const dynamoDbContainer = docker.getContainer('dynamoDb')
 
   const dynamoTable = nanoid()
-  const dynamoEndpoint = `http://${container.getHost()}:${container.getMappedPort(8000)}`
+  const dynamoEndpoint = `http://${dynamoDbContainer.getHost()}:${dynamoDbContainer.getMappedPort(8000)}`
   const dynamoClient = new DynamoDBClient({
     endpoint: dynamoEndpoint
   })
@@ -65,7 +61,8 @@ export async function compose () {
     dynamoEndpoint,
     dynamoClient,
     dynamoTable,
-    sqsContainer
+    sqsContainer,
+    shutDownDockers: () => docker.down()
   }
 }
 

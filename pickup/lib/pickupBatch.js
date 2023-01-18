@@ -17,14 +17,17 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
 
   logger.info({ messages }, 'Pickup batch start')
 
+  const requestIds = []
+
   for (const message of messages) {
     const { cid, origins, bucket, key, requestid } = JSON.parse(message.Body)
     logger.trace({ cid, requestid }, 'Push message in job list')
     jobs.push({ message, requestid, cid, upload: createS3Uploader({ bucket, key, client: s3 }) })
     allOrigins.concat(origins)
+    requestIds.push(requestid)
   }
-  // Prepare!
 
+  // Prepare!
   logger.trace({ allOrigins, ipfsApiUrl }, 'Wait for GC and connect to origins')
   await Promise.all([
     waitForGC(ipfsApiUrl),
@@ -36,7 +39,6 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
   // Stores the totalMessages because the `messages`array will be modified in the process
   const totalMessages = messages.length
   // Stores the requestIds to properly remove the items from the `messages` array
-  const requestIds = jobs.map(({ requestid }) => requestid)
 
   // Collect the results, just for logging purpose
   const resultStats = {}

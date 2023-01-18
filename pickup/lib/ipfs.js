@@ -97,8 +97,9 @@ export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
     }
     const { AgentVersion, ID } = await res.json()
     logger.info({ agentVersion: AgentVersion, peerId: ID }, 'Connected')
-  } catch (cause) {
-    throw new Error('IPFS API test failed.', { cause })
+  } catch (err) {
+    logger.error({ err }, 'Test ipfs fail')
+    throw new Error('IPFS API test failed.', { cause: err })
   }
 }
 

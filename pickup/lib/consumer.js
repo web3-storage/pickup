@@ -5,6 +5,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { createS3Uploader } from './s3.js'
 import { testIpfsApi } from './ipfs.js'
 import { pickupBatch } from './pickupBatch.js'
+import { logger } from './logger.js'
 
 export async function createConsumer ({
   ipfsApiUrl,
@@ -41,9 +42,24 @@ export async function createConsumer ({
     // TODO: enforce 32GiB limit
     handleMessageTimeout, // ms, error if processing takes longer than this.
     handleMessageBatch: async (messages) => {
-      return pickupBatch(messages, { ipfsApiUrl, createS3Uploader, s3, queueManager: app, dynamo, dynamoTable, timeoutFetchMs })
+      return pickupBatch(messages, {
+        ipfsApiUrl,
+        createS3Uploader,
+        s3,
+        queueManager: app,
+        dynamo,
+        dynamoTable,
+        timeoutFetchMs
+      })
     }
   })
 
+  app.on('error', (err) => {
+    logger.error({ err }, 'App error')
+  })
+
+  app.on('processing_error', (err) => {
+    logger.error({ err }, 'App processing error')
+  })
   return app
 }

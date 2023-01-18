@@ -9,6 +9,10 @@ test.before(async t => {
   t.context = await compose()
 })
 
+test.after(async t => {
+  await t.context.shutDownDockers()
+})
+
 // verify the lib behaves as expected
 test('sqs-consumer', async t => {
   const testCid = 'hello!'
