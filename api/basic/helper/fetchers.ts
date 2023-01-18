@@ -1,23 +1,8 @@
 import * as querystring from 'node:querystring'
 import fetch from 'node-fetch'
 
-import { ClusterAddResponse, ClusterStatusResponse } from '../schema.js'
+import { ClusterAddResponseBody, ClusterGetResponseBody } from '../schema.js'
 import { logger } from './logger.js'
-
-export interface AddPinResult {
-  statusCode: number
-  body: ClusterAddResponse
-}
-
-export interface GetPinResult {
-  statusCode: number
-  body: ClusterStatusResponse
-}
-
-export interface GetPinsResult {
-  statusCode: number
-  body: ClusterStatusResponse[]
-}
 
 export interface FetchAddPinParams {
   cid: string
@@ -47,15 +32,25 @@ export async function fetchAddPin ({
   token,
   origins,
   isInternal = false
-}: FetchAddPinParams): Promise<AddPinResult> {
-  const baseUrl = (new URL(endpoint))
-  const query = (origins.length > 0) ? `?${querystring.stringify({ origins: origins.join(',') })}` : ''
-  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}${query}`, baseUrl.origin)
-  logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchAddPin')
-  const result = await fetch(myURL.href, { method: 'POST', headers: { Authorization: `Basic ${token}` } })
-  const resultJSON = (await result.json()) as ClusterAddResponse
-  logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchAddPin SUCCESS')
-  return { statusCode: result.status, body: resultJSON }
+}: FetchAddPinParams): Promise<ClusterAddResponseBody> {
+  try {
+    const baseUrl = (new URL(endpoint))
+    const query = (origins.length > 0) ? `?${querystring.stringify({ origins: origins.join(',') })}` : ''
+    const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}${query}`, baseUrl.origin)
+    logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchAddPin')
+    const result = await fetch(myURL.href, { method: 'POST', headers: { Authorization: `Basic ${token}` } })
+    const resultJSON = (await result.json()) as ClusterAddResponseBody
+    logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchAddPin DONE')
+
+    if (result.status < 300) {
+      return resultJSON
+    }
+
+    logger.error({ code: 'FETCH_ADD_PIN', cid, endpoint, url: myURL }, 'Fetch for add pin failed')
+  } catch (err) {
+    logger.error({ code: 'FETCH_ADD_PIN', cid, endpoint, err }, 'Fetch for add pin failed')
+  }
+  throw new Error('FETCH_ADD_PIN')
 }
 
 export async function fetchGetPin ({
@@ -63,16 +58,25 @@ export async function fetchGetPin ({
   endpoint,
   token,
   isInternal = false
-}: FetchGetPinParams): Promise<GetPinResult> {
-  const baseUrl = (new URL(endpoint))
-  const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}`, baseUrl.origin)
-  logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPin')
-  const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
+}: FetchGetPinParams): Promise<ClusterGetResponseBody> {
+  try {
+    const baseUrl = (new URL(endpoint))
+    const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}`, baseUrl.origin)
+    logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPin')
+    const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
-  const resultJSON = (await result.json()) as ClusterStatusResponse
-  logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchGetPin SUCCESS')
+    const resultJSON = (await result.json()) as ClusterGetResponseBody
+    logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchGetPin DONE')
 
-  return { statusCode: result.status, body: resultJSON }
+    if (result.status < 300) {
+      return resultJSON
+    }
+
+    logger.error({ code: 'FETCH_GET_PIN', cid, endpoint, url: myURL }, 'Fetch for get pin failed')
+  } catch (err) {
+    logger.error({ code: 'FETCH_GET_PIN', cid, endpoint, err }, 'Fetch for get pin failed')
+  }
+  throw new Error('FETCH_GET_PIN')
 }
 
 export async function fetchGetPins ({
@@ -80,7 +84,7 @@ export async function fetchGetPins ({
   endpoint,
   token,
   isInternal = false
-}: FetchGetPinsParams): Promise<GetPinsResult> {
+}: FetchGetPinsParams): Promise<ClusterGetResponseBody[]> {
   try {
     const baseUrl = (new URL(endpoint))
     const query = querystring.stringify({ cids: cids.join(',') })
@@ -89,11 +93,16 @@ export async function fetchGetPins ({
     const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
     const resultText = await result.text()
-    logger.trace({ endpoint, isInternal, href: myURL.href, result: resultText, statusCode: result.status }, 'fetchGetPins SUCCESS')
+    logger.trace({ endpoint, isInternal, href: myURL.href, result: resultText, statusCode: result.status }, 'fetchGetPins DONE')
 
+    if (result.status < 300) {
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-    return { statusCode: result.status, body: resultText.split('\n').filter(row => !!row).map(row => JSON.parse(row)) }
-  } catch (error) {
-    return { statusCode: 500, body: [] }
+      return resultText.split('\n').filter(row => !!row).map(row => JSON.parse(row))
+    }
+
+    logger.error({ code: 'FETCH_GET_PINS', cids, endpoint, url: myURL }, 'Fetch for get pins failed')
+  } catch (err) {
+    logger.error({ code: 'FETCH_GET_PINS', cids, endpoint, err }, 'Fetch for get pins failed')
   }
+  throw new Error('FETCH_GET_PIN')
 }
