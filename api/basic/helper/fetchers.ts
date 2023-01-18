@@ -87,7 +87,7 @@ export async function fetchGetPins ({
 }: FetchGetPinsParams): Promise<ClusterGetResponseBody[]> {
   try {
     const baseUrl = (new URL(endpoint))
-    const query = querystring.stringify({ cids })
+    const query = querystring.stringify({ cids: cids.join(',') })
     const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins?${query}`, baseUrl.origin)
     logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPins')
     const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
