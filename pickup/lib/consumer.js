@@ -43,7 +43,7 @@ export async function createConsumer ({
 
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
-  logger.info({ batchSize, visibilityTimeout, heartbeatInterval, queueUrl, handleMessageTimeout }, 'Create sqs consumer')
+  console.log({ batchSize, visibilityTimeout, heartbeatInterval, queueUrl, handleMessageTimeout }, 'Create sqs consumer')
 
   const app = Consumer.create({
     queueUrl,
