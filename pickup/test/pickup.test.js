@@ -4,7 +4,7 @@ import { SendMessageCommand } from '@aws-sdk/client-sqs'
 
 import { createConsumer } from '../lib/consumer.js'
 import { compose } from './_compose.js'
-import { prepareCid, verifyMessage, sleep, getMessagesFromSQS } from './_helpers.js'
+import { prepareCid, verifyMessage, sleep, getMessagesFromSQS, stopConsumer } from './_helpers.js'
 
 test.before(async t => {
   t.timeout(1000 * 60)
@@ -12,6 +12,7 @@ test.before(async t => {
 })
 
 test.after(async t => {
+  await sleep(5000)
   await t.context.shutDownDockers()
 })
 
@@ -21,7 +22,7 @@ test('throw an error if can\'t connect to IPFS', async t => {
   await t.throwsAsync(createConsumer({
     ipfsApiUrl: 'http://127.0.0.1',
     queueUrl,
-    testMaxRetryTime: 1000,
+    testMaxRetry: 1,
     testTimeoutMs: 50
   }))
 })
@@ -104,6 +105,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
           const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
           t.is(resultMessages, undefined)
           nockPickup.done()
+          await stopConsumer(consumer)
           resolve()
         }
       } catch (e) {
@@ -199,6 +201,7 @@ test('Process 1 message that fails and returns in the list', async t => {
           t.is(resultMessages, undefined)
 
           nockPickup.done()
+          await stopConsumer(consumer)
           resolve()
         }
       } catch (e) {
@@ -299,7 +302,8 @@ test('Process 3 messages concurrently and the last has an error', async t => {
           await sleep(2000)
           const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
           t.is(resultMessages, undefined)
-          nockPickup.done()
+          await nockPickup.done()
+          await stopConsumer(consumer)
           resolve()
         }
       } catch (e) {

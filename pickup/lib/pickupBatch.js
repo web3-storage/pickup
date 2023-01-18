@@ -1,4 +1,5 @@
 import { fetchCar, connectTo, disconnect, waitForGC, ERROR_TIMEOUT } from './ipfs.js'
+import { deleteMessage } from './consumer.js'
 import { updatePinStatus } from './dynamo.js'
 import { logger } from './logger.js'
 
@@ -66,7 +67,7 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
       messages.splice(Number(arrayRemoveIndex), 1)
       logger.trace({ cid, requestid, messageId: message.MessageId, arrayRemoveIndex }, 'Removed processed message from the messages')
 
-      await queueManager.deleteMessage(message)
+      await deleteMessage(queueManager, message)
 
       resultStats[cid] = 'success'
     } catch (err) {
@@ -81,7 +82,7 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
         await updatePinStatus(dynamo, dynamoTable, cid, 'failed')
 
         // Delete the message from the queue
-        await queueManager.deleteMessage(message)
+        await deleteMessage(queueManager, message)
         resultStats[cid] = 'timeout'
       } else {
         // For any other error the message from the queue is not removed,

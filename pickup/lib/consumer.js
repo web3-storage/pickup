@@ -1,4 +1,4 @@
-import retry from 'p-retry'
+import retry from 'async-retry'
 import { Consumer } from 'sqs-consumer'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 
@@ -6,6 +6,22 @@ import { createS3Uploader } from './s3.js'
 import { testIpfsApi } from './ipfs.js'
 import { pickupBatch } from './pickupBatch.js'
 import { logger } from './logger.js'
+
+export async function deleteMessage({sqs, queueUrl}, message) {
+  const deleteParams = {
+    QueueUrl: queueUrl,
+    ReceiptHandle: message.ReceiptHandle
+  };
+  try {
+    await sqs
+      .deleteMessage(deleteParams)
+      .promise();
+  }
+  catch (err) {
+    logger.error({err}, 'SQS delete message failed')
+    throw err
+  }
+}
 
 export async function createConsumer ({
   ipfsApiUrl,
@@ -15,19 +31,22 @@ export async function createConsumer ({
   visibilityTimeout = 20,
   heartbeatInterval = 10,
   handleMessageTimeout = 4 * 60 * 60 * 1000,
-  testMaxRetryTime = 1000 * 5,
+  testMaxRetry = 5,
   testTimeoutMs = 10000,
   timeoutFetchMs = 30000,
   dynamoTable,
   dynamoEndpoint
 }) {
   // throws if can't connect
-  await retry(() => testIpfsApi(ipfsApiUrl, testTimeoutMs), { maxRetryTime: testMaxRetryTime })
+  await retry(() => {
+    return testIpfsApi(ipfsApiUrl, testTimeoutMs)}, { retries: testMaxRetry })
 
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
   const app = Consumer.create({
     queueUrl,
+    // The message deletion is managed manually
+    shouldDeleteMessages: false,
     // needs partial acks before we can increase batch size
     // see: https://github.com/bbc/sqs-consumer/pull/255
     batchSize, // 1 to 10
