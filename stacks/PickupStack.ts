@@ -53,7 +53,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
       environment: {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
         IPFS_API_URL: 'http://127.0.0.1:5001',
-        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
+        BATCH_SIZE: '10'
       },
       queue: basicApi.queue.cdk.queue,
       // retentionPeriod: Duration.days(1),
@@ -96,7 +97,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
       environment: {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
         IPFS_API_URL: 'http://127.0.0.1:5001',
-        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
+        BATCH_SIZE: '10'
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,

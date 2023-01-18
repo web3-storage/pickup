@@ -13,7 +13,7 @@ async function start () {
     queueUrl: SQS_QUEUE_URL,
     dynamoTable: DYNAMO_TABLE_NAME,
     dynamoEndpoint: DYNAMO_DB_ENDPOINT || undefined,
-    batchSize: BATCH_SIZE || 1
+    batchSize: Number(BATCH_SIZE || 1)
   })
 
   app.on('message_received', msg => {
