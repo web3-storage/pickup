@@ -7,18 +7,17 @@ import { testIpfsApi } from './ipfs.js'
 import { pickupBatch } from './pickupBatch.js'
 import { logger } from './logger.js'
 
-export async function deleteMessage({sqs, queueUrl}, message) {
+export async function deleteMessage ({ sqs, queueUrl }, message) {
   const deleteParams = {
     QueueUrl: queueUrl,
     ReceiptHandle: message.ReceiptHandle
-  };
+  }
   try {
     await sqs
       .deleteMessage(deleteParams)
-      .promise();
-  }
-  catch (err) {
-    logger.error({err}, 'SQS delete message failed')
+      .promise()
+  } catch (err) {
+    logger.error({ err }, 'SQS delete message failed')
     throw err
   }
 }
@@ -39,7 +38,8 @@ export async function createConsumer ({
 }) {
   // throws if can't connect
   await retry(() => {
-    return testIpfsApi(ipfsApiUrl, testTimeoutMs)}, { retries: testMaxRetry })
+    return testIpfsApi(ipfsApiUrl, testTimeoutMs)
+  }, { retries: testMaxRetry })
 
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
