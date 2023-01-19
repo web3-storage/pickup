@@ -43,7 +43,7 @@ export async function createConsumer ({
 
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
-  console.log({ batchSize, visibilityTimeout, heartbeatInterval, queueUrl, handleMessageTimeout }, 'Create sqs consumer')
+  logger.info({ batchSize, visibilityTimeout, heartbeatInterval, queueUrl, handleMessageTimeout }, 'Create sqs consumer')
 
   const app = Consumer.create({
     queueUrl,
@@ -76,6 +76,13 @@ export async function createConsumer ({
   })
 
   app.on('error', (err) => {
+    if (
+      (err.code === 'MissingParameter' || err.constructor.name === 'MissingParameter') &&
+      err.message.includes('Error changing visibility timeout: The request must contain the parameter ChangeMessageVisibilityBatchRequestEntry')) {
+      logger.trace({ err }, 'The sqs-library is trying to  change the visibility of the timeout of an empty message list')
+      return
+    }
+
     logger.error({ err }, 'App error')
   })
 

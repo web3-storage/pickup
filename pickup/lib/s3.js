@@ -15,6 +15,10 @@ export async function sendToS3 ({ client, bucket, key }, { body, cid, downloadEr
   const s3Upload = new Upload({ client, params })
 
   body.on('error', (err) => {
+    if (err.code === 'AbortError' || err.constructor.name === 'AbortError') {
+      logger.trace({ err }, 'The abort command was thrown by a ipfs timeout')
+      return
+    }
     logger.error({ err, code: downloadError.code }, 'S3 upload error')
   })
 
