@@ -98,7 +98,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
         IPFS_API_URL: 'http://127.0.0.1:5001',
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
-        BATCH_SIZE: '10'
+        BATCH_SIZE: '3'
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,
