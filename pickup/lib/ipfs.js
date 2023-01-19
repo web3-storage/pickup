@@ -4,24 +4,37 @@ import { Multiaddr } from 'multiaddr'
 import debounce from 'debounce'
 import fetch from 'node-fetch'
 
-export async function fetchCar (cid, ipfsApiUrl, timeoutMs = 30000) {
+import { logger } from './logger.js'
+
+export const ERROR_TIMEOUT = 'TIMEOUT'
+
+export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 30000) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
   const url = new URL(`/api/v0/dag/export?arg=${cid}`, ipfsApiUrl)
   const ctl = new AbortController()
-  const startCountdown = debounce(() => ctl.abort(), timeoutMs)
+  // timeoutMs = 2000
+  const startCountdown = debounce(() => {
+    downloadError.code = ERROR_TIMEOUT
+    ctl.abort()
+  }, timeoutMs)
   startCountdown()
   const res = await fetch(url, { method: 'POST', signal: ctl.signal })
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText} ${url}`)
   }
+
   async function * restartCountdown (source) {
+    // startCountdown.clear()
+    // throw new Error('There was an error!!')
     for await (const chunk of source) {
       startCountdown()
       yield chunk
     }
+    startCountdown.clear()
   }
+
   return compose(res.body, restartCountdown)
 }
 
@@ -31,7 +44,7 @@ export async function connectTo (origins = [], ipfsApiUrl, timeoutMs = 10000) {
     const signal = AbortSignal.timeout(timeoutMs)
     const res = await fetch(url, { method: 'POST', signal })
     if (!res.ok) {
-      console.log(`Error connecting to ${addr} - got: ${res.status} ${res.statusText}`)
+      logger.error({ addr, status: res.status, statusText: res.statusText }, 'Error connecting')
     }
   }
 }
@@ -42,7 +55,7 @@ export async function disconnect (origins = [], ipfsApiUrl, timeoutMs = 10000) {
     const signal = AbortSignal.timeout(timeoutMs)
     const res = await fetch(url, { method: 'POST', signal })
     if (!res.ok) {
-      console.log(`Error disconnecting from ${addr} - got: ${res.status} ${res.statusText}`)
+      logger.error({ addr, status: res.status, statusText: res.statusText }, 'Error disconnecting')
     }
   }
 }
@@ -52,7 +65,7 @@ export async function waitForGC (ipfsApiUrl, timeoutMs = 60000) {
   const signal = AbortSignal.timeout(timeoutMs)
   const res = await fetch(url, { method: 'POST', signal })
   if (!res.ok) {
-    console.log(`Error GCing - got: ${res.status} ${res.statusText}`)
+    logger.error({ url, status: res.status, statusText: res.statusText }, 'Error GC')
   }
   await res.text()
 }
@@ -83,9 +96,10 @@ export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
       throw new Error(`IPFS API test failed. POST ${url} returned ${res.status} ${res.statusText}`)
     }
     const { AgentVersion, ID } = await res.json()
-    console.log(`Connected to ${AgentVersion} peer: ${ID}`)
-  } catch (cause) {
-    throw new Error('IPFS API test failed.', { cause })
+    logger.info({ agentVersion: AgentVersion, peerId: ID }, 'Connected')
+  } catch (err) {
+    logger.error({ err }, 'Test ipfs fail')
+    throw new Error('IPFS API test failed.', { cause: err })
   }
 }
 

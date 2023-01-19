@@ -1,16 +1,27 @@
 import { S3Client } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
+import { logger } from './logger.js'
 
-export async function sendToS3 ({ client, bucket, key }, { body }) {
+export async function sendToS3 ({ client, bucket, key }, { body, cid, downloadError }) {
   const params = {
     Metadata: { structure: 'complete' },
     Bucket: bucket,
     Key: key,
     Body: body
   }
+
   // Handles s3 multipart uploading
   // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
   const s3Upload = new Upload({ client, params })
+
+  body.on('error', (err) => {
+    if (err.code === 'AbortError' || err.constructor.name === 'AbortError') {
+      logger.trace({ err, cid }, 'The abort command was thrown by a ipfs timeout')
+      return
+    }
+    logger.error({ err, code: downloadError.code, cid }, 'S3 upload error')
+  })
+
   return s3Upload.done()
 }
 

@@ -11,7 +11,7 @@
     "console": "sst console",
     "typecheck": "tsc --noEmit",
     "lint": "ts-standard",
-    "test": "SST_APP=NOSUCH SST_STAGE=NOSUCH ava --serial",
+    "test": "SST_APP=NOSUCH SST_STAGE=NOSUCH LOG_LEVEL=fatal ava --serial",
     "test:debug": "DEBUG=testcontainers* SST_APP=NOSUCH SST_STAGE=NOSUCH ava --serial",
     "openapi-types": "npx openapi-typescript https://raw.githubusercontent.com/ipfs/pinning-services-api-spec/main/ipfs-pinning-service.yaml --output api/schema-gen.ts"
   },
@@ -22,7 +22,7 @@
     "@tsconfig/node16": "^1.0.2",
     "@typescript-eslint/experimental-utils": "^5.29.0",
     "ava": "^4.3.1",
-    "nock": "^13.2.9",
+    "nock": "13.3.0",
     "testcontainers": "^8.10.1",
     "ts-node": "^10.8.2",
     "ts-standard": "^11.0.0",
