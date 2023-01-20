@@ -63,8 +63,8 @@ test('getPin', async t => {
 
   const res3 = await getPin({ cid, dynamo, table })
   t.is(res3.cid, cid)
-  t.is(res3.status, res2.status)
-  t.is(res3.created, res2.created)
+  t.is(res3.status, res2.pin.status)
+  t.is(res3.created, res2.pin.created)
 })
 
 test('addPin', async t => {
@@ -90,18 +90,20 @@ test('putIfNotExists', async t => {
   const cid = 'bar'
   const { dynamo, table } = t.context
   const res1 = await putIfNotExists({ cid, dynamo, table })
-  t.is(res1.cid, cid)
-  t.is(res1.status, 'queued')
+  t.is(res1.shouldQueue, true)
+  t.is(res1.pin.cid, cid)
+  t.is(res1.pin.status, 'queued')
 
   const res2 = await getPin({ cid, dynamo, table })
   t.is(res2.cid, cid)
   t.is(res2.status, 'queued')
-  t.is(res2.created, res1.created)
+  t.is(res2.created, res1.pin.created)
 
   const res3 = await putIfNotExists({ cid, dynamo, table })
-  t.is(res3.cid, cid)
-  t.is(res3.status, 'queued')
-  t.is(res3.created, res1.created)
+  t.is(res3.shouldQueue, true)
+  t.is(res3.pin.cid, cid)
+  t.is(res3.pin.status, 'queued')
+  t.is(res3.pin.created, res1.pin.created)
 })
 
 test('getPin basic auth', async t => {
@@ -163,8 +165,8 @@ test('updatePinStatus', async t => {
 
   const res3 = await getPin({ cid, dynamo, table })
   t.is(res3.cid, cid)
-  t.is(res3.status, res2.status)
-  t.is(res3.created, res2.created)
+  t.is(res3.status, res2.pin.status)
+  t.is(res3.created, res2.pin.created)
 
   const s3Event = {
     Records: [{
@@ -181,7 +183,7 @@ test('updatePinStatus', async t => {
   const [res4] = JSON.parse(res.body)
   t.is(res4.cid, cid)
   t.is(res4.status, 'pinned')
-  t.is(res4.created, res2.created)
+  t.is(res4.created, res2.pin.created)
 })
 
 export async function createQueue (sqsPort, sqs) {

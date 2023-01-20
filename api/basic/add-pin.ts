@@ -101,7 +101,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
  * with optional source multiaddrs specified as origins list.
  */
 export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<ClusterAddResponseBody> {
-  const pin = await putIfNotExists({ cid, dynamo, table })
+  const { pin } = await putIfNotExists({ cid, dynamo, table })
   await addToQueue({ cid, origins, bucket, sqs, queueUrl })
   return toAddPinResponse(pin, origins)
 }
@@ -109,7 +109,7 @@ export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, tab
 /**
  * Save Pin to Dynamo. If we already have that CID then return the existing.
  */
-export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): Promise<Pin> {
+export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): Promise<{shouldQueue: boolean, pin: Pin}> {
   const client = DynamoDBDocumentClient.from(dynamo)
   const pin: Pin = {
     cid,
@@ -125,7 +125,7 @@ export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): P
     }))
     logger.info({ code: 'DYNAMO_PUT' }, 'New pin saved')
     // Pin was saved, so return it
-    return pin
+    return { shouldQueue: true, pin }
   } catch (err) {
     // expected error if CID already exists
     // TODO handle failure for "get" command
@@ -135,7 +135,7 @@ export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): P
         Key: { cid }
       }))
       logger.info({ code: 'DYNAMO_GET' }, 'Get existing pin')
-      return existing.Item as Pin
+      return { shouldQueue: true, pin: existing.Item as Pin }
     }
     logger.error({ err }, 'Dynamo error')
   }
