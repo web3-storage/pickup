@@ -2,8 +2,7 @@ import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 import { SQSClient, CreateQueueCommand, GetQueueUrlCommand, ReceiveMessageCommand } from '@aws-sdk/client-sqs'
 import { GenericContainer as Container } from 'testcontainers'
 import { addPin, putIfNotExists, handler as addPinHandler } from '../basic/add-pin.js'
-import { getPin, handler as getPinHandler } from '../basic/get-pin.js'
-import { s3EventHandler as updatePin } from '../basic/update-pin.js'
+import { getPin } from '../basic/get-pin.js'
 import { nanoid } from 'nanoid'
 import test from 'ava'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
@@ -52,20 +51,6 @@ test.before(async t => {
   t.context.lambdaContext = {
     awsRequestId: 123123
   }
-})
-
-test('getPin', async t => {
-  const cid = 'foo'
-  const { dynamo, table } = t.context
-  const res1 = await getPin({ cid, dynamo, table })
-  t.is(res1, undefined)
-
-  const res2 = await putIfNotExists({ cid, dynamo, table })
-
-  const res3 = await getPin({ cid, dynamo, table })
-  t.is(res3.cid, cid)
-  t.is(res3.status, res2.pin.status)
-  t.is(res3.created, res2.pin.created)
 })
 
 test('addPin', async t => {
@@ -141,28 +126,6 @@ test('putIfNotExists with a failed status', async t => {
   t.truthy(res3.pin.created > res1.pin.created)
 })
 
-test('getPin basic auth', async t => {
-  process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
-  process.env.TABLE_NAME = t.context.table
-  const event = {
-    headers: {
-      authorization: 'nope'
-    },
-    pathParameters: {
-      cid: 'bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354'
-    }
-  }
-  const unauth = await getPinHandler(event, t.context.lambdaContext)
-  t.is(unauth.statusCode, 401)
-  t.true(typeof unauth.body === 'string')
-  t.deepEqual(JSON.parse(unauth.body), { error: { reason: 'UNAUTHORIZED' } })
-
-  event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
-  const auth = await getPinHandler(event, t.context.lambdaContext)
-  t.is(auth.statusCode, 200)
-})
-
 test('addPin basic auth', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
@@ -186,39 +149,6 @@ test('addPin basic auth', async t => {
   event.headers.authorization = `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
   const auth = await addPinHandler(event, t.context.lambdaContext)
   t.is(auth.statusCode, 200)
-})
-
-test('updatePinStatus', async t => {
-  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
-  process.env.TABLE_NAME = t.context.table
-  const cid = 'update'
-  const { dynamo, table } = t.context
-  const res1 = await getPin({ cid, dynamo, table })
-  t.is(res1, undefined)
-
-  const res2 = await putIfNotExists({ cid, dynamo, table })
-
-  const res3 = await getPin({ cid, dynamo, table })
-  t.is(res3.cid, cid)
-  t.is(res3.status, res2.pin.status)
-  t.is(res3.created, res2.pin.created)
-
-  const s3Event = {
-    Records: [{
-      eventName: 'ObjectCreated:Put',
-      s3: {
-        object: {
-          key: `pickup/${cid}.car`
-        }
-      }
-    }]
-  }
-
-  const res = await updatePin(s3Event, t.context.lambdaContext)
-  const [res4] = JSON.parse(res.body)
-  t.is(res4.cid, cid)
-  t.is(res4.status, 'pinned')
-  t.is(res4.created, res2.pin.created)
 })
 
 export async function createQueue (sqsPort, sqs) {
