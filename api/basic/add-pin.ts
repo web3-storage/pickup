@@ -101,7 +101,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
  * with optional source multiaddrs specified as origins list.
  */
 export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<ClusterAddResponseBody> {
-  const { shouldQueue, pin } = await putIfNotExists({ cid, dynamo, table })
+  const { shouldQueue, pin } = await upsertOnDynamo({ cid, dynamo, table })
   if (shouldQueue) {
     await addToQueue({ cid, origins, bucket, sqs, queueUrl })
   }
@@ -111,7 +111,7 @@ export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, tab
 /**
  * Save Pin to Dynamo. If we already have that CID then return the existing.
  */
-export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): Promise<{shouldQueue: boolean, pin: Pin}> {
+export async function upsertOnDynamo ({ cid, dynamo, table }: UpsertPinInput): Promise<{shouldQueue: boolean, pin: Pin}> {
   const client = DynamoDBDocumentClient.from(dynamo)
   const pin: Pin = {
     cid,

@@ -1,7 +1,7 @@
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 import { SQSClient, CreateQueueCommand, GetQueueUrlCommand, ReceiveMessageCommand } from '@aws-sdk/client-sqs'
 import { GenericContainer as Container } from 'testcontainers'
-import { addPin, putIfNotExists, handler as addPinHandler } from '../basic/add-pin.js'
+import { addPin, upsertOnDynamo, handler as addPinHandler } from '../basic/add-pin.js'
 import { getPin } from '../basic/get-pin.js'
 import { nanoid } from 'nanoid'
 import test from 'ava'
@@ -80,7 +80,7 @@ test('addPin for a failed item', async t => {
   const cid = nanoid()
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
 
-  await putIfNotExists({ cid, dynamo, table })
+  await upsertOnDynamo({ cid, dynamo, table })
   const client = DynamoDBDocumentClient.from(dynamo)
   await client.send(new UpdateCommand({
     TableName: table,
@@ -136,7 +136,7 @@ test('addPin for an item already pinned', async t => {
   const cid = nanoid()
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
 
-  await putIfNotExists({ cid, dynamo, table })
+  await upsertOnDynamo({ cid, dynamo, table })
   const client = DynamoDBDocumentClient.from(dynamo)
   await client.send(new UpdateCommand({
     TableName: table,
@@ -161,10 +161,10 @@ test('addPin for an item already pinned', async t => {
   t.is(msgs, undefined)
 })
 
-test('putIfNotExists', async t => {
+test('upsertOnDynamo', async t => {
   const cid = nanoid()
   const { dynamo, table } = t.context
-  const res1 = await putIfNotExists({ cid, dynamo, table })
+  const res1 = await upsertOnDynamo({ cid, dynamo, table })
   t.is(res1.shouldQueue, true)
   t.is(res1.pin.cid, cid)
   t.is(res1.pin.status, 'queued')
@@ -174,17 +174,17 @@ test('putIfNotExists', async t => {
   t.is(res2.status, 'queued')
   t.is(res2.created, res1.pin.created)
 
-  const res3 = await putIfNotExists({ cid, dynamo, table })
+  const res3 = await upsertOnDynamo({ cid, dynamo, table })
   t.is(res3.shouldQueue, false)
   t.is(res3.pin.cid, cid)
   t.is(res3.pin.status, 'queued')
   t.is(res3.pin.created, res1.pin.created)
 })
 
-test('putIfNotExists with a failed status', async t => {
+test('upsertOnDynamo with a failed status', async t => {
   const cid = nanoid()
   const { dynamo, table } = t.context
-  const res1 = await putIfNotExists({ cid, dynamo, table })
+  const res1 = await upsertOnDynamo({ cid, dynamo, table })
   t.is(res1.shouldQueue, true)
   t.is(res1.pin.cid, cid)
   t.is(res1.pin.status, 'queued')
@@ -208,7 +208,7 @@ test('putIfNotExists with a failed status', async t => {
   t.is(res2.status, 'failed')
   t.is(res2.created, res1.pin.created)
 
-  const res3 = await putIfNotExists({ cid, dynamo, table })
+  const res3 = await upsertOnDynamo({ cid, dynamo, table })
   t.is(res3.shouldQueue, true)
   t.is(res3.pin.cid, cid)
   t.is(res3.pin.status, 'queued')

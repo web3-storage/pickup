@@ -1,6 +1,6 @@
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 import { GenericContainer as Container } from 'testcontainers'
-import { putIfNotExists } from '../basic/add-pin.js'
+import { upsertOnDynamo } from '../basic/add-pin.js'
 import { getPin, handler as getPinHandler } from '../basic/get-pin.js'
 import { nanoid } from 'nanoid'
 import test from 'ava'
@@ -48,7 +48,7 @@ test('getPin', async t => {
   const res1 = await getPin({ cid, dynamo, table })
   t.is(res1, undefined)
 
-  const res2 = await putIfNotExists({ cid, dynamo, table })
+  const res2 = await upsertOnDynamo({ cid, dynamo, table })
 
   const res3 = await getPin({ cid, dynamo, table })
   t.is(res3.cid, cid)
