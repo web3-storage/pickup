@@ -6,6 +6,7 @@ import { getPin, handler as getPinHandler } from '../basic/get-pin.js'
 import { s3EventHandler as updatePin } from '../basic/update-pin.js'
 import { nanoid } from 'nanoid'
 import test from 'ava'
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 
 test.before(async t => {
   t.timeout(1000 * 60)
@@ -87,7 +88,7 @@ test('addPin', async t => {
 })
 
 test('putIfNotExists', async t => {
-  const cid = 'bar'
+  const cid = nanoid()
   const { dynamo, table } = t.context
   const res1 = await putIfNotExists({ cid, dynamo, table })
   t.is(res1.shouldQueue, true)
@@ -100,10 +101,44 @@ test('putIfNotExists', async t => {
   t.is(res2.created, res1.pin.created)
 
   const res3 = await putIfNotExists({ cid, dynamo, table })
-  t.is(res3.shouldQueue, true)
+  t.is(res3.shouldQueue, false)
   t.is(res3.pin.cid, cid)
   t.is(res3.pin.status, 'queued')
   t.is(res3.pin.created, res1.pin.created)
+})
+
+test('putIfNotExists with a failed status', async t => {
+  const cid = nanoid()
+  const { dynamo, table } = t.context
+  const res1 = await putIfNotExists({ cid, dynamo, table })
+  t.is(res1.shouldQueue, true)
+  t.is(res1.pin.cid, cid)
+  t.is(res1.pin.status, 'queued')
+
+  const client = DynamoDBDocumentClient.from(dynamo)
+  await client.send(new UpdateCommand({
+    TableName: table,
+    Key: { cid },
+    ExpressionAttributeNames: {
+      '#status': 'status'
+    },
+    ExpressionAttributeValues: {
+      ':s': 'failed'
+    },
+    UpdateExpression: 'set #status = :s',
+    ReturnValues: 'ALL_NEW'
+  }))
+
+  const res2 = await getPin({ cid, dynamo, table })
+  t.is(res2.cid, cid)
+  t.is(res2.status, 'failed')
+  t.is(res2.created, res1.pin.created)
+
+  const res3 = await putIfNotExists({ cid, dynamo, table })
+  t.is(res3.shouldQueue, true)
+  t.is(res3.pin.cid, cid)
+  t.is(res3.pin.status, 'queued')
+  t.truthy(res3.pin.created > res1.pin.created)
 })
 
 test('getPin basic auth', async t => {
