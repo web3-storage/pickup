@@ -46,9 +46,9 @@ export async function fetchAddPin ({
       return resultJSON
     }
 
-    logger.error({ code: 'FETCH_ADD_PIN', cid, endpoint, url: myURL }, 'Fetch for add pin failed')
+    logger.warn({ code: 'FETCH_ADD_PIN', cid, endpoint, url: myURL }, 'Fetch for add pin failed')
   } catch (err) {
-    logger.error({ code: 'FETCH_ADD_PIN', cid, endpoint, err }, 'Fetch for add pin failed')
+    logger.warn({ code: 'FETCH_ADD_PIN', cid, endpoint, err }, 'Fetch for add pin failed')
   }
   throw new Error('FETCH_ADD_PIN')
 }
@@ -72,9 +72,9 @@ export async function fetchGetPin ({
       return resultJSON
     }
 
-    logger.error({ code: 'FETCH_GET_PIN', cid, endpoint, url: myURL }, 'Fetch for get pin failed')
+    logger.warn({ code: 'FETCH_GET_PIN', cid, endpoint, url: myURL }, 'Fetch for get pin failed')
   } catch (err) {
-    logger.error({ code: 'FETCH_GET_PIN', cid, endpoint, err }, 'Fetch for get pin failed')
+    logger.warn({ code: 'FETCH_GET_PIN', cid, endpoint, err }, 'Fetch for get pin failed')
   }
   throw new Error('FETCH_GET_PIN')
 }
@@ -100,9 +100,9 @@ export async function fetchGetPins ({
       return resultText.split('\n').filter(row => !!row).map(row => JSON.parse(row))
     }
 
-    logger.error({ code: 'FETCH_GET_PINS', cids, endpoint, url: myURL }, 'Fetch for get pins failed')
+    logger.warn({ code: 'FETCH_GET_PINS', cids, endpoint, url: myURL }, 'Fetch for get pins failed')
   } catch (err) {
-    logger.error({ code: 'FETCH_GET_PINS', cids, endpoint, err }, 'Fetch for get pins failed')
+    logger.warn({ code: 'FETCH_GET_PINS', cids, endpoint, err }, 'Fetch for get pins failed')
   }
   throw new Error('FETCH_GET_PIN')
 }
