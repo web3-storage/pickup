@@ -101,8 +101,10 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
  * with optional source multiaddrs specified as origins list.
  */
 export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<ClusterAddResponseBody> {
-  const { pin } = await putIfNotExists({ cid, dynamo, table })
-  await addToQueue({ cid, origins, bucket, sqs, queueUrl })
+  const { shouldQueue, pin } = await putIfNotExists({ cid, dynamo, table })
+  if (shouldQueue) {
+    await addToQueue({ cid, origins, bucket, sqs, queueUrl })
+  }
   return toAddPinResponse(pin, origins)
 }
 
