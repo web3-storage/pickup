@@ -1,5 +1,5 @@
 import { DynamoDBClient, ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 import { ClusterAddResponseBody, ErrorCode, Pin, Response, ValidationError } from './schema.js'
@@ -101,15 +101,17 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
  * with optional source multiaddrs specified as origins list.
  */
 export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<ClusterAddResponseBody> {
-  const pin = await putIfNotExists({ cid, dynamo, table })
-  await addToQueue({ cid, origins, bucket, sqs, queueUrl })
+  const { shouldQueue, pin } = await upsertOnDynamo({ cid, dynamo, table })
+  if (shouldQueue) {
+    await addToQueue({ cid, origins, bucket, sqs, queueUrl })
+  }
   return toAddPinResponse(pin, origins)
 }
 
 /**
  * Save Pin to Dynamo. If we already have that CID then return the existing.
  */
-export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): Promise<Pin> {
+export async function upsertOnDynamo ({ cid, dynamo, table }: UpsertPinInput): Promise<{shouldQueue: boolean, pin: Pin}> {
   const client = DynamoDBDocumentClient.from(dynamo)
   const pin: Pin = {
     cid,
@@ -125,7 +127,7 @@ export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): P
     }))
     logger.info({ code: 'DYNAMO_PUT' }, 'New pin saved')
     // Pin was saved, so return it
-    return pin
+    return { shouldQueue: true, pin }
   } catch (err) {
     // expected error if CID already exists
     // TODO handle failure for "get" command
@@ -135,11 +137,54 @@ export async function putIfNotExists ({ cid, dynamo, table }: UpsertPinInput): P
         Key: { cid }
       }))
       logger.info({ code: 'DYNAMO_GET' }, 'Get existing pin')
-      return existing.Item as Pin
+
+      const foundPin = existing.Item as Pin
+      let newPin
+      if (foundPin.status === 'failed') {
+        newPin = await updateFailedItem({ cid, dynamo, table })
+        return { shouldQueue: true, pin: newPin }
+      }
+
+      return { shouldQueue: false, pin: existing.Item as Pin }
     }
     logger.error({ err }, 'Dynamo error')
   }
   throw new ErrorCode('DYNAMO_SAVE_PIN', 'Failed to save Pin. Please try again')
+}
+
+/**
+ * Save Pin to Dynamo. If we already have that CID then return the existing.
+ */
+export async function updateFailedItem ({ cid, dynamo, table }: UpsertPinInput): Promise<Pin> {
+  const pin: Pin = {
+    cid,
+    status: 'queued',
+    created: new Date().toISOString()
+  }
+  try {
+    const client = DynamoDBDocumentClient.from(dynamo)
+    await client.send(new UpdateCommand({
+      TableName: table,
+      Key: { cid },
+      ExpressionAttributeNames: {
+        '#status': 'status',
+        '#created': 'created'
+      },
+      ExpressionAttributeValues: {
+        ':s': 'queued',
+        ':c': pin.created,
+        ':expectedStatus': 'failed'
+      },
+      UpdateExpression: 'set #status = :s, #created = :c',
+      ConditionExpression: '#status = :expectedStatus',
+      ReturnValues: 'ALL_NEW'
+    }))
+
+    return pin
+  } catch (err) {
+    logger.error({ err }, 'Dynamo update failed status')
+    throw err
+  }
 }
 
 /**
