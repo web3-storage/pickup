@@ -392,7 +392,7 @@ test('Process 1 message that fails with a max retry', async t => {
           nockPickup.done()
           await stopConsumer(consumer)
           if (shouldFail) {
-            reject('Message not set to failed after max retry')
+            reject(new Error('Message not set to failed after max retry'))
           } else {
             resolve()
           }
