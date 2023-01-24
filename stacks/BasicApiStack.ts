@@ -11,7 +11,7 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       queue: {
         deadLetterQueue: {
           queue: dlq.cdk.queue,
-          maxReceiveCount: 2
+          maxReceiveCount: 11
         }
       }
     }

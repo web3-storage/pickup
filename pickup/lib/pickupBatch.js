@@ -12,7 +12,7 @@ import { logger } from './logger.js'
  * @param {import('@aws-sdk/client-s3'.S3Client)} opts.s3
  * @returns {Promise<SQSMessage[]>}
  */
-export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3, queueManager, dynamo, dynamoTable, timeoutFetchMs }) {
+export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3, queueManager, dynamo, dynamoTable, timeoutFetchMs, maxRetry }) {
   const jobs = []
   const allOrigins = []
 
@@ -76,8 +76,12 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
       requestIds.splice(Number(arrayRemoveIndex), 1)
       messages.splice(Number(arrayRemoveIndex), 1)
 
-      if (downloadError.code === ERROR_TIMEOUT) {
-        logger.info({ cid, requestid, messageId: message.MessageI, arrayRemoveIndex }, 'Download timeout')
+      const currentRetry = Number(message.Attributes.ApproximateReceiveCount)
+      if (downloadError.code === ERROR_TIMEOUT ||
+        currentRetry >= maxRetry
+      ) {
+        logger.error({ cid, requestid, currentRetry, messageId: message.MessageI, arrayRemoveIndex },
+          currentRetry >= maxRetry ? 'Max retry' : 'Download timeout')
         // Update the status on dynamodb to failed
         await updatePinStatus(dynamo, dynamoTable, cid, 'failed')
 
