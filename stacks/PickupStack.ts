@@ -1,16 +1,11 @@
 import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, ContainerDefinition, HealthCheck } from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType} from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
-import { Duration, aws_ssm } from 'aws-cdk-lib'
+import { Duration, aws_ecs, aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
-import { StringAttribute } from 'aws-cdk-lib/aws-cognito'
-import { StringParameter } from 'aws-cdk-lib/aws-ssm'
-import { HealthCheckType } from 'aws-cdk-lib/aws-servicediscovery'
-import { QueueProcessingEc2Service } from 'aws-cdk-lib/aws-ecs-patterns'
-import { HealthCheck } from 'aws-cdk-lib/aws-appmesh'
 
 export function PickupStack ({ app, stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
