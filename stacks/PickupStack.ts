@@ -1,10 +1,10 @@
 import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType} from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
-import { Duration, aws_ecs, aws_ssm } from 'aws-cdk-lib'
+import { aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
 export function PickupStack ({ app, stack }: StackContext): void {
