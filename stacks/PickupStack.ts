@@ -4,7 +4,7 @@ import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType } fr
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
-import { aws_ssm } from 'aws-cdk-lib'
+import { Duration, aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
 export function PickupStack ({ app, stack }: StackContext): void {
@@ -62,13 +62,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
       // visibilityTimeout: Duration.minutes(5),
       // for debug!
       enableExecuteCommand: true,
-      healthCheck: { 
-        command: [ "CMD-SHELL", "ps -ef | grep node || exit 1" ],
+      healthCheck: {
+        command: ['CMD-SHELL", "ps -ef | grep node || exit 1'],
         // the properties below are optional
         interval: Duration.seconds(5),
         retries: 2,
         startPeriod: Duration.seconds(5),
-        timeout: Duration.seconds(10),
+        timeout: Duration.seconds(10)
       },
       cluster
     })
@@ -89,13 +89,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
       image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
         platform: Platform.LINUX_AMD64
       }),
-      healthCheck: { 
-        command: [ "CMD-SHELL", "ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme	|| exit 1" ],
+      healthCheck: {
+        command: ['CMD-SHELL", "ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme || exit 1'],
         // the properties below are optional
         interval: Duration.seconds(5),
         retries: 2,
         startPeriod: Duration.seconds(5),
-        timeout: Duration.seconds(10),
+        timeout: Duration.seconds(10)
       }
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
@@ -119,13 +119,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,
-      healthCheck: { 
-        command: [ "CMD-SHELL", "ps -ef | grep node || exit 1" ],
+      healthCheck: {
+        command: ['CMD-SHELL", "ps -ef | grep node || exit 1'],
         // the properties below are optional
         interval: Duration.seconds(5),
         retries: 2,
         startPeriod: Duration.seconds(5),
-        timeout: Duration.seconds(10),
+        timeout: Duration.seconds(10)
       },
       cluster
     })
@@ -136,14 +136,14 @@ export function PickupStack ({ app, stack }: StackContext): void {
       image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
         platform: Platform.LINUX_AMD64
       }),
-      healthCheck: { 
-        command: [ "CMD-SHELL", "ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme	|| exit 1" ],
+      healthCheck: {
+        command: ['CMD-SHELL", "ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme || exit 1'],
         // the properties below are optional
         interval: Duration.seconds(5),
         retries: 2,
         startPeriod: Duration.seconds(5),
-        timeout: Duration.seconds(10),
-      },
+        timeout: Duration.seconds(10)
+      }
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
