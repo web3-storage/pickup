@@ -1,11 +1,16 @@
 import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType } from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, ContainerDefinition, HealthCheck } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
-import { aws_ssm } from 'aws-cdk-lib'
+import { Duration, aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import { StringAttribute } from 'aws-cdk-lib/aws-cognito'
+import { StringParameter } from 'aws-cdk-lib/aws-ssm'
+import { HealthCheckType } from 'aws-cdk-lib/aws-servicediscovery'
+import { QueueProcessingEc2Service } from 'aws-cdk-lib/aws-ecs-patterns'
+import { HealthCheck } from 'aws-cdk-lib/aws-appmesh'
 
 export function PickupStack ({ app, stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
@@ -36,6 +41,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
         url: Secret.fromSsmParameter(grafanasecret)
       }
     })
+
     const service = new QueueProcessingFargateService(stack, 'Service', {
       // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
       // Requires Docker running locally
@@ -102,6 +108,14 @@ export function PickupStack ({ app, stack }: StackContext): void {
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,
+      healthCheck: { 
+        command: [ "CMD-SHELL", "ps -ef | grep node || exit 1" ],
+        // the properties below are optional
+        interval: Duration.seconds(5),
+        retries: 2,
+        startPeriod: Duration.seconds(5),
+        timeout: Duration.seconds(10),
+      },
       cluster
     })
     // go-ipfs as sidecar!
@@ -110,7 +124,15 @@ export function PickupStack ({ app, stack }: StackContext): void {
       logging: service.logDriver,
       image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
         platform: Platform.LINUX_AMD64
-      })
+      }),
+      healthCheck: { 
+        command: [ "CMD-SHELL", "ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme	|| exit 1" ],
+        // the properties below are optional
+        interval: Duration.seconds(5),
+        retries: 2,
+        startPeriod: Duration.seconds(5),
+        timeout: Duration.seconds(10),
+      },
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
