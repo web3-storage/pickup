@@ -72,7 +72,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     return toResponseError(500, 'INTERNAL_SERVER_ERROR')
   }
 
-  validationError = validateEventParameters({ cid, origins })
+  validationError = validateEventParameters({ cid })
 
   if (validationError) {
     logger.error({ err: validationError, code: validationError.code }, 'Validation event params error on add pin router')

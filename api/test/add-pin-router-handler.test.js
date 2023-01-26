@@ -180,33 +180,6 @@ test('add pin router handler with invalid cid', async t => {
   })
 })
 
-test('add pin router handler with invalid multiaddress', async t => {
-  process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
-  process.env.TABLE_NAME = t.context.table
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
-  process.env.PICKUP_URL = t.context.pickupUrl
-  process.env.BALANCER_RATE = 100
-
-  const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
-  const origins = 'abc'
-  const event = {
-    headers: {
-      authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
-    },
-    pathParameters: {
-      cid
-    },
-    queryStringParameters: { origins }
-  }
-  const response = await handler(event, t.context.lambdaContext)
-
-  t.deepEqual(response, {
-    statusCode: 400,
-    body: '{"error":{"reason":"BAD_REQUEST","details":"abc in origins is not a valid multiaddr"}}'
-  })
-})
-
 test('add pin router handler with invalid legacyClusterIpfsUrl', async t => {
   process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
   process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
