@@ -27,6 +27,7 @@ export async function createConsumer ({
   queueUrl,
   s3,
   batchSize = 10,
+  maxRetry = 5,
   visibilityTimeout = 20,
   heartbeatInterval = 10,
   handleMessageTimeout = 4 * 60 * 60 * 1000,
@@ -43,7 +44,7 @@ export async function createConsumer ({
 
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
-  logger.info({ batchSize, visibilityTimeout, heartbeatInterval, queueUrl, handleMessageTimeout }, 'Create sqs consumer')
+  logger.info({ batchSize, visibilityTimeout, heartbeatInterval, queueUrl, handleMessageTimeout, maxRetry }, 'Create sqs consumer')
 
   const app = Consumer.create({
     queueUrl,
@@ -70,7 +71,8 @@ export async function createConsumer ({
         queueManager: app,
         dynamo,
         dynamoTable,
-        timeoutFetchMs
+        timeoutFetchMs,
+        maxRetry
       })
     }
   })

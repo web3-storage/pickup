@@ -318,3 +318,94 @@ test('Process 3 messages concurrently and the last has an error', async t => {
 
   return done
 })
+
+test('Process 1 message that fails with a max retry', async t => {
+  t.timeout(1000 * 60)
+  const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
+
+  const queueUrl = await createQueue()
+  const bucket = await createBucket()
+
+  // Preapre the data for the test
+  const cars = [
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'error' })
+  ]
+
+  const retryNum = 3
+  // Configure nock to mock the response
+  const nockPickup = nock(ipfsApiUrl)
+  nockPickup
+    .post('/api/v0/id')// Alive
+    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+  for (let i = 0; i < retryNum; i++) {
+    nockPickup.post('/api/v0/repo/gc?silent=true')// Garbage collector
+      .reply(200, 'GC Success')
+    nockPickup.post(`/api/v0/dag/export?arg=${cars[0].cid}`) // Get pin
+      .reply((uri, requestBody) => [400, 'KO'])
+  }
+
+  // Send the SQS messages in queue
+  for (let i = 0; i < cars.length; i++) {
+    await sqs.send(new SendMessageCommand({
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      QueueUrl: queueUrl
+    }))
+  }
+
+  // Create the consumer
+  const consumer = await createConsumer(
+    {
+      ipfsApiUrl,
+      queueUrl,
+      s3,
+      heartbeatInterval: 2,
+      visibilityTimeout: 3,
+      dynamoEndpoint,
+      dynamoTable,
+      timeoutFetchMs: 2000,
+      maxRetry: 3
+    }
+  )
+
+  // The number of the messages resolved, when is max close the test and finalize
+  let resolved = 0
+
+  let shouldFail = false
+  const done = new Promise((resolve, reject) => {
+    consumer.on('message_received', async msg => {
+      if (Number(msg.Attributes.ApproximateReceiveCount) > retryNum) {
+        shouldFail = true
+      }
+    })
+
+    consumer.on('message_processed', async msg => {
+      try {
+        resolved++
+
+        // The +1 is add to manage the second try
+        if (resolved === retryNum) {
+          await sleep(50)
+          const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
+          t.is(resultMessages, undefined)
+
+          await sleep(4000)
+          nockPickup.done()
+          await stopConsumer(consumer)
+          if (shouldFail) {
+            reject(new Error('Message not set to failed after max retry'))
+          } else {
+            resolve()
+          }
+        }
+      } catch (e) {
+        reject(e)
+      }
+    })
+    consumer.on('processing_error', reject)
+    consumer.on('timeout_error', reject)
+  })
+
+  consumer.start()
+
+  return done
+})

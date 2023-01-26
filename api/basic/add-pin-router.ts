@@ -122,7 +122,9 @@ export async function addPin ({
   const notUnpinnedPeerMaps = legacyClusterIpfsResponse && Object.values(legacyClusterIpfsResponse.peer_map).filter(pin => pin.status !== 'unpinned')
   if (notUnpinnedPeerMaps && notUnpinnedPeerMaps.length > 0) {
     logger.info({ code: 'FROM_LEGACY_CLUSTER' }, 'CID exists on legacy cluster')
-    const peerMap = ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) || notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
+    const peerMap =
+      ((notUnpinnedPeerMaps.find(pin => pin.status === 'pinned') != null) ||
+        notUnpinnedPeerMaps.find(pin => pin.status !== 'unpinned')) as PeerMapValue
 
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     return toAddPinResponse({ cid, created: peerMap.timestamp } as Pin, origins)
