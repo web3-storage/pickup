@@ -3,9 +3,16 @@
 !package-lock.json
 !package.json
 !pickup
+!validator
 # but ignore everthing inside pickup
 pickup/*
 # but allow these
 !pickup/package.json
 !pickup/index.js
 !pickup/lib
+# but ignore everthing inside pickup
+validator/*
+# but allow these
+!validator/package.json
+!validator/index.js
+!validator/lib
