@@ -40,7 +40,6 @@ export async function createConsumer ({
     handleMessageTimeout, // ms, error if processing takes longer than this.
     handleMessageBatch: async (messages) => {
       return validateCar(messages, {
-        ipfsApiUrl,
         createS3Uploader,
         s3,
         queueManager: app,
