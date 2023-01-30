@@ -125,9 +125,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
       }),
       containerName: 'validator',
       maxScalingCapacity: 1,
-      cpu: 4096,
+      cpu: 16384,
       memoryLimitMiB: 64 * 1024,
-      ephemeralStorageGiB: 64, // max 200
+      ephemeralStorageGiB: 96, // max 200
       environment: {
         SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
