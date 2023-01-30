@@ -1,0 +1,46 @@
+
+name: test
+
+on:
+  pull_request:
+    types:
+      - opened
+      # Triggered when a pull request's head branch is updated. 
+      # For example, when the head branch is updated from the base branch, when new commits are pushed to the head branch, or when the base branch is changed.
+      - synchronize
+
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: codepunkt/npm-lockfile-changes@v1.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test
+        env:
+          AWS_REGION: 'us-east-1'
+          AWS_ACCESS_KEY_ID: 'NOSUCH'
+          AWS_SECRET_ACCESS_KEY: 'NOSUCH'
+

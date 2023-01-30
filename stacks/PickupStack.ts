@@ -8,7 +8,7 @@ import { aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
 export function PickupStack ({ app, stack }: StackContext): void {
-  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
+  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue }
   const cluster = new Cluster(stack, 'ipfs', {
     containerInsights: true
   })
@@ -117,6 +117,27 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    const validationService = new QueueProcessingFargateService(stack, 'Service', {
+      image: ContainerImage.fromAsset(new URL('../../validator/', import.meta.url,).pathname, {
+        platform: Platform.LINUX_AMD64
+      }),
+      containerName: 'validator',
+      maxScalingCapacity: 1,
+      cpu: 4096,
+      memoryLimitMiB: 64 * 1024,
+      ephemeralStorageGiB: 64, // max 200
+      environment: {
+        SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
+        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+      },
+      queue: basicApi.updatePinQueue.cdk.queue,
+      enableExecuteCommand: true,
+      cluster
+    })
+    basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
+    basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
+    basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
   }
 }
 function createVPCGateways (vpc: ec2.IVpc): void {
