@@ -119,8 +119,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
 
     const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
-      image: ContainerImage.fromAsset(new URL('../../Dockerfile.Validator', import.meta.url).pathname, {
-        platform: Platform.LINUX_AMD64
+      image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
+        platform: Platform.LINUX_AMD64,
+        file: 'Dockerfile.Validator'
       }),
       containerName: 'validator',
       maxScalingCapacity: 1,
