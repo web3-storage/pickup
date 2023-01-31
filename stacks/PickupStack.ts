@@ -55,6 +55,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
         IPFS_API_URL: 'http://127.0.0.1:5001',
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
         BATCH_SIZE: process.env.BATCH_SIZE ?? '5',
+        TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60',
         MAX_RETRY: process.env.MAX_RETRY ?? '10'
       },
       queue: basicApi.queue.cdk.queue,
@@ -100,7 +101,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
         IPFS_API_URL: 'http://127.0.0.1:5001',
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
         BATCH_SIZE: process.env.BATCH_SIZE ?? '5',
-        TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60'
+        TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60',
+        MAX_RETRY: process.env.MAX_RETRY ?? '10'
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,
