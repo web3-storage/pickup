@@ -121,14 +121,14 @@ export function PickupStack ({ app, stack }: StackContext): void {
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,
-      // healthCheck: {
-      //   command: ['CMD-SHELL", "ps -ef | grep node || exit 1'],
-      //   // the properties below are optional
-      //   interval: Duration.seconds(5),
-      //   retries: 2,
-      //   startPeriod: Duration.seconds(5),
-      //   timeout: Duration.seconds(10)
-      // },
+      healthCheck: {
+        command: ['CMD-SHELL", "ps -ef | grep node || exit 1'],
+        // the properties below are optional
+        interval: Duration.seconds(5),
+        retries: 2,
+        startPeriod: Duration.seconds(5),
+        timeout: Duration.seconds(10)
+      },
       cluster
     })
     // go-ipfs as sidecar!
@@ -138,14 +138,14 @@ export function PickupStack ({ app, stack }: StackContext): void {
       image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
         platform: Platform.LINUX_AMD64
       }),
-      // healthCheck: {
-      //   command: ['CMD-SHELL", "ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme || exit 1'],
-      //   // the properties below are optional
-      //   interval: Duration.seconds(5),
-      //   retries: 2,
-      //   startPeriod: Duration.seconds(5),
-      //   timeout: Duration.seconds(10)
-      // }
+      healthCheck: {
+        command: ['CMD-SHELL", "ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme || exit 1'],
+        // the properties below are optional
+        interval: Duration.seconds(5),
+        retries: 2,
+        startPeriod: Duration.seconds(5),
+        timeout: Duration.seconds(10)
+      }
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
