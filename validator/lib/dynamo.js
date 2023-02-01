@@ -17,20 +17,16 @@ export async function updatePinStatus ({ dynamo, table, cid, status = 'pinned', 
       Key: { cid },
       ExpressionAttributeNames: {
         '#status': 'status',
-        '#size': 'size'
+        '#size': 'size',
+        '#error': 'error'
       },
       ExpressionAttributeValues: {
         ':s': status,
-        ':sz': size
+        ':sz': size,
+        ':e': error || ''
       },
-      UpdateExpression: 'set #status = :s, #size = :sz',
+      UpdateExpression: 'set #status = :s, #size = :sz, #error = :e',
       ReturnValues: 'ALL_NEW'
-    }
-
-    if (error) {
-      command.ExpressionAttributeNames['#error'] = 'error'
-      command.ExpressionAttributeValues[':e'] = error
-      command.UpdateExpression += ', #error = :e'
     }
 
     logger.trace({ cid, command }, 'Dynamo command')
