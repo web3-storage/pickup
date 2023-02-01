@@ -2,7 +2,7 @@ import { Consumer } from 'sqs-consumer'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 
 import { createS3Uploader } from './s3.js'
-import { validateCar } from './validateCar.js'
+import { validateCars } from './validateCars.js'
 import { logger } from './logger.js'
 
 export async function createConsumer ({
@@ -13,8 +13,6 @@ export async function createConsumer ({
   visibilityTimeout = 20,
   heartbeatInterval = 10,
   handleMessageTimeout = 4 * 60 * 60 * 1000,
-  testMaxRetry = 5,
-  testTimeoutMs = 10000,
   timeoutFetchMs = 30000,
   dynamoTable,
   dynamoEndpoint
@@ -38,17 +36,25 @@ export async function createConsumer ({
     // see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
     // TODO: enforce 32GiB limit
     handleMessageTimeout, // ms, error if processing takes longer than this.
-    handleMessageBatch: async (messages) => {
-      return validateCar(messages, {
-        createS3Uploader,
-        s3,
-        queueManager: app,
-        dynamo,
-        dynamoTable,
-        timeoutFetchMs,
-        maxRetry
-      })
+    handleMessage: async (message) => {
+      try {
+        return validateCars(message, {
+          createS3Uploader,
+          s3,
+          queueManager: app,
+          dynamo,
+          dynamoTable,
+          timeoutFetchMs,
+          maxRetry
+        })
+      } catch (e) {
+        console.log(e)
+      }
     }
+    // handleMessageBatch: async (messages) => {
+    //   console.log('handleMessageBatch')
+
+    // }
   })
 
   app.on('error', (err) => {
