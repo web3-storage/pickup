@@ -61,6 +61,8 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
         t.is(item.error, `[{"cid":"${cars[0].cid}","detail":"Unexpected end of data"}]`)
         t.is(item.status, 'failed')
         t.is(item.size, cars[0].size)
+        t.truthy(item.validatedAt > item.created)
+
         await stopConsumer(consumer)
         resolve()
       } catch (e) {
@@ -113,9 +115,11 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
     consumer.on('message_processed', async msg => {
       try {
         const item = await getValueFromDynamo({ dynamoClient, dynamoTable, cid: cars[0].cid })
-        t.is(item.error, `[{"cid":"${cars[0].cid}","detail":"CBOR decode error: simple values are not supported"}]`)
+        t.is(item.error, `[{"cid":"${cars[0].cid}","detail":"CBOR decode error: non-string keys not supported (got number)"}]`)
         t.is(item.status, 'failed')
         t.is(item.size, cars[0].size)
+        t.truthy(item.validatedAt > item.created)
+
         await stopConsumer(consumer)
         resolve()
       } catch (e) {
@@ -170,6 +174,7 @@ test('Process 1 message and succeed', async t => {
         const item = await getValueFromDynamo({ dynamoClient, dynamoTable, cid: cars[0].cid })
         t.is(item.status, 'pinned')
         t.is(item.size, cars[0].size)
+        t.truthy(item.validatedAt > item.created)
         t.falsy(item.error)
         await stopConsumer(consumer)
         resolve()

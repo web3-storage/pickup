@@ -49,8 +49,14 @@ export async function prepareCid ({ dynamoClient, dynamoTable, s3, bucket, error
   if (errorType === 'cut') {
     body = Buffer.from(carBuffer.slice(0, 10))
   } else if (errorType === 'invalid') {
-    body = body.toString().substring(0, body.length - 3) + '  '
+    body = Buffer.concat(
+      [
+        Buffer.from(carBuffer.slice(0, 50)),
+        Buffer.from(' '),
+        Buffer.from(carBuffer.slice(51))]
+    )
   }
+
   await s3.send(new PutObjectCommand(
     {
       Bucket: bucket,

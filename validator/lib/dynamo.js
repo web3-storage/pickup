@@ -18,14 +18,16 @@ export async function updatePinStatus ({ dynamo, table, cid, status = 'pinned', 
       ExpressionAttributeNames: {
         '#status': 'status',
         '#size': 'size',
-        '#error': 'error'
+        '#error': 'error',
+        '#validatedAt': 'validatedAt'
       },
       ExpressionAttributeValues: {
         ':s': status,
         ':sz': size,
-        ':e': error || ''
+        ':e': error || '',
+        ':v': new Date().toISOString()
       },
-      UpdateExpression: 'set #status = :s, #size = :sz, #error = :e',
+      UpdateExpression: 'set #status = :s, #size = :sz, #error = :e, #validatedAt = :v',
       ReturnValues: 'ALL_NEW'
     }
 

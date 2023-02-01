@@ -17,7 +17,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   // export logs to loki just on prod and stg environments
   if (app.stage === 'prod' || app.stage === 'staging') {
-  // read secret url from parameter store
+    // read secret url from parameter store
     const grafanasecret = aws_ssm.StringParameter.fromStringParameterName(
       stack,
       'gf-id',
@@ -85,6 +85,30 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    if (process.env.USE_VALIDATION === 'VALIDATE') {
+      const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
+        image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
+          platform: Platform.LINUX_AMD64,
+          file: 'Dockerfile.Validator'
+        }),
+        containerName: 'validator',
+        maxScalingCapacity: 1,
+        cpu: 4096,
+        memoryLimitMiB: 8 * 1024,
+        ephemeralStorageGiB: 24, // max 200
+        environment: {
+          SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
+          DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        },
+        queue: basicApi.updatePinQueue.cdk.queue,
+        enableExecuteCommand: true,
+        cluster
+      })
+      basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
+      basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
+      basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+    }
   } else {
     const service = new QueueProcessingFargateService(stack, 'Service', {
       image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
@@ -118,29 +142,32 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
 
-    const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
-      image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
-        platform: Platform.LINUX_AMD64,
-        file: 'Dockerfile.Validator'
-      }),
-      containerName: 'validator',
-      maxScalingCapacity: 1,
-      cpu: 4096,
-      memoryLimitMiB: 8 * 1024,
-      ephemeralStorageGiB: 24, // max 200
-      environment: {
-        SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
-        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
-      },
-      queue: basicApi.updatePinQueue.cdk.queue,
-      enableExecuteCommand: true,
-      cluster
-    })
-    basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
-    basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
-    basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+    if (process.env.USE_VALIDATION === 'VALIDATE') {
+      const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
+        image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
+          platform: Platform.LINUX_AMD64,
+          file: 'Dockerfile.Validator'
+        }),
+        containerName: 'validator',
+        maxScalingCapacity: 1,
+        cpu: 4096,
+        memoryLimitMiB: 8 * 1024,
+        ephemeralStorageGiB: 24, // max 200
+        environment: {
+          SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
+          DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        },
+        queue: basicApi.updatePinQueue.cdk.queue,
+        enableExecuteCommand: true,
+        cluster
+      })
+      basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
+      basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
+      basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+    }
   }
 }
+
 function createVPCGateways (vpc: ec2.IVpc): void {
   if (vpc != null) {
     const subnets = [

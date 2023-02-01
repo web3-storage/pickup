@@ -19,7 +19,15 @@ export async function createConsumer ({
 }) {
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
-  logger.info({ batchSize, visibilityTimeout, heartbeatInterval, queueUrl, handleMessageTimeout, maxRetry, timeoutFetchMs }, 'Create sqs consumer')
+  logger.info({
+    batchSize,
+    visibilityTimeout,
+    heartbeatInterval,
+    queueUrl,
+    handleMessageTimeout,
+    maxRetry,
+    timeoutFetchMs
+  }, 'Create sqs consumer')
 
   const app = Consumer.create({
     queueUrl,
@@ -29,27 +37,17 @@ export async function createConsumer ({
     visibilityTimeout, // seconds, how long to hide message from queue after reading.
     heartbeatInterval, // seconds, must be lower than `visibilityTimeout`. how long before increasing the `visibilityTimeout`
     attributeNames: ['ApproximateReceiveCount'], // log retries
-    // allow 4hrs before timeout. 2/3rs of the world can upload faster than
-    // 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs.
-    // we can make this more or less generous, but note it ties up a worker.
-    // see: https://www.speedtest.net/global-index
-    // see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
-    // TODO: enforce 32GiB limit
     handleMessageTimeout, // ms, error if processing takes longer than this.
     handleMessage: async (message) => {
-      try {
-        return validateCars(message, {
-          createS3Uploader,
-          s3,
-          queueManager: app,
-          dynamo,
-          dynamoTable,
-          timeoutFetchMs,
-          maxRetry
-        })
-      } catch (e) {
-        console.log(e)
-      }
+      return validateCars(message, {
+        createS3Uploader,
+        s3,
+        queueManager: app,
+        dynamo,
+        dynamoTable,
+        timeoutFetchMs,
+        maxRetry
+      })
     }
     // handleMessageBatch: async (messages) => {
     //   console.log('handleMessageBatch')

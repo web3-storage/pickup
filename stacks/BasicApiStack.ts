@@ -3,7 +3,10 @@ import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 import * as cfnApig from 'aws-cdk-lib/aws-apigatewayv2'
 import * as apig from '@aws-cdk/aws-apigatewayv2-alpha'
 
-export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue } {
+export function BasicApiStack ({
+  app,
+  stack
+}: StackContext): { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue } {
   const dlq = new Queue(stack, 'PinDlq')
 
   const queue = new Queue(stack, 'Pin', {
@@ -27,22 +30,26 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
   })
 
   const updatePinDlq = new Queue(stack, 'UpdatePinDlq')
+  const consumer = process.env.USE_VALIDATION !== 'VALIDATE'
+    ? {
+        function: {
+          handler: 'basic/update-pin.sqsEventHandler',
+          functionName: formatResourceName(app.stage, 'updatePin'),
+          bind: [dynamoDbTable],
+          environment: {
+            TABLE_NAME: dynamoDbTable.tableName
+          }
+        },
+        cdk: {
+          eventSource: {
+            batchSize: 1
+          }
+        }
+      }
+    : undefined
+
   const updatePinQueue = new Queue(stack, 'UpdatePinQueue', {
-    // consumer: {
-    //   function: {
-    //     handler: 'basic/update-pin.sqsEventHandler',
-    //     functionName: formatResourceName(app.stage, 'updatePin'),
-    //     bind: [dynamoDbTable],
-    //     environment: {
-    //       TABLE_NAME: dynamoDbTable.tableName
-    //     }
-    //   },
-    //   cdk: {
-    //     eventSource: {
-    //       batchSize: 1
-    //     }
-    //   }
-    // },
+    consumer,
     cdk: {
       queue: {
         deadLetterQueue: {
