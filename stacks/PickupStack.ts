@@ -94,9 +94,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
         }),
         containerName: 'validator',
         maxScalingCapacity: 1,
-        cpu: 4096,
-        memoryLimitMiB: 8 * 1024,
-        ephemeralStorageGiB: 24, // max 200
+        cpu: 16384,
+        memoryLimitMiB: 80 * 1024,
+        ephemeralStorageGiB: 80, // max 200
         environment: {
           SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
           DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
@@ -116,9 +116,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
       }),
       containerName: 'pickup',
       maxScalingCapacity: 10,
-      cpu: 4096,
-      memoryLimitMiB: 8192,
-      ephemeralStorageGiB: 64, // max 200
+      cpu: 16384,
+      memoryLimitMiB: 80 * 1024,
+      ephemeralStorageGiB: 80, // max 200
       environment: {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
         IPFS_API_URL: 'http://127.0.0.1:5001',
