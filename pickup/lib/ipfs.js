@@ -8,13 +8,24 @@ import { logger } from './logger.js'
 
 export const ERROR_TIMEOUT = 'TIMEOUT'
 
+/**
+ * Start the fetch of a car
+ *
+ * @param string cid - The CID requested
+ * @param string ipfsApiUrl - The IPFS server url
+ * @param object downloadError - The error object, is filled in if an error occour
+ * @param int timeoutMs - The timeout for each block fetch in milliseconds.
+ *                        The Download is set to `failed` if the IPFS server
+ *                        fetch action do not respond while is downloading the blocks.
+ * @returns {Promise<*>}
+ */
 export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 30000) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
   const url = new URL(`/api/v0/dag/export?arg=${cid}`, ipfsApiUrl)
   const ctl = new AbortController()
-  // timeoutMs = 2000
+
   const startCountdown = debounce(() => {
     downloadError.code = ERROR_TIMEOUT
     ctl.abort()
