@@ -23,7 +23,7 @@ export function parseCid (cid) {
   return { info, errors }
 }
 
-export async function getCarInfo ({ cid, carStream }) {
+export async function parseCar ({ cid, carStream }) {
   const errors = []
 
   let carReader
@@ -37,7 +37,6 @@ export async function getCarInfo ({ cid, carStream }) {
 
   const verifyingBlockService = {
     get: async (cid) => {
-      console.log('Check the file')
       const block = await carReader.get(cid)
       if (!block.cid || !block.bytes) {
         const error = { cid: cid.toString(), detail: 'Unable to retrieve block' }
@@ -59,7 +58,6 @@ export async function getCarInfo ({ cid, carStream }) {
 }
 
 async function validateBlock ({ cid, bytes }) {
-  console.log('vali')
   const hashfn = hashes[cid.multihash.code]
   if (!hashfn) {
     return { error: { cid: cid.toString(), detail: `Missing hash function for ${cid.multihash.code}` } }
@@ -69,11 +67,9 @@ async function validateBlock ({ cid, bytes }) {
   try {
     hash = await hashfn.digest(bytes)
   } catch (err) {
-    console.log('vali2')
     return { error: { cid: cid.toString(), detail: `Unable to hash ${cid} bytes`, err } }
   }
 
-  console.log('vali3')
   if (toHex(hash.digest) !== toHex(cid.multihash.digest)) {
     return { error: { cid: cid.toString(), detail: 'Bad block. Hash does not match CID' } }
   }

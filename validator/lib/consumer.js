@@ -2,7 +2,7 @@ import { Consumer } from 'sqs-consumer'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 
 import { createS3Uploader } from './s3.js'
-import { validateCars } from './validateCars.js'
+import { processCars } from './processCars.js'
 import { logger } from './logger.js'
 
 export async function createConsumer ({
@@ -39,7 +39,7 @@ export async function createConsumer ({
     attributeNames: ['ApproximateReceiveCount'], // log retries
     handleMessageTimeout, // ms, error if processing takes longer than this.
     handleMessage: async (message) => {
-      return validateCars(message, {
+      return processCars(message, {
         createS3Uploader,
         s3,
         queueManager: app,
@@ -49,10 +49,6 @@ export async function createConsumer ({
         maxRetry
       })
     }
-    // handleMessageBatch: async (messages) => {
-    //   console.log('handleMessageBatch')
-
-    // }
   })
 
   app.on('error', (err) => {
