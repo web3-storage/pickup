@@ -8,7 +8,7 @@ import { logger } from './logger.js'
  * @param {cid} string
  * @param {string} status
  */
-export async function updatePinStatus ({ dynamo, table, cid, status, error }) {
+export async function updatePinStatus ({ dynamo, table, cid, status = 'pinned', error, size }) {
   try {
     logger.trace({ cid, status }, 'Dynamo try to update pin status')
 
@@ -17,15 +17,17 @@ export async function updatePinStatus ({ dynamo, table, cid, status, error }) {
       Key: { cid },
       ExpressionAttributeNames: {
         '#status': 'status',
+        '#size': 'size',
         '#error': 'error',
-        '#downloadFailedAt': 'downloadFailedAt'
+        '#validatedAt': 'validatedAt'
       },
       ExpressionAttributeValues: {
         ':s': status,
+        ':sz': size,
         ':e': error || '',
-        ':df': new Date().toISOString()
+        ':v': new Date().toISOString()
       },
-      UpdateExpression: 'set #status = :s, #error = :e, #downloadFailedAt = :df',
+      UpdateExpression: 'set #status = :s, #size = :sz, #error = :e, #validatedAt = :v',
       ReturnValues: 'ALL_NEW'
     }
 

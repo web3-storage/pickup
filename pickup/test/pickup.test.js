@@ -4,7 +4,7 @@ import { SendMessageCommand } from '@aws-sdk/client-sqs'
 
 import { createConsumer } from '../lib/consumer.js'
 import { compose } from './_compose.js'
-import { prepareCid, verifyMessage, sleep, getMessagesFromSQS, stopConsumer } from './_helpers.js'
+import { prepareCid, verifyMessage, sleep, getMessagesFromSQS, stopConsumer, getValueFromDynamo } from './_helpers.js'
 
 test.before(async t => {
   t.timeout(1000 * 60)
@@ -97,7 +97,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
 
     consumer.on('message_processed', async msg => {
       try {
-        await verifyMessage({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3 })
+        await verifyMessage({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3, expectedError: 'Download timeout' })
         resolved++
 
         if (resolved === cars.length) {
@@ -387,6 +387,12 @@ test('Process 1 message that fails with a max retry', async t => {
           await sleep(50)
           const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
           t.is(resultMessages, undefined)
+
+          const item = await getValueFromDynamo({ dynamoClient, dynamoTable, cid: cars[0].cid })
+          t.is(item.cid, cars[0].cid)
+          t.is(item.status, 'failed')
+          t.is(item.error, 'Max retry')
+          t.truthy(item.downloadFailedAt > item.created)
 
           await sleep(4000)
           nockPickup.done()
