@@ -81,7 +81,7 @@ export async function sleep (ms) {
   return new Promise((resolve) => setTimeout(() => resolve(), ms))
 }
 
-export async function verifyMessage ({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3 }) {
+export async function verifyMessage ({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3, expectedError }) {
   try {
     const message = JSON.parse(msg.Body)
     const index = Number(message.requestid)
@@ -90,6 +90,8 @@ export async function verifyMessage ({ msg, cars, dynamoClient, dynamoTable, t, 
       const item = await getValueFromDynamo({ dynamoClient, dynamoTable, cid: cars[index].cid })
       t.is(item.cid, cars[index].cid)
       t.is(item.status, 'failed')
+      t.is(item.error, expectedError)
+      t.truthy(item.downloadFailedAt > item.created)
     } else if (cars[index].expectedResult === 'error') {
       // after the first error, the expectedResult of the car is set to success to allow the upload in the next step
       cars[index].expectedResult = 'success'

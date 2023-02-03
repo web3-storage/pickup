@@ -12,7 +12,16 @@ import { logger } from './logger.js'
  * @param {import('@aws-sdk/client-s3'.S3Client)} opts.s3
  * @returns {Promise<SQSMessage[]>}
  */
-export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3, queueManager, dynamo, dynamoTable, timeoutFetchMs, maxRetry }) {
+export async function pickupBatch (messages, {
+  ipfsApiUrl,
+  createS3Uploader,
+  s3,
+  queueManager,
+  dynamo,
+  dynamoTable,
+  timeoutFetchMs,
+  maxRetry
+}) {
   const jobs = []
   const allOrigins = []
 
@@ -65,7 +74,12 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
       const arrayRemoveIndex = requestIds.indexOf(requestid)
       requestIds.splice(Number(arrayRemoveIndex), 1)
       messages.splice(Number(arrayRemoveIndex), 1)
-      logger.trace({ cid, requestid, messageId: message.MessageId, arrayRemoveIndex }, 'Removed processed message from the messages')
+      logger.trace({
+        cid,
+        requestid,
+        messageId: message.MessageId,
+        arrayRemoveIndex
+      }, 'Removed processed message from the messages')
 
       await deleteMessage(queueManager, message)
 
@@ -80,10 +94,17 @@ export async function pickupBatch (messages, { ipfsApiUrl, createS3Uploader, s3,
       if (downloadError.code === ERROR_TIMEOUT ||
         currentRetry >= maxRetry
       ) {
+        const errorMessage = currentRetry >= maxRetry ? 'Max retry' : 'Download timeout'
         logger.error({ cid, requestid, currentRetry, messageId: message.MessageI, arrayRemoveIndex },
-          currentRetry >= maxRetry ? 'Max retry' : 'Download timeout')
+          errorMessage)
         // Update the status on dynamodb to failed
-        await updatePinStatus(dynamo, dynamoTable, cid, 'failed')
+        await updatePinStatus({
+          dynamo,
+          table: dynamoTable,
+          cid,
+          status: 'failed',
+          error: errorMessage
+        })
 
         // Delete the message from the queue
         await deleteMessage(queueManager, message)
