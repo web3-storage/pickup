@@ -33,20 +33,20 @@ export async function deleteMessage ({ sqs, queueUrl }, message) {
 /**
  * Create the consumer for the SQS queue.
  *
- * @param string opts.ipfsApiUrl - The URL of the IPFS server.
- * @param string opts.queueUrl - The Sqs Queue URL.
- * @param {import('@aws-sdk/client-s3'.S3Client)} opts.s3 - The S3 client.
- * @param int opts.batchSize - The size of the concurrent batch.
- * @param int opts.maxRetry - The number of max retry before set the pin request to failed.
- * @param int opts.visibilityTimeout - The message visibility timeout in seconds, used internally by sqs-consumer.
- * @param int opts.heartbeatInterval - The message heartbeatInterval in seconds, used internally by sqs-consumer.
- * @param int opts.handleMessageTimeout - The max limit for the car download in milliseconds, used internally by sqs-consumer.
- * @param int opts.testMaxRetry - The max retry to check if the IPFS server is available.
- * @param int opts.testTimeoutMs - The timeout in millisecond for each IPFS availability try.
- * @param opts.timeoutFetchMs - The timeout for each fetch in milliseconds. The Download is set to `failed` if the IPFS server
+ * @param {string} ipfsApiUrl - The URL of the IPFS server.
+ * @param {string} queueUrl - The Sqs Queue URL.
+ * @param {import('@aws-sdk/client-s3'.S3Client)} s3 - The S3 client.
+ * @param {number} batchSize - The size of the concurrent batch.
+ * @param {number} maxRetry - The number of max retry before set the pin request to failed.
+ * @param {number} visibilityTimeout - The message visibility timeout in seconds, used internally by sqs-consumer.
+ * @param {number} heartbeatInterval - The message heartbeatInterval in seconds, used internally by sqs-consumer.
+ * @param {number} handleMessageTimeout - The max limit for the car download in milliseconds, used internally by sqs-consumer.
+ * @param {number} testMaxRetry - The max retry to check if the IPFS server is available.
+ * @param {number} testTimeoutMs - The timeout in millisecond for each IPFS availability try.
+ * @param {number} timeoutFetchMs - The timeout for each fetch in milliseconds. The Download is set to `failed` if the IPFS server
  *                              fetch action do not respond while is downloading the blocks.
- * @param string opts.dynamoTable - The dynamo DB table
- * @param string opts.dynamoEndpoint - The dynamo DB endpoint
+ * @param {string} dynamoTable - The dynamo DB table
+ * @param {string} dynamoEndpoint - The dynamo DB endpoint
  * @returns {Promise<Consumer>}
  */
 export async function createConsumer ({
