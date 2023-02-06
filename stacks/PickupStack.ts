@@ -144,7 +144,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
 
-    if (process.env.USE_VALIDATION === 'VALIDATE') {
+    if (process.env.USE_VALIDATION !== 'VALIDATE') {
       const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
         image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
           platform: Platform.LINUX_AMD64,

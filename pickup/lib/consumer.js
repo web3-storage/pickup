@@ -118,5 +118,6 @@ export async function createConsumer ({
   app.on('processing_error', (err) => {
     logger.error({ err }, 'App processing error')
   })
+
   return app
 }

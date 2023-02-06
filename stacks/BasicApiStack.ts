@@ -30,7 +30,7 @@ export function BasicApiStack ({
   })
 
   const updatePinDlq = new Queue(stack, 'UpdatePinDlq')
-  const consumer = process.env.USE_VALIDATION !== 'VALIDATE'
+  const consumer = process.env.USE_VALIDATION === 'VALIDATE'
     ? {
         function: {
           handler: 'basic/update-pin.sqsEventHandler',
