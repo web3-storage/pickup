@@ -1,32 +1,38 @@
 import { Consumer } from 'sqs-consumer'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 
-import { createS3Uploader } from './s3.js'
+import { createS3Client } from './s3.js'
 import { processCars } from './processCars.js'
 import { logger } from './logger.js'
 
+/**
+ * Create the SQS consumer
+ *
+ * @param {string} queueUrl
+ * @param {import('@aws-sdk/client-s3'.S3Client)} s3
+ * @param {number} visibilityTimeout
+ * @param {number} heartbeatInterval
+ * @param {number} handleMessageTimeout
+ * @param {string} dynamoTable
+ * @param {string} dynamoEndpoint
+ * @returns {Promise<Consumer>}
+ */
 export async function createConsumer ({
   queueUrl,
-  s3,
-  batchSize = 10,
-  maxRetry = 5,
+  s3 = createS3Client(),
   visibilityTimeout = 20,
   heartbeatInterval = 10,
   handleMessageTimeout = 4 * 60 * 60 * 1000,
-  timeoutFetchMs = 30000,
   dynamoTable,
   dynamoEndpoint
 }) {
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
   logger.info({
-    batchSize,
     visibilityTimeout,
     heartbeatInterval,
     queueUrl,
-    handleMessageTimeout,
-    maxRetry,
-    timeoutFetchMs
+    handleMessageTimeout
   }, 'Create sqs consumer')
 
   const app = Consumer.create({
@@ -40,13 +46,10 @@ export async function createConsumer ({
     handleMessageTimeout, // ms, error if processing takes longer than this.
     handleMessage: async (message) => {
       return processCars(message, {
-        createS3Uploader,
         s3,
         queueManager: app,
         dynamo,
-        dynamoTable,
-        timeoutFetchMs,
-        maxRetry
+        dynamoTable
       })
     }
   })
