@@ -229,7 +229,7 @@ sequenceDiagram
 The system provides a validation step that run after the upload on S3.
 To enable it the ENV var USE_VALIDATION should be set to 'VALIDATE'
 
-## Pickup and validator logic`
+## Pickup and validator logic
 
 In the following schema the architecture of `pickup` and the `validator`.
 
