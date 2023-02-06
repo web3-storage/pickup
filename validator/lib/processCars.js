@@ -5,17 +5,15 @@ import { updatePinStatus } from './dynamo.js'
 
 /**
  * Validate a CAR record.
- * @param {import('sqs-consumer').SQSMessage} message
- * @param {Object} opts
- * @param {Function} opts.createS3Uploader
- * @param {import('@aws-sdk/client-s3'.S3Client)} opts.s3
- * @param {import('@aws-sdk/lib-dynamodb'.DynamoDBClient)} opts.dynamo
- * @param {string} opts.dynamoTable
+ *
+ * @param {Object} record
+ * @param {string} record.s3.bucket.name
+ * @param {string} record.s3.object.key
+ * @param {number} record.s3.object.size
+ * @param {import('@aws-sdk/client-s3'.S3Client)} s3
  * @returns {Promise<void>}
  */
-export async function validateCar (record, {
-  s3
-}) {
+export async function validateCar (record, { s3 }) {
   const bucket = record.s3.bucket.name
   const key = record.s3.object.key
   const size = record.s3.object.size
@@ -50,6 +48,14 @@ export async function validateCar (record, {
   }
 }
 
+/**
+ * Process the CARs
+ *
+ * @param {import('sqs-consumer').SQSMessage} message
+ * @param {import('@aws-sdk/lib-dynamodb'.DynamoDBClient)} context.dynamo
+ * @param {string} context.dynamoTable
+ * @returns {Promise<boolean>}
+ */
 export async function processCars (message, context) {
   logger.info({ message }, 'Validate car start')
   const eventBody = JSON.parse(message.Body)

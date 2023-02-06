@@ -4,9 +4,11 @@ import { logger } from './logger.js'
 /**
  * Update the pin status for a given CID
  *
- * @param {DynamoDBClient} dynamo
+ * @param {import('@aws-sdk/lib-dynamodb'.DynamoDBClient)} dynamo
  * @param {cid} string
  * @param {string} status
+ * @param {string} error
+ * @param {number} size
  */
 export async function updatePinStatus ({ dynamo, table, cid, status = 'pinned', error, size }) {
   try {

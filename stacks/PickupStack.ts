@@ -47,8 +47,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
       // route logs to grafana loki
       logDriver: lokilogs,
       maxScalingCapacity: 10,
-      cpu: 4096,
-      memoryLimitMiB: 8192,
+      cpu: 8192,
+      memoryLimitMiB: 60 * 1024,
       ephemeralStorageGiB: 64, // max 200
       environment: {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
