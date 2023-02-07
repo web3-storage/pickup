@@ -20,7 +20,7 @@ export function PickupStack ({ stack }: StackContext): void {
       platform: Platform.LINUX_AMD64
     }),
     containerName: 'pickup',
-    minScalingCapacity: process.env.MIN_SCALING_CAPACITY !== null ? parseInt(process.env.MIN_SCALING_CAPACITY as string) : 1,
+    minScalingCapacity: process.env.MIN_SCALING_CAPACITY !== undefined ? parseInt(process.env.MIN_SCALING_CAPACITY) : 1,
     maxScalingCapacity: 10,
     cpu: 4096,
     memoryLimitMiB: 8192,
