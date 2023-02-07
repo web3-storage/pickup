@@ -124,7 +124,7 @@ test('add pin router handler without table', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"TABLE must be set in ENV"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 
@@ -176,34 +176,7 @@ test('add pin router handler with invalid cid', async t => {
 
   t.deepEqual(response, {
     statusCode: 400,
-    body: '{"error":{"reason":"BAD_REQUEST","details":"123123123 is not a valid CID"}}'
-  })
-})
-
-test('add pin router handler with invalid multiaddress', async t => {
-  process.env.CLUSTER_BASIC_AUTH_TOKEN = 'YES'
-  process.env.DYNAMO_DB_ENDPOINT = t.context.dbEndpoint
-  process.env.TABLE_NAME = t.context.table
-  process.env.LEGACY_CLUSTER_IPFS_URL = t.context.legacyClusterIpfsUrl + '/api'
-  process.env.PICKUP_URL = t.context.pickupUrl
-  process.env.BALANCER_RATE = 100
-
-  const cid = 'QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn'
-  const origins = 'abc'
-  const event = {
-    headers: {
-      authorization: `Basic ${process.env.CLUSTER_BASIC_AUTH_TOKEN}`
-    },
-    pathParameters: {
-      cid
-    },
-    queryStringParameters: { origins }
-  }
-  const response = await handler(event, t.context.lambdaContext)
-
-  t.deepEqual(response, {
-    statusCode: 400,
-    body: '{"error":{"reason":"BAD_REQUEST","details":"abc in origins is not a valid multiaddr"}}'
+    body: '{"error":{"reason":"BAD_REQUEST","details":"Invalid CID"}}'
   })
 })
 
@@ -228,7 +201,7 @@ test('add pin router handler with invalid legacyClusterIpfsUrl', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"PICKUP_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })
 
@@ -253,6 +226,6 @@ test('add pin router handler with invalid pickupUrl', async t => {
 
   t.deepEqual(response, {
     statusCode: 500,
-    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR","details":"LEGACY_CLUSTER_IPFS_URL not defined"}}'
+    body: '{"error":{"reason":"INTERNAL_SERVER_ERROR"}}'
   })
 })

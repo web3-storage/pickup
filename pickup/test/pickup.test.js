@@ -1,145 +1,417 @@
-import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { unpackStream } from 'ipfs-car/unpack'
-import { createS3Uploader } from '../lib/s3.js'
-import { pickup, pickupBatch } from '../lib/pickup.js'
-import { Buffer } from 'buffer'
+import nock from 'nock'
 import test from 'ava'
+import { SendMessageCommand } from '@aws-sdk/client-sqs'
+
+import { createConsumer } from '../lib/consumer.js'
 import { compose } from './_compose.js'
+import { prepareCid, verifyMessage, sleep, getMessagesFromSQS, stopConsumer, getValueFromDynamo } from './_helpers.js'
 
 test.before(async t => {
   t.timeout(1000 * 60)
-  // Start local ipfs and minio daemons for testing against.
-  t.context = await compose()
+  t.context = { ...(await compose()), ipfsApiUrl: 'http://mockipfs.loc:5001' }
 })
 
-test('happy path', async t => {
-  const { s3, createBucket, ipfsApiUrl } = t.context
-  const cid = 'bafkreifzjut3te2nhyekklss27nh3k72ysco7y32koao5eei66wof36n5e' // hello world
-  const key = `psa/${cid}.car`
-  const bucket = await createBucket()
-  await t.throwsAsync(s3.send(new GetObjectCommand({ Bucket: bucket, Key: key })))
-
-  await pickup({
-    upload: createS3Uploader({ client: s3, key, bucket }),
-    ipfsApiUrl,
-    origins: [],
-    cid
-  })
-
-  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
-  const files = await resToFiles(res)
-  t.is(files.length, 1, '1 file in the test CAR')
-
-  const content = await fileToString(files[0])
-  t.is(content, 'hello world', 'expected file content')
-  t.pass()
+test.after(async t => {
+  await sleep(5000)
+  await t.context.shutDownDockers()
 })
 
-test('with origins', async t => {
-  const { s3, createBucket, ipfsApiUrl } = t.context
-  const cid = 'bafkreig6ylslysmsgffjzgsrxpmftynqqg3uc6ebrrj4dhiy233wd5oyaq' // "test 2"
-  const key = `psa/${cid}.car`
-  const bucket = await createBucket()
-  await t.throwsAsync(s3.send(new GetObjectCommand({ Bucket: bucket, Key: key })))
-
-  await pickup({
-    upload: createS3Uploader({ client: s3, key, bucket }),
-    ipfsApiUrl,
-    origins: ['/dns4/peer.ipfs-elastic-provider-aws.com/tcp/3000/ws/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm'],
-    cid
-  })
-
-  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
-  const files = await resToFiles(res)
-  t.is(files.length, 1, '1 file in the test CAR')
-
-  const content = await fileToString(files[0])
-  t.is(content, 'test 2', 'expected file content')
-  t.pass()
+test('throw an error if can\'t connect to IPFS', async t => {
+  const { createQueue } = t.context
+  const queueUrl = await createQueue()
+  await t.throwsAsync(createConsumer({
+    ipfsApiUrl: 'http://127.0.0.1',
+    queueUrl,
+    testMaxRetry: 1,
+    testTimeoutMs: 50
+  }))
 })
 
-test('with bad origins', async t => {
-  const { s3, createBucket, ipfsApiUrl } = t.context
-  const cid = 'bafkreihyyavekzt6coios4bio3ou3rwaazxetnonvjxmdsb6pwel5exc4i' // "test 3"
-  const key = `psa/${cid}.car`
+test('Process 3 messages concurrently and the last has a timeout', async t => {
+  t.timeout(1000 * 60)
+  const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
+
+  const queueUrl = await createQueue()
   const bucket = await createBucket()
-  await t.throwsAsync(s3.send(new GetObjectCommand({ Bucket: bucket, Key: key })))
 
-  await pickup({
-    upload: createS3Uploader({ client: s3, key, bucket }),
-    ipfsApiUrl,
-    origins: ['derp'],
-    cid
-  })
-
-  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
-  const files = await resToFiles(res)
-  t.is(files.length, 1, '1 file in the test CAR')
-
-  const content = await fileToString(files[0])
-  t.is(content, 'test 3', 'expected file content')
-  t.pass()
-})
-
-test('pickupBatch', async t => {
-  const { s3, createBucket, ipfsApiUrl } = t.context
-  const bucket = await createBucket()
-  const cids = [
-    'bafkreifzjut3te2nhyekklss27nh3k72ysco7y32koao5eei66wof36n5e',
-    'bafkreig6ylslysmsgffjzgsrxpmftynqqg3uc6ebrrj4dhiy233wd5oyaq',
-    'bad'
+  // Preapre the data for the test
+  const cars = [
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'success' }),
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'success' }),
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 3000, expectedResult: 'failed' })
   ]
-  const msgs = cids.map((cid, i) => ({
-    Body: JSON.stringify({
-      cid,
-      bucket,
-      key: `batch/${cid}.car`,
-      requestid: `#${i}`
-    })
-  }))
 
-  const res = await pickupBatch(msgs, { createS3Uploader, s3, ipfsApiUrl })
+  // Configure nock to mock the response
+  const nockPickup = nock(ipfsApiUrl)
+  nockPickup
+    .post('/api/v0/id')// Alive
+    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+    .post('/api/v0/repo/gc?silent=true')// Garbage collector
+    .reply(200, 'GC Success')
 
-  t.is(res.length, 2)
-  const sorted = res.map(msg => JSON.parse(msg.Body)).sort()
-  for (let i = 0; i < sorted.length; i++) {
-    t.is(sorted[i].cid, cids[i])
-    const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: `batch/${cids[i]}.car` }))
-    t.is(res.$metadata.httpStatusCode, 200)
+  cars.forEach((car, index) => {
+    nockPickup.post(`/api/v0/dag/export?arg=${car.cid}`) // Get pin
+      .reply(200, () => {
+        return cars[index].carReadableStream
+      })
+  })
+
+  // Send the SQS messages in queue
+  for (let i = 0; i < cars.length; i++) {
+    await sqs.send(new SendMessageCommand({
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      QueueUrl: queueUrl
+    }))
   }
+
+  // Create the consumer
+  const consumer = await createConsumer(
+    {
+      ipfsApiUrl,
+      queueUrl,
+      s3,
+      heartbeatInterval: 2,
+      visibilityTimeout: 3,
+      dynamoEndpoint,
+      dynamoTable,
+      timeoutFetchMs: 2000
+    }
+  )
+
+  // The number of the messages resolved, when is max close the test and finalize
+  let resolved = 0
+
+  const done = new Promise((resolve, reject) => {
+    consumer.on('message_received', async msg => {
+      const message = JSON.parse(msg.Body)
+      const index = Number(message.requestid)
+      if (cars[index].expectedResult !== 'error') {
+        const myBuffer = await cars[index].car.arrayBuffer()
+
+        cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(0, 10)))
+        await sleep(cars[index].timeBetweenChunks)
+        cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(10)))
+        cars[index].carReadableStream.push(null)
+      }
+    })
+
+    consumer.on('message_processed', async msg => {
+      try {
+        await verifyMessage({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3, expectedError: 'Download timeout' })
+        resolved++
+
+        if (resolved === cars.length) {
+          await sleep(5)
+          const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
+          t.is(resultMessages, undefined)
+          nockPickup.done()
+          await stopConsumer(consumer)
+          resolve()
+        }
+      } catch (e) {
+        reject(e)
+      }
+    })
+    consumer.on('processing_error', reject)
+    consumer.on('timeout_error', reject)
+  })
+
+  consumer.start()
+
+  return done
 })
 
-test('pickupBatch timeout', async t => {
-  const rareCid = 'bafkreifd77jsx5jwez7nthztzc6smqmvgrj43ip6scqccnxoeqizc3qn3i' // "olizilla Tue  8 Nov 2022 15:31:39 GMT"
-  const { s3, createBucket, ipfsApiUrl } = t.context
+test('Process 1 message that fails and returns in the list', async t => {
+  t.timeout(1000 * 60)
+  const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
+
+  const queueUrl = await createQueue()
   const bucket = await createBucket()
-  const cids = [rareCid]
-  const msgs = cids.map((cid, i) => ({
-    Body: JSON.stringify({
-      cid,
-      bucket,
-      key: `batch/${cid}.car`,
-      requestid: `#${i}`
-    })
-  }))
 
-  const res = await pickupBatch(msgs, { createS3Uploader, s3, ipfsApiUrl })
-  t.is(res.length, 0, 'Expecting 0 succesful jobs. The CID should not be fetchable')
+  // Preapre the data for the test
+  const cars = [
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'error' })
+  ]
+
+  // Configure nock to mock the response
+  const nockPickup = nock(ipfsApiUrl)
+  nockPickup
+    .post('/api/v0/id')// Alive
+    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+    .post('/api/v0/repo/gc?silent=true')// Garbage collector
+    .reply(200, 'GC Success')
+    .post('/api/v0/repo/gc?silent=true')// Garbage collector
+    .reply(200, 'GC Success')
+
+  cars.forEach((car, index) => {
+    nockPickup.post(`/api/v0/dag/export?arg=${car.cid}`) // Get pin
+      .reply((uri, requestBody) => [400, 'KO'])
+    nockPickup.post(`/api/v0/dag/export?arg=${car.cid}`) // Get pin
+      .reply((uri, requestBody) => [200, cars[index].carReadableStream])
+  })
+
+  // Send the SQS messages in queue
+  for (let i = 0; i < cars.length; i++) {
+    await sqs.send(new SendMessageCommand({
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      QueueUrl: queueUrl
+    }))
+  }
+
+  // Create the consumer
+  const consumer = await createConsumer(
+    {
+      ipfsApiUrl,
+      queueUrl,
+      s3,
+      heartbeatInterval: 2,
+      visibilityTimeout: 3,
+      dynamoEndpoint,
+      dynamoTable,
+      timeoutFetchMs: 2000
+    }
+  )
+
+  // The number of the messages resolved, when is max close the test and finalize
+  let resolved = 0
+
+  const done = new Promise((resolve, reject) => {
+    consumer.on('message_received', async msg => {
+      const message = JSON.parse(msg.Body)
+      const index = Number(message.requestid)
+      if (cars[index].expectedResult !== 'error') {
+        const myBuffer = await cars[index].car.arrayBuffer()
+
+        cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(0, 10)))
+        await sleep(cars[index].timeBetweenChunks)
+        cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(10)))
+        cars[index].carReadableStream.push(null)
+      }
+    })
+
+    consumer.on('message_processed', async msg => {
+      try {
+        await verifyMessage({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3 })
+        resolved++
+
+        // The +1 is add to manage the second try
+        if (resolved === cars.length + 1) {
+          await sleep(5)
+          const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
+          t.is(resultMessages, undefined)
+
+          nockPickup.done()
+          await stopConsumer(consumer)
+          resolve()
+        }
+      } catch (e) {
+        reject(e)
+      }
+    })
+    consumer.on('processing_error', reject)
+    consumer.on('timeout_error', reject)
+  })
+
+  consumer.start()
+
+  return done
 })
 
-async function resToFiles (res) {
-  const files = []
-  for await (const file of unpackStream(res.Body)) {
-    files.push(file)
-  }
-  return files
-}
+test('Process 3 messages concurrently and the last has an error', async t => {
+  t.timeout(1000 * 60)
+  const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
-async function fileToString (file) {
-  const chunks = []
-  for await (const chunk of file.content()) {
-    chunks.push(chunk)
+  const queueUrl = await createQueue()
+  const bucket = await createBucket()
+
+  // Preapre the data for the test
+  const cars = [
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'success' }),
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'success' }),
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'error' })
+  ]
+
+  // Configure nock to mock the response
+  const nockPickup = nock(ipfsApiUrl)
+  nockPickup
+    .post('/api/v0/id')// Alive
+    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+    .post('/api/v0/repo/gc?silent=true')// Garbage collector
+    .reply(200, 'GC Success')
+    .post('/api/v0/repo/gc?silent=true')// Garbage collector
+    .reply(200, 'GC Success')
+
+  cars.forEach((car, index) => {
+    if (car.expectedResult === 'error') {
+      nockPickup.post(`/api/v0/dag/export?arg=${car.cid}`) // Get pin
+        .reply(400, () => {
+          return 'OK'
+        })
+    }
+    nockPickup.post(`/api/v0/dag/export?arg=${car.cid}`) // Get pin
+      .reply(200, () => {
+        return cars[index].carReadableStream
+      })
+  })
+
+  // Send the SQS messages in queue
+  for (let i = 0; i < cars.length; i++) {
+    await sqs.send(new SendMessageCommand({
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      QueueUrl: queueUrl
+    }))
   }
-  const buf = Buffer.concat(chunks)
-  return buf.toString()
-}
+
+  // Create the consumer
+  const consumer = await createConsumer(
+    {
+      ipfsApiUrl,
+      queueUrl,
+      s3,
+      heartbeatInterval: 2,
+      visibilityTimeout: 3,
+      dynamoEndpoint,
+      dynamoTable,
+      timeoutFetchMs: 2000
+    }
+  )
+
+  // The number of the messages resolved, when is max close the test and finalize
+  let resolved = 0
+
+  const done = new Promise((resolve, reject) => {
+    consumer.on('message_received', async msg => {
+      const message = JSON.parse(msg.Body)
+      const index = Number(message.requestid)
+      if (cars[index].expectedResult !== 'error') {
+        const myBuffer = await cars[index].car.arrayBuffer()
+
+        cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(0, 10)))
+        await sleep(cars[index].timeBetweenChunks)
+        cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(10)))
+        cars[index].carReadableStream.push(null)
+      }
+    })
+
+    consumer.on('message_processed', async msg => {
+      try {
+        await verifyMessage({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3 })
+        resolved++
+
+        if (resolved === cars.length + 1) {
+          await sleep(2000)
+          const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
+          t.is(resultMessages, undefined)
+          await nockPickup.done()
+          await stopConsumer(consumer)
+          resolve()
+        }
+      } catch (e) {
+        reject(e)
+      }
+    })
+    consumer.on('processing_error', reject)
+    consumer.on('timeout_error', reject)
+  })
+
+  consumer.start()
+
+  return done
+})
+
+test('Process 1 message that fails with a max retry', async t => {
+  t.timeout(1000 * 60)
+  const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
+
+  const queueUrl = await createQueue()
+  const bucket = await createBucket()
+
+  // Preapre the data for the test
+  const cars = [
+    await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'error' })
+  ]
+
+  const retryNum = 3
+  // Configure nock to mock the response
+  const nockPickup = nock(ipfsApiUrl)
+  nockPickup
+    .post('/api/v0/id')// Alive
+    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+  for (let i = 0; i < retryNum; i++) {
+    nockPickup.post('/api/v0/repo/gc?silent=true')// Garbage collector
+      .reply(200, 'GC Success')
+    nockPickup.post(`/api/v0/dag/export?arg=${cars[0].cid}`) // Get pin
+      .reply((uri, requestBody) => [400, 'KO'])
+  }
+
+  // Send the SQS messages in queue
+  for (let i = 0; i < cars.length; i++) {
+    await sqs.send(new SendMessageCommand({
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      QueueUrl: queueUrl
+    }))
+  }
+
+  // Create the consumer
+  const consumer = await createConsumer(
+    {
+      ipfsApiUrl,
+      queueUrl,
+      s3,
+      heartbeatInterval: 2,
+      visibilityTimeout: 3,
+      dynamoEndpoint,
+      dynamoTable,
+      timeoutFetchMs: 2000,
+      maxRetry: 3
+    }
+  )
+
+  // The number of the messages resolved, when is max close the test and finalize
+  let resolved = 0
+
+  let shouldFail = false
+  const done = new Promise((resolve, reject) => {
+    consumer.on('message_received', async msg => {
+      if (Number(msg.Attributes.ApproximateReceiveCount) > retryNum) {
+        shouldFail = true
+      }
+    })
+
+    consumer.on('message_processed', async msg => {
+      try {
+        resolved++
+
+        // The +1 is add to manage the second try
+        if (resolved === retryNum) {
+          await sleep(50)
+          const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
+          t.is(resultMessages, undefined)
+
+          const item = await getValueFromDynamo({ dynamoClient, dynamoTable, cid: cars[0].cid })
+          t.is(item.cid, cars[0].cid)
+          t.is(item.status, 'failed')
+          t.is(item.error, 'Max retry')
+          t.truthy(item.downloadFailedAt > item.created)
+
+          await sleep(4000)
+          nockPickup.done()
+          await stopConsumer(consumer)
+          if (shouldFail) {
+            reject(new Error('Message not set to failed after max retry'))
+          } else {
+            resolve()
+          }
+        }
+      } catch (e) {
+        reject(e)
+      }
+    })
+    consumer.on('processing_error', reject)
+    consumer.on('timeout_error', reject)
+  })
+
+  consumer.start()
+
+  return done
+})

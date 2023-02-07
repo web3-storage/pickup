@@ -92,6 +92,12 @@ npm start
 
 See: https://docs.sst.dev for more info on how things get deployed.
 
+To remove dev services to your aws account:
+
+```console
+npm run remove
+```
+
 ## Overview
 
 Project structure:
@@ -217,6 +223,18 @@ sequenceDiagram
   end
   pickup-->>-web3.storage: { cid }
 ```
+
+## Validation
+
+The system provides a validation step that run after the upload on S3.
+To enable it the ENV var USE_VALIDATION should be set to 'VALIDATE'
+
+## Pickup and validator logic
+
+In the following schema the architecture of `pickup` and the `validator`.
+
+![Router diagram](docs/flowchart.jpg)
+
 
 ## Integration with Elastic Provider
 

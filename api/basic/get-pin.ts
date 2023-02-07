@@ -1,9 +1,12 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
-import { ClusterStatusResponse, Pin, Response } from './schema.js'
+import { ErrorCode, Pin, Response } from './schema.js'
 import { doAuth } from './helper/auth-basic.js'
-import { logger, withLambdaRequest } from './helper/logger.js'
+import { sanitizeCid } from './helper/cid.js'
+import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
+import { toGetPinResponse, toResponse, toResponseError } from './helper/response.js'
+import { validateEventParameters } from './helper/validators.js'
 
 interface GetPinInput {
   cid: string
@@ -28,77 +31,54 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
     LOG_LEVEL: logLevel = 'info'
   } = process.env
 
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  const cid = event.pathParameters?.cid ? sanitizeCid(event.pathParameters.cid) : ''
   logger.level = logLevel
-  withLambdaRequest(event, context)
+  context.functionName = 'GET_PIN_LAMBDA'
+  setLoggerWithLambdaRequest(event, context)
 
-  logger.info('Get pin request')
+  logger.info({ code: 'INVOKE' }, 'Get pin invokation')
 
-  const authError = doAuth(event.headers.authorization)
-  if (authError != null) return authError
+  /* eslint-disable @typescript-eslint/strict-boolean-expressions */
+  if (!doAuth(event.headers.authorization)) {
+    logger.error({ code: 'INVALID_AUTH', event }, 'User not authorized on get pin')
+    return toResponseError(401, 'UNAUTHORIZED')
+  }
 
-  const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
-  const cid = event.pathParameters?.cid ?? ''
+  // TODO validate here CLUSTER_IPFS_ADDR and CLUSTER_IPFS_PEERID
+
+  const validationError = validateEventParameters({ cid })
+
+  if (validationError != null) {
+    logger.error({ err: validationError, code: validationError.code }, 'Validation event params error on get pin')
+    return toResponseError(400, 'BAD_REQUEST', validationError.message)
+  }
+
   try {
+    const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
     const pin = await getPin({ cid, dynamo, table })
-    const body = toClusterResponse(cid, pin, ipfsAddr, ipfsPeerId)
-    return { statusCode: 200, body: JSON.stringify(body) }
-  } catch (error) {
-    console.log(error)
-    return { statusCode: 500, body: JSON.stringify({ error: { reason: 'INTERNAL_SERVER_ERROR' } }) }
+    const res = toGetPinResponse(cid, pin, ipfsAddr, ipfsPeerId)
+    return toResponse(res)
+  } catch (err: any) {
+    logger.error({ err, code: err.code }, 'Error on get pin')
+    return toResponseError(500, 'INTERNAL_SERVER_ERROR', err.message)
   }
 }
 
 export const getPin = async ({ cid, dynamo, table }: GetPinInput): Promise<Pin | undefined> => {
-  const client = DynamoDBDocumentClient.from(dynamo)
+  try {
+    const client = DynamoDBDocumentClient.from(dynamo)
 
-  const res = await client.send(new GetCommand({
-    TableName: table,
-    Key: { cid }
-  }))
+    const res = await client.send(new GetCommand({
+      TableName: table,
+      Key: { cid }
+    }))
 
-  const pin = res.Item as Pin
+    const pin = res.Item as Pin
 
-  return pin
-}
-
-/**
- * Hardcodes much of a cluster shaped response as if it was a single node cluster
- * with just elastic-ipfs as it's single backing node.
- *
- * TODO: Once we know that EP is providing the CID, we update the status to pinned in our db.
- *
- * NOTE: This API is "temporary" to allow us to swap in pickup for cluster. A simpler, non-cluster compatible api can be used onced we are happy that it's a good idea.
- */
-export function toClusterResponse (
-  cid: string,
-  pin?: Pin,
-  ipfsAddr = '/dns4/elastic.dag.house/tcp/443/wss/p2p/bafzbeibhqavlasjc7dvbiopygwncnrtvjd2xmryk5laib7zyjor6kf3avm',
-  ipfsPeerId = ipfsAddr.split('/').at(-1)
-): ClusterStatusResponse {
-  if (ipfsPeerId === undefined) {
-    throw new Error('CLUSTER_IPFS_ADDR must be a valid multiaddr')
+    return pin
+  } catch (err) {
+    logger.error({ err }, 'Dynamo error')
   }
-  return {
-    cid: cid,
-    name: '',
-    allocations: [],
-    origins: [],
-    created: pin?.created ?? new Date().toISOString(),
-    metadata: null,
-    peer_map: {
-      // Fake cluster ID to give correct shape to output, not expected to be used. dotStorge dont care.
-      '12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR': {
-        peername: 'elastic-ipfs',
-        ipfs_peer_id: ipfsPeerId,
-        ipfs_peer_addresses: [
-          ipfsAddr
-        ],
-        status: pin?.status ?? 'unpinned',
-        timestamp: new Date().toISOString(),
-        error: '',
-        attempt_count: 0,
-        priority_pin: false
-      }
-    }
-  }
+  throw new ErrorCode('DYNAMO_GET_PIN', 'Failed to get Pin. Please try again')
 }

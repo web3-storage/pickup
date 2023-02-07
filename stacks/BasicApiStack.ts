@@ -3,7 +3,10 @@ import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 import * as cfnApig from 'aws-cdk-lib/aws-apigatewayv2'
 import * as apig from '@aws-cdk/aws-apigatewayv2-alpha'
 
-export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bucket: Bucket } {
+export function BasicApiStack ({
+  app,
+  stack
+}: StackContext): { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue } {
   const dlq = new Queue(stack, 'PinDlq')
 
   const queue = new Queue(stack, 'Pin', {
@@ -11,13 +14,13 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       queue: {
         deadLetterQueue: {
           queue: dlq.cdk.queue,
-          maxReceiveCount: 2
+          maxReceiveCount: 11
         }
       }
     }
   })
 
-  const table = new Table(stack, 'BasicV2', {
+  const dynamoDbTable = new Table(stack, 'BasicV2', {
     fields: {
       cid: 'string'
     },
@@ -27,22 +30,26 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
   })
 
   const updatePinDlq = new Queue(stack, 'UpdatePinDlq')
-  const updatePinQueue = new Queue(stack, 'UpdatePinQueue', {
-    consumer: {
-      function: {
-        handler: 'basic/update-pin.sqsEventHandler',
-        functionName: formatResourceName(app.stage, 'updatePin'),
-        bind: [table],
-        environment: {
-          TABLE_NAME: table.tableName
-        }
-      },
-      cdk: {
-        eventSource: {
-          batchSize: 1
+  const consumer = process.env.USE_VALIDATION !== 'VALIDATE'
+    ? {
+        function: {
+          handler: 'basic/update-pin.sqsEventHandler',
+          functionName: formatResourceName(app.stage, 'updatePin'),
+          bind: [dynamoDbTable],
+          environment: {
+            TABLE_NAME: dynamoDbTable.tableName
+          }
+        },
+        cdk: {
+          eventSource: {
+            batchSize: 1
+          }
         }
       }
-    },
+    : undefined
+
+  const updatePinQueue = new Queue(stack, 'UpdatePinQueue', {
+    consumer,
     cdk: {
       queue: {
         deadLetterQueue: {
@@ -70,10 +77,10 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
   bucket.cdk.bucket.enableEventBridgeNotification()
 
   const customDomain = getCustomDomain(app.stage, process.env.HOSTED_ZONE)
-  const apiFunctionBindList: SSTConstruct[] = [bucket, table, queue]
+  const apiFunctionBindList: SSTConstruct[] = [bucket, dynamoDbTable, queue]
   const apiFunctionEnvironment: Record<string, string> = {
     BUCKET_NAME: bucket.bucketName,
-    TABLE_NAME: table.tableName,
+    TABLE_NAME: dynamoDbTable.tableName,
     QUEUE_URL: queue.queueUrl,
     CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? '',
     LEGACY_CLUSTER_IPFS_URL: process.env.LEGACY_CLUSTER_IPFS_URL ?? '',
@@ -97,19 +104,34 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
       'GET    /pins/{cid}': {
         function: {
           handler: 'basic/get-pin-router.handler',
-          functionName: formatResourceName(app.stage, 'getPinRouter')
+          functionName: formatResourceName(app.stage, 'getPinRouter'),
+          timeout: '31 seconds'
+        }
+      },
+      'GET    /pins': {
+        function: {
+          handler: 'basic/get-pins-router.handler',
+          functionName: formatResourceName(app.stage, 'getPinsRouter'),
+          timeout: '31 seconds'
         }
       },
       'POST   /pins/{cid}': {
         function: {
           handler: 'basic/add-pin-router.handler',
-          functionName: formatResourceName(app.stage, 'postPinRouter')
+          functionName: formatResourceName(app.stage, 'postPinRouter'),
+          timeout: '31 seconds'
         }
       },
       'GET    /internal/pins/{cid}': {
         function: {
           handler: 'basic/get-pin.handler',
           functionName: formatResourceName(app.stage, 'getPin')
+        }
+      },
+      'GET    /internal/pins': {
+        function: {
+          handler: 'basic/get-pins.handler',
+          functionName: formatResourceName(app.stage, 'getPins')
         }
       },
       'POST   /internal/pins/{cid}': {
@@ -136,7 +158,9 @@ export function BasicApiStack ({ app, stack }: StackContext): { queue: Queue, bu
 
   return {
     queue,
-    bucket
+    bucket,
+    dynamoDbTable,
+    updatePinQueue
   }
 }
 
