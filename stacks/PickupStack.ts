@@ -34,7 +34,12 @@ export function PickupStack ({ stack }: StackContext): void {
     // visibilityTimeout: Duration.minutes(5),
     // for debug!
     enableExecuteCommand: true,
-    cluster
+    cluster,
+    scalingSteps: [
+      { upper: 0, change: -1 },
+      { lower: 20, change: +1 },
+      { lower: 100, change: +5 }
+    ]
   })
 
   // go-ipfs as sidecar!
