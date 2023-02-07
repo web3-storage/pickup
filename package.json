@@ -30,7 +30,8 @@
   },
   "workspaces": [
     "api",
-    "pickup"
+    "pickup",
+    "validator"
   ],
   "dependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",

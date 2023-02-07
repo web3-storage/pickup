@@ -7,6 +7,14 @@ import { testIpfsApi } from './ipfs.js'
 import { pickupBatch } from './pickupBatch.js'
 import { logger } from './logger.js'
 
+/**
+ * Delete a message from ths SQS queue
+ *
+ * @param {import('@aws-sdk/client-sqs'.SQSClient)} opts.sqs - The SQS client
+ * @param string queueUrl - The Sqs Queue URL
+ * @param {import('@aws-sdk/client-sqs'.Message)} opts.message - The SQS message
+ * @returns {Promise<void>}
+ */
 export async function deleteMessage ({ sqs, queueUrl }, message) {
   const deleteParams = {
     QueueUrl: queueUrl,
@@ -22,6 +30,25 @@ export async function deleteMessage ({ sqs, queueUrl }, message) {
   }
 }
 
+/**
+ * Create the consumer for the SQS queue.
+ *
+ * @param {string} ipfsApiUrl - The URL of the IPFS server.
+ * @param {string} queueUrl - The Sqs Queue URL.
+ * @param {import('@aws-sdk/client-s3'.S3Client)} s3 - The S3 client.
+ * @param {number} batchSize - The size of the concurrent batch.
+ * @param {number} maxRetry - The number of max retry before set the pin request to failed.
+ * @param {number} visibilityTimeout - The message visibility timeout in seconds, used internally by sqs-consumer.
+ * @param {number} heartbeatInterval - The message heartbeatInterval in seconds, used internally by sqs-consumer.
+ * @param {number} handleMessageTimeout - The max limit for the car download in milliseconds, used internally by sqs-consumer.
+ * @param {number} testMaxRetry - The max retry to check if the IPFS server is available.
+ * @param {number} testTimeoutMs - The timeout in millisecond for each IPFS availability try.
+ * @param {number} timeoutFetchMs - The timeout for each fetch in milliseconds. The Download is set to `failed` if the IPFS server
+ *                              fetch action do not respond while is downloading the blocks.
+ * @param {string} dynamoTable - The dynamo DB table
+ * @param {string} dynamoEndpoint - The dynamo DB endpoint
+ * @returns {Promise<Consumer>}
+ */
 export async function createConsumer ({
   ipfsApiUrl,
   queueUrl,
@@ -91,5 +118,6 @@ export async function createConsumer ({
   app.on('processing_error', (err) => {
     logger.error({ err }, 'App processing error')
   })
+
   return app
 }

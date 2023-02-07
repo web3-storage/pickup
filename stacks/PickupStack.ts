@@ -8,7 +8,7 @@ import { Duration, aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
 export function PickupStack ({ app, stack }: StackContext): void {
-  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
+  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue }
   const cluster = new Cluster(stack, 'ipfs', {
     containerInsights: true
   })
@@ -17,7 +17,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   // export logs to loki just on prod and stg environments
   if (app.stage === 'prod' || app.stage === 'staging') {
-  // read secret url from parameter store
+    // read secret url from parameter store
     const grafanasecret = aws_ssm.StringParameter.fromStringParameterName(
       stack,
       'gf-id',
@@ -48,14 +48,15 @@ export function PickupStack ({ app, stack }: StackContext): void {
       // route logs to grafana loki
       logDriver: lokilogs,
       maxScalingCapacity: 10,
-      cpu: 4096,
-      memoryLimitMiB: 8192,
+      cpu: 8192,
+      memoryLimitMiB: 60 * 1024,
       ephemeralStorageGiB: 64, // max 200
       environment: {
         SQS_QUEUE_URL: basicApi.queue.queueUrl,
         IPFS_API_URL: 'http://127.0.0.1:5001',
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
         BATCH_SIZE: process.env.BATCH_SIZE ?? '5',
+        TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60',
         MAX_RETRY: process.env.MAX_RETRY ?? '10'
       },
       queue: basicApi.queue.cdk.queue,
@@ -102,6 +103,30 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    if (process.env.USE_VALIDATION === 'VALIDATE') {
+      const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
+        image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
+          platform: Platform.LINUX_AMD64,
+          file: 'Dockerfile.Validator'
+        }),
+        containerName: 'validator',
+        maxScalingCapacity: 1,
+        cpu: 16384,
+        memoryLimitMiB: 80 * 1024,
+        ephemeralStorageGiB: 80, // max 200
+        environment: {
+          SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
+          DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        },
+        queue: basicApi.updatePinQueue.cdk.queue,
+        enableExecuteCommand: true,
+        cluster
+      })
+      basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
+      basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
+      basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+    }
   } else {
     const service = new QueueProcessingFargateService(stack, 'Service', {
       image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
@@ -117,7 +142,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
         IPFS_API_URL: 'http://127.0.0.1:5001',
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
         BATCH_SIZE: process.env.BATCH_SIZE ?? '5',
-        TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60'
+        TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60',
+        MAX_RETRY: process.env.MAX_RETRY ?? '10'
       },
       queue: basicApi.queue.cdk.queue,
       enableExecuteCommand: true,
@@ -150,8 +176,33 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    if (process.env.USE_VALIDATION === 'VALIDATE') {
+      const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
+        image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
+          platform: Platform.LINUX_AMD64,
+          file: 'Dockerfile.Validator'
+        }),
+        containerName: 'validator',
+        maxScalingCapacity: 1,
+        cpu: 16384,
+        memoryLimitMiB: 80 * 1024,
+        ephemeralStorageGiB: 80, // max 200
+        environment: {
+          SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
+          DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        },
+        queue: basicApi.updatePinQueue.cdk.queue,
+        enableExecuteCommand: true,
+        cluster
+      })
+      basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
+      basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
+      basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+    }
   }
 }
+
 function createVPCGateways (vpc: ec2.IVpc): void {
   if (vpc != null) {
     const subnets = [
