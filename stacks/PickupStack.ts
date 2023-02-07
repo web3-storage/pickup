@@ -22,6 +22,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
   const baseServiceProps: MutableQueueProcessingFargateServiceProps & {
     ephemeralStorageGiB: number
   } = {
+    // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
+    // Requires Docker running locally
+    // Note: this is run from /.build/<somehting> so the path to the Dockerfile is not quite what you'd expect.
     image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
       platform: Platform.LINUX_AMD64
     }),
