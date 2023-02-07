@@ -7,7 +7,7 @@ import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
 import { aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 
-type MutableQueueProcessingFargateServiceProps = { // Allows setting properties (Without readonly)
+type MutableQueueProcessingFargateServiceProps = { // The same object without readonly
   -readonly [key in keyof QueueProcessingFargateServiceProps]: QueueProcessingFargateServiceProps[key];
 }
 
