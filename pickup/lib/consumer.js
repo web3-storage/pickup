@@ -124,6 +124,8 @@ export async function createConsumer ({
     }
   }, downloadStatusLoggerSeconds * 1000)
 
+  downloadStatusLoggerInterval.unref()
+
   app.on('stopped', () => {
     clearInterval(downloadStatusLoggerInterval)
   })
