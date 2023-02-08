@@ -1,5 +1,6 @@
 import { createConsumer } from './lib/consumer.js'
 import { logger } from './lib/logger.js'
+import { DownloadStatusManager } from './lib/downloadStatusManager.js'
 
 const { IPFS_API_URL, SQS_QUEUE_URL, DYNAMO_TABLE_NAME, DYNAMO_DB_ENDPOINT, BATCH_SIZE, MAX_RETRY, TIMEOUT_FETCH } = process.env
 
@@ -16,7 +17,8 @@ async function start () {
     dynamoEndpoint: DYNAMO_DB_ENDPOINT || undefined,
     batchSize: Number(BATCH_SIZE || 1),
     maxRetry: Number(MAX_RETRY || 5),
-    timeoutFetchMs: Number(TIMEOUT_FETCH || 30) * 1000
+    timeoutFetchMs: Number(TIMEOUT_FETCH || 30) * 1000,
+    downloadStatusManager: new DownloadStatusManager()
   })
 
   app.on('message_received', msg => {
