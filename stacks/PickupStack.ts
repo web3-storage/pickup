@@ -42,6 +42,14 @@ export function PickupStack ({ app, stack }: StackContext): void {
     },
     queue: basicApi.queue.cdk.queue,
     enableExecuteCommand: true,
+    healthCheck: {
+      command: ['CMD-SHELL', 'ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme || exit 1'],
+      // the properties below are optional
+      interval: Duration.seconds(5),
+      retries: 2,
+      startPeriod: Duration.seconds(5),
+      timeout: Duration.seconds(20)
+    },
     cluster,
     scalingSteps: [
       { upper: 0, change: -1 },
