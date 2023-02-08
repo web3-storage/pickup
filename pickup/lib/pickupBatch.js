@@ -2,6 +2,7 @@ import { fetchCar, connectTo, disconnect, waitForGC, ERROR_TIMEOUT } from './ipf
 import { deleteMessage } from './consumer.js'
 import { updatePinStatus } from './dynamo.js'
 import { logger } from './logger.js'
+import { STATE_DONE, STATE_TIMEOUT, STATE_FAILED, STATE_QUEUED } from './downloadStatusManager.js'
 
 /**
  * Fetch CARs for a batch of SQS messages.
@@ -14,6 +15,7 @@ import { logger } from './logger.js'
  * @param {string} dynamoTable
  * @param {number} timeoutFetchMs
  * @param {number} maxRetry
+ * @param {DownloadStatusManager} downloadStatusManager
  * @returns {Promise<SQSMessage[]>}
  */
 export async function pickupBatch (messages, {
@@ -24,7 +26,8 @@ export async function pickupBatch (messages, {
   dynamo,
   dynamoTable,
   timeoutFetchMs,
-  maxRetry
+  maxRetry,
+  downloadStatusManager
 }) {
   const jobs = []
   const allOrigins = []
@@ -62,12 +65,13 @@ export async function pickupBatch (messages, {
     const { message, cid, upload, requestid } = job
     logger.info({ cid, requestid, messageId: message.MessageId }, 'Start job')
 
+    downloadStatusManager.setStatus(cid, STATE_QUEUED)
     // Inject a downloadError object to the `upload` function, is required to intercept the timeout error
     // because the `abort` action do not allow to pass a code to the call
     const downloadError = {}
 
     try {
-      const body = await fetchCar(cid, ipfsApiUrl, downloadError, timeoutFetchMs)
+      const body = await fetchCar(cid, ipfsApiUrl, downloadError, timeoutFetchMs, downloadStatusManager)
       logger.info({ cid, requestid, messageId: message.MessageId }, 'IPFS node responded, downloading the car')
       await upload({ body, cid, downloadError })
       logger.info({ cid, requestid, messageId: message.MessageId }, 'Car downloaded and stored in S3')
@@ -86,7 +90,7 @@ export async function pickupBatch (messages, {
       }, 'Removed processed message from the messages')
 
       await deleteMessage(queueManager, message)
-
+      downloadStatusManager.setStatus(cid, STATE_DONE)
       resultStats[cid] = 'success'
     } catch (err) {
       // The processed message is removed from the queue list to avoid further changeVisabilityTimeout.
@@ -113,12 +117,14 @@ export async function pickupBatch (messages, {
         // Delete the message from the queue
         await deleteMessage(queueManager, message)
         resultStats[cid] = 'timeout'
+        downloadStatusManager.setStatus(cid, STATE_TIMEOUT)
       } else {
         // For any other error the message from the queue is not removed,
         // then when the visibility timeout is expired the file is resend on the queue
         // A deadLetterQueue should be set to avoid infinite retry.
         logger.error({ err, cid, requestid, messageId: message.MessageI, arrayRemoveIndex }, 'Download error')
         resultStats[cid] = `fail: ${err.message}`
+        downloadStatusManager.setStatus(cid, STATE_FAILED)
       }
       throw err
     } finally {
@@ -134,5 +140,7 @@ export async function pickupBatch (messages, {
   const ok = res.filter(r => r.status === 'fulfilled').map(r => r.value)
   logger.info({ resultStats, success: ok.length, total: totalMessages }, 'Done processing batch.')
 
+  logger.info(downloadStatusManager.getStatus())
+  downloadStatusManager.reset()
   return ok
 }

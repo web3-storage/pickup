@@ -3,6 +3,7 @@ import { Consumer } from 'sqs-consumer'
 import { createConsumer } from '../lib/consumer.js'
 import { compose } from './_compose.js'
 import test from 'ava'
+import { DownloadStatusManager } from '../lib/downloadStatusManager.js'
 
 test.before(async t => {
   t.timeout(1000 * 60)
@@ -56,7 +57,7 @@ test('createConsumer', async t => {
   const key = `psa/${cid}.car`
   const queueUrl = await createQueue()
   const bucket = await createBucket()
-  const consumer = await createConsumer({ ipfsApiUrl, queueUrl, s3 })
+  const consumer = await createConsumer({ ipfsApiUrl, queueUrl, s3, downloadStatusManager: new DownloadStatusManager() })
   const done = new Promise((resolve, reject) => {
     consumer.on('message_processed', msg => {
       const { cid: msgCid } = JSON.parse(msg.Body)
@@ -80,5 +81,5 @@ test('createConsumer', async t => {
 test('createConsumer errors if can\'t connect to IPFS', async t => {
   const { createQueue } = t.context
   const queueUrl = await createQueue()
-  await t.throwsAsync(createConsumer({ ipfsApiUrl: 'http://127.0.0.1', queueUrl }))
+  await t.throwsAsync(createConsumer({ ipfsApiUrl: 'http://127.0.0.1', queueUrl, downloadStatusManager: new DownloadStatusManager() }))
 })
