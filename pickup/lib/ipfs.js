@@ -5,6 +5,7 @@ import debounce from 'debounce'
 import fetch from 'node-fetch'
 
 import { logger } from './logger.js'
+import { STATE_DOWNLOADING } from './downloadStatusManager.js'
 
 export const ERROR_TIMEOUT = 'TIMEOUT'
 
@@ -17,9 +18,10 @@ export const ERROR_TIMEOUT = 'TIMEOUT'
  * @param int timeoutMs - The timeout for each block fetch in milliseconds.
  *                        The Download is set to `failed` if the IPFS server
  *                        fetch action do not respond while is downloading the blocks.
+ * @param {DownloadStatusManager} downloadStatusManager
  * @returns {Promise<*>}
  */
-export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 30000) {
+export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 30000, downloadStatusManager) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
@@ -36,10 +38,13 @@ export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 3000
     throw new Error(`${res.status} ${res.statusText} ${url}`)
   }
 
+  let downloadSize = 0
   async function * restartCountdown (source) {
     // startCountdown.clear()
     // throw new Error('There was an error!!')
     for await (const chunk of source) {
+      downloadSize += chunk.length
+      downloadStatusManager.setStatus(cid, STATE_DOWNLOADING, downloadSize)
       startCountdown()
       yield chunk
     }

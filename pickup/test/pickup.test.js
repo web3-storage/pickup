@@ -5,6 +5,7 @@ import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { createConsumer } from '../lib/consumer.js'
 import { compose } from './_compose.js'
 import { prepareCid, verifyMessage, sleep, getMessagesFromSQS, stopConsumer, getValueFromDynamo } from './_helpers.js'
+import { DownloadStatusManager, STATE_DONE, STATE_QUEUED, STATE_DOWNLOADING } from '../lib/downloadStatusManager.js'
 
 test.before(async t => {
   t.timeout(1000 * 60)
@@ -23,7 +24,8 @@ test('throw an error if can\'t connect to IPFS', async t => {
     ipfsApiUrl: 'http://127.0.0.1',
     queueUrl,
     testMaxRetry: 1,
-    testTimeoutMs: 50
+    testTimeoutMs: 50,
+    downloadStatusManager: new DownloadStatusManager()
   }))
 })
 
@@ -74,7 +76,8 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      downloadStatusManager: new DownloadStatusManager()
     }
   )
 
@@ -168,7 +171,8 @@ test('Process 1 message that fails and returns in the list', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      downloadStatusManager: new DownloadStatusManager()
     }
   )
 
@@ -217,7 +221,7 @@ test('Process 1 message that fails and returns in the list', async t => {
   return done
 })
 
-test('Process 3 messages concurrently and the last has an error', async t => {
+test.only('Process 3 messages concurrently and the last has an error', async t => {
   t.timeout(1000 * 60)
   const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
@@ -262,6 +266,7 @@ test('Process 3 messages concurrently and the last has an error', async t => {
     }))
   }
 
+  const downloadStatusManager = new DownloadStatusManager()
   // Create the consumer
   const consumer = await createConsumer(
     {
@@ -272,7 +277,9 @@ test('Process 3 messages concurrently and the last has an error', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      downloadStatusManager,
+      downloadStatusLoggerSeconds: 1
     }
   )
 
@@ -286,10 +293,22 @@ test('Process 3 messages concurrently and the last has an error', async t => {
       if (cars[index].expectedResult !== 'error') {
         const myBuffer = await cars[index].car.arrayBuffer()
 
+        await sleep(cars[index].timeBetweenChunks)
+        t.deepEqual(downloadStatusManager.getStatus()[cars[index].cid], {
+          state: STATE_QUEUED
+        })
         cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(0, 10)))
         await sleep(cars[index].timeBetweenChunks)
+        t.deepEqual(downloadStatusManager.getStatus()[cars[index].cid], {
+          size: 10,
+          state: STATE_DOWNLOADING
+        })
         cars[index].carReadableStream.push(Buffer.from(myBuffer.slice(10)))
+        await sleep(cars[index].timeBetweenChunks)
+        t.truthy(downloadStatusManager.getStatus()[cars[index].cid].size > 100)
+        t.truthy(downloadStatusManager.getStatus()[cars[index].cid].state, STATE_DOWNLOADING)
         cars[index].carReadableStream.push(null)
+        t.truthy(downloadStatusManager.getStatus()[cars[index].cid].state, STATE_DONE)
       }
     })
 
@@ -303,6 +322,7 @@ test('Process 3 messages concurrently and the last has an error', async t => {
           const resultMessages = await getMessagesFromSQS({ queueUrl, length: cars.length, sqs })
           t.is(resultMessages, undefined)
           await nockPickup.done()
+          t.falsy(Object.keys(downloadStatusManager.getStatus()).length)
           await stopConsumer(consumer)
           resolve()
         }
@@ -363,7 +383,8 @@ test('Process 1 message that fails with a max retry', async t => {
       dynamoEndpoint,
       dynamoTable,
       timeoutFetchMs: 2000,
-      maxRetry: 3
+      maxRetry: 3,
+      downloadStatusManager: new DownloadStatusManager()
     }
   )
 
