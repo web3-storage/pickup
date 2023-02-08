@@ -54,8 +54,9 @@
       "--loader=ts-node/esm"
     ]
   },
+  "engineStrict" : true,
   "engines": {
-    "node": "16.14",
-    "npm" : "7"
+    "npm" : ">=8.0.0 <9.0.0",
+    "node" : ">=16.0.0 <17.0.0"
   }
 }
