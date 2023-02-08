@@ -1,4 +1,4 @@
-import { DynamoDBClient, ReturnConsumedCapacity } from '@aws-sdk/client-dynamodb'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { BatchGetCommand, DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 import { ErrorCode, Pin, Response, ValidationError } from './schema.js'
@@ -105,8 +105,7 @@ export const getPins = async ({ cids, dynamo, table, batchItemCount }: GetPinInp
           [table]: {
             Keys: chunk.map(cid => ({ cid }))
           }
-        },
-        ReturnConsumedCapacity: ReturnConsumedCapacity.TOTAL
+        }
       }))
     ))
 
