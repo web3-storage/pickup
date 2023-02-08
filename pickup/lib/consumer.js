@@ -48,6 +48,7 @@ export async function deleteMessage ({ sqs, queueUrl }, message) {
  * @param {string} dynamoTable - The dynamo DB table
  * @param {string} dynamoEndpoint - The dynamo DB endpoint
  * @param {DownloadStatusManager} downloadStatusManager
+ * @param {Number} downloadStatusLoggerSeconds - The interval in seconds for the download state
  * @returns {Promise<Consumer>}
  */
 export async function createConsumer ({
@@ -64,7 +65,8 @@ export async function createConsumer ({
   timeoutFetchMs = 30000,
   dynamoTable,
   dynamoEndpoint,
-  downloadStatusManager
+  downloadStatusManager,
+  downloadStatusLoggerSeconds = 300 // logs every 5 minutes
 }) {
   // throws if can't connect
   await retry(() => {
@@ -113,6 +115,17 @@ export async function createConsumer ({
         downloadStatusManager
       })
     }
+  })
+
+  const downloadStatusLoggerInterval = setInterval(() => {
+    const status = downloadStatusManager.getStatus()
+    if (Object.keys(status).length) {
+      logger.info(status, 'DownloadStatus')
+    }
+  }, downloadStatusLoggerSeconds * 1000)
+
+  app.on('stopped', () => {
+    clearInterval(downloadStatusLoggerInterval)
   })
 
   app.on('error', (err) => {

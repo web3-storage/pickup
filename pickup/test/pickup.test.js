@@ -221,7 +221,7 @@ test('Process 1 message that fails and returns in the list', async t => {
   return done
 })
 
-test('Process 3 messages concurrently and the last has an error', async t => {
+test.only('Process 3 messages concurrently and the last has an error', async t => {
   t.timeout(1000 * 60)
   const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
@@ -278,7 +278,8 @@ test('Process 3 messages concurrently and the last has an error', async t => {
       dynamoEndpoint,
       dynamoTable,
       timeoutFetchMs: 2000,
-      downloadStatusManager
+      downloadStatusManager,
+      downloadStatusLoggerSeconds: 1
     }
   )
 

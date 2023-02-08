@@ -2,7 +2,16 @@ import { createConsumer } from './lib/consumer.js'
 import { logger } from './lib/logger.js'
 import { DownloadStatusManager } from './lib/downloadStatusManager.js'
 
-const { IPFS_API_URL, SQS_QUEUE_URL, DYNAMO_TABLE_NAME, DYNAMO_DB_ENDPOINT, BATCH_SIZE, MAX_RETRY, TIMEOUT_FETCH } = process.env
+const {
+  IPFS_API_URL,
+  SQS_QUEUE_URL,
+  DYNAMO_TABLE_NAME,
+  DYNAMO_DB_ENDPOINT,
+  BATCH_SIZE,
+  MAX_RETRY,
+  TIMEOUT_FETCH,
+  LOG_STATE_EVERY_SECONDS
+} = process.env
 
 if (!IPFS_API_URL) throw new Error('IPFS_API_URL not found in ENV')
 if (!SQS_QUEUE_URL) throw new Error('SQS_QUEUE_URL not found in ENV')
@@ -18,7 +27,8 @@ async function start () {
     batchSize: Number(BATCH_SIZE || 1),
     maxRetry: Number(MAX_RETRY || 5),
     timeoutFetchMs: Number(TIMEOUT_FETCH || 30) * 1000,
-    downloadStatusManager: new DownloadStatusManager()
+    downloadStatusManager: new DownloadStatusManager(),
+    downloadStatusLoggerSeconds: Math.max(Number(LOG_STATE_EVERY_SECONDS) || 300, 60)
   })
 
   app.on('message_received', msg => {
