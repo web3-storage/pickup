@@ -22,7 +22,7 @@
     "multiaddr": "10.0.1",
     "multiformats": "9.6.5",
     "node-fetch": "3.2.10",
-    "pino": "8.8.0",
+    "pino": "8.9.0",
     "sqs-consumer": "5.7.0"
   },
   "devDependencies": {
