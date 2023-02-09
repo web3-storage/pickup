@@ -1,6 +1,6 @@
 import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType } from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService, QueueProcessingFargateServiceProps } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
@@ -120,6 +120,39 @@ export function PickupStack ({ app, stack }: StackContext): void {
   }
 
   if (process.env.USE_VALIDATION === 'VALIDATE') {
+    const productionParams: {
+      logDriver?: LogDriver
+      cpu?: number
+      memoryLimitMiB?: number
+      ephemeralStorageGiB?: number
+    } = {}
+
+    if (app.stage === 'prod' || app.stage === 'staging') {
+      const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
+        stack,
+        'gf-id',
+        'grafanahost'
+      )
+
+      productionParams.logDriver = LogDrivers.firelens({
+        options: {
+          Name: 'loki',
+          env: app.stage,
+          labels: `{job="${app.stage}-pickup-validator"}`,
+          remove_keys: 'ecs_task_arn',
+          label_keys: 'container_name,container_id,ecs_task_definition,source,ecs_cluster',
+          line_format: 'key_value'
+        },
+        secretOptions: { // Retrieved from AWS Systems Manager Parameter Store
+          url: Secret.fromSsmParameter(grafanaSecret)
+        }
+      })
+
+      productionParams.cpu = 16384
+      productionParams.memoryLimitMiB = 80 * 1024
+      productionParams.ephemeralStorageGiB = 80
+    }
+
     const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
       image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
         platform: Platform.LINUX_AMD64,
@@ -127,16 +160,17 @@ export function PickupStack ({ app, stack }: StackContext): void {
       }),
       containerName: 'validator',
       maxScalingCapacity: 1,
-      cpu: 16384,
-      memoryLimitMiB: 80 * 1024,
-      ephemeralStorageGiB: 80, // max 200
+      cpu: 4096,
+      memoryLimitMiB: 16 * 1024,
+      ephemeralStorageGiB: 30, // max 200
       environment: {
         SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
       },
       queue: basicApi.updatePinQueue.cdk.queue,
       enableExecuteCommand: true,
-      cluster
+      cluster,
+      ...productionParams
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
