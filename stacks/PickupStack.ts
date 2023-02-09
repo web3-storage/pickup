@@ -52,7 +52,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
 
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   // export logs to loki just on prod and stg environments
-  if (app.stage === 'prod' || app.stage === 'staging') {
+  if (true || app.stage === 'prod' || app.stage === 'staging') { // eslint-disable-line no-constant-condition
     // read secret url from parameter store
     const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
       stack,
@@ -127,7 +127,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       ephemeralStorageGiB?: number
     } = {}
 
-    if (app.stage === 'prod' || app.stage === 'staging') {
+    if (true || app.stage === 'prod' || app.stage === 'staging') { // eslint-disable-line no-constant-condition
       const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
         stack,
         'gf-id-validator',
@@ -175,6 +175,15 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
     basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+
+    validationService.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
+    // configure the custom image to log router
+    validationService.taskDefinition.addFirelensLogRouter('log-router', {
+      firelensConfig: {
+        type: FirelensLogRouterType.FLUENTBIT
+      },
+      image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
+    })
   }
 }
 
