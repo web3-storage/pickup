@@ -52,7 +52,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
 
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   // export logs to loki just on prod and stg environments
-  if (true || app.stage === 'prod' || app.stage === 'staging') { // eslint-disable-line no-constant-condition
+  if (app.stage === 'prod' || app.stage === 'staging') {
     // read secret url from parameter store
     const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
       stack,
@@ -127,7 +127,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       ephemeralStorageGiB?: number
     } = {}
 
-    if (true || app.stage === 'prod' || app.stage === 'staging') { // eslint-disable-line no-constant-condition
+    if (app.stage === 'prod' || app.stage === 'staging') {
       const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
         stack,
         'gf-id-validator',
