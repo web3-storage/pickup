@@ -66,7 +66,9 @@ export async function createConsumer ({
   dynamoTable,
   dynamoEndpoint,
   downloadStatusManager,
-  downloadStatusLoggerSeconds = 300 // logs every 5 minutes
+  downloadStatusLoggerSeconds = 300, // logs every 5 minutes
+  shutdownOnIdleAfterSecond = 0, // 0 no shutdown, > 0 shutdown after no messages are received
+  processTermination // A function that exec the process termination
 }) {
   // throws if can't connect
   await retry(() => {
@@ -82,7 +84,8 @@ export async function createConsumer ({
     queueUrl,
     handleMessageTimeout,
     maxRetry,
-    timeoutFetchMs
+    timeoutFetchMs,
+    shutdownOnIdleAfterSecond
   }, 'Create sqs consumer')
 
   const app = Consumer.create({
@@ -140,6 +143,31 @@ export async function createConsumer ({
 
     logger.error({ err }, 'App error')
   })
+
+  if (shutdownOnIdleAfterSecond > 0) {
+    function startShutdownInterval () {
+      const timeoutReference = setTimeout(() => {
+        clearTimeout(timeoutReference)
+        if (processTermination) {
+          processTermination()
+        }
+      }, shutdownOnIdleAfterSecond * 1000)
+
+      timeoutReference.unref()
+      return timeoutReference
+    }
+
+    let shutdownTimeout = startShutdownInterval()
+
+    app.on('message_received', () => {
+      clearTimeout(shutdownTimeout)
+    })
+
+    app.on('message_processed', () => {
+      clearTimeout(shutdownTimeout)
+      shutdownTimeout = startShutdownInterval()
+    })
+  }
 
   app.on('processing_error', (err) => {
     logger.error({ err }, 'App processing error')
