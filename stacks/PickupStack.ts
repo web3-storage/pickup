@@ -130,7 +130,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     if (app.stage === 'prod' || app.stage === 'staging') {
       const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
         stack,
-        'gf-id',
+        'gf-id-validator',
         'grafanahost'
       )
 
