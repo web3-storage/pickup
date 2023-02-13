@@ -27,10 +27,11 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
 
   const queueUrl = await createQueue()
   const bucket = await createBucket()
+  const validationBucket = await createBucket()
 
   // Preapre the data for the test
   const cars = [
-    await prepareCid({ dynamoClient, dynamoTable, s3, bucket, errorType: 'cut' })
+    await prepareCid({ dynamoClient, dynamoTable, s3, bucket: validationBucket, errorType: 'cut' })
   ]
 
   await sqs.send(new SendMessageCommand({
@@ -47,7 +48,8 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      validationBucket
     }
   )
 
@@ -84,10 +86,11 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
 
   const queueUrl = await createQueue()
   const bucket = await createBucket()
+  const validationBucket = await createBucket()
 
   // Preapre the data for the test
   const cars = [
-    await prepareCid({ dynamoClient, dynamoTable, s3, bucket, errorType: 'invalid' })
+    await prepareCid({ dynamoClient, dynamoTable, s3, bucket: validationBucket, errorType: 'invalid' })
   ]
 
   await sqs.send(new SendMessageCommand({
@@ -104,7 +107,8 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      validationBucket
     }
   )
 
@@ -141,10 +145,11 @@ test('Process 1 message and succeed', async t => {
 
   const queueUrl = await createQueue()
   const bucket = await createBucket()
+  const validationBucket = await createBucket()
 
   // Preapre the data for the test
   const cars = [
-    await prepareCid({ dynamoClient, dynamoTable, s3, bucket, errorType: 'none' })
+    await prepareCid({ dynamoClient, dynamoTable, s3, bucket: validationBucket, errorType: 'none' })
   ]
 
   await sqs.send(new SendMessageCommand({
@@ -161,7 +166,8 @@ test('Process 1 message and succeed', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      validationBucket
     }
   )
 

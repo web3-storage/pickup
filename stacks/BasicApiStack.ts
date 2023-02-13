@@ -6,7 +6,7 @@ import * as apig from '@aws-cdk/aws-apigatewayv2-alpha'
 export function BasicApiStack ({
   app,
   stack
-}: StackContext): { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue } {
+}: StackContext): { queue: Queue, bucket: Bucket, dynamoDbTable: Table } {
   const dlq = new Queue(stack, 'PinDlq')
 
   const queue = new Queue(stack, 'Pin', {
@@ -61,7 +61,7 @@ export function BasicApiStack ({
   })
   const s3Topic = new Topic(stack, 'S3Events', {
     subscribers: {
-      updatePinQueue: updatePinQueue
+      updatePinQueue
     }
   })
 
@@ -159,8 +159,7 @@ export function BasicApiStack ({
   return {
     queue,
     bucket,
-    dynamoDbTable,
-    updatePinQueue
+    dynamoDbTable
   }
 }
 

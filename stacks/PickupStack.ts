@@ -12,7 +12,7 @@ type MutableQueueProcessingFargateServiceProps = { // The same object without re
 }
 
 export function PickupStack ({ app, stack }: StackContext): void {
-  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue }
+  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
   const cluster = new Cluster(stack, 'ipfs', {
     containerInsights: true
   })
@@ -22,10 +22,23 @@ export function PickupStack ({ app, stack }: StackContext): void {
   const useValidation = process.env.USE_VALIDATION === 'VALIDATE'
 
   let validationBucket
+  let validationPinQueue
   if (useValidation) {
+    const validationPinDlq = new Queue(stack, 'ValidationPinDlq')
+    validationPinQueue = new Queue(stack, 'ValidationPinQueue', {
+      cdk: {
+        queue: {
+          deadLetterQueue: {
+            queue: validationPinDlq.cdk.queue,
+            maxReceiveCount: 2
+          }
+        }
+      }
+    })
+
     const s3Topic = new Topic(stack, 'S3ValidationEvents', {
       subscribers: {
-        updatePinQueue: basicApi.updatePinQueue
+        validationPinDlq
       }
     })
 
@@ -137,8 +150,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
       }
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    if (validationBucket !== undefined) {
+      validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+    }
   } else {
     const service = new QueueProcessingFargateService(stack, 'Service', {
       ...baseServiceProps,
@@ -164,9 +182,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    if (validationBucket !== undefined) {
+      validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+    }
   }
 
-  if (useValidation) {
+  if (useValidation && validationPinQueue !== undefined) {
     const productionParams: {
       logDriver?: LogDriver
       cpu?: number
@@ -211,17 +233,22 @@ export function PickupStack ({ app, stack }: StackContext): void {
       memoryLimitMiB: 16 * 1024,
       ephemeralStorageGiB: 30, // max 200
       environment: {
-        SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
-        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        SQS_QUEUE_URL: validationPinQueue.queueUrl,
+        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
+        VALIDATION_BUCKET: (validationBucket != null) ? validationBucket.bucketName : ''
       },
-      queue: basicApi.updatePinQueue.cdk.queue,
+      queue: validationPinQueue.cdk.queue,
       enableExecuteCommand: true,
       cluster,
       ...productionParams
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
-    basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+    validationPinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+
+    if (validationBucket !== undefined) {
+      validationBucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
+    }
 
     validationService.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
     // configure the custom image to log router

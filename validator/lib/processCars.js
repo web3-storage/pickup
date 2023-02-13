@@ -13,14 +13,15 @@ import { updatePinStatus } from './dynamo.js'
  * @param {import('@aws-sdk/client-s3'.S3Client)} s3
  * @returns {Promise<void>}
  */
-export async function validateCar (record, { s3 }) {
-  const bucket = record.s3.bucket.name
+export async function validateCar (record, { s3, validationBucket }) {
+  const bucket = validationBucket
   const key = record.s3.object.key
   const size = record.s3.object.size
 
   let validationCarResult
   let cid
 
+  logger.info({ key, bucket: record.s3.bucket.name, validationBucket }, 'Try to validate')
   try {
     cid = key.split('/').pop().split('.').shift()
     const ValidationCidResult = parseCid(cid)
@@ -39,7 +40,7 @@ export async function validateCar (record, { s3 }) {
       return { cid, key, size, errors: validationCarResult.errors }
     }
 
-    logger.info({ cid, key }, 'Car valid')
+    logger.info({ cid, key, bucket }, 'Car valid')
 
     return { cid, key, size }
   } catch (err) {
@@ -54,6 +55,7 @@ export async function validateCar (record, { s3 }) {
  * @param {import('sqs-consumer').SQSMessage} message
  * @param {import('@aws-sdk/lib-dynamodb'.DynamoDBClient)} context.dynamo
  * @param {string} context.dynamoTable
+ * @param {string} context.validationBucket
  * @returns {Promise<boolean>}
  */
 export async function processCars (message, context) {
