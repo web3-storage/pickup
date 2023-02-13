@@ -59,6 +59,7 @@ export function BasicApiStack ({
       }
     }
   })
+
   const s3Topic = new Topic(stack, 'S3Events', {
     subscribers: {
       updatePinQueue

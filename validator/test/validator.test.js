@@ -8,7 +8,7 @@ import {
   getMessage,
   sleep,
   stopConsumer,
-  getValueFromDynamo
+  getValueFromDynamo, getValueContentFromS3
 } from './_helpers.js'
 
 test.before(async t => {
@@ -23,6 +23,7 @@ test.after(async t => {
 
 test('Process 1 message and fails due an unexpected end of data', async t => {
   t.timeout(1000 * 60)
+  t.plan(6)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
@@ -65,6 +66,17 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
         t.is(item.size, cars[0].size)
         t.truthy(item.validatedAt > item.created)
 
+        try {
+          await getValueContentFromS3({ bucket, key: cars[0].key, s3 })
+        } catch (e) {
+          t.is(e.message, 'The specified key does not exist.')
+        }
+
+        const validationFile = await getValueContentFromS3({ bucket: validationBucket, key: cars[0].key, s3 })
+        t.truthy(
+          await validationFile.Body.transformToString()
+        )
+
         await stopConsumer(consumer)
         resolve()
       } catch (e) {
@@ -82,6 +94,7 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
 
 test('Process 1 message and fails due a CBOR decode error', async t => {
   t.timeout(1000 * 60)
+  t.plan(6)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
@@ -124,6 +137,17 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
         t.is(item.size, cars[0].size)
         t.truthy(item.validatedAt > item.created)
 
+        try {
+          await getValueContentFromS3({ bucket, key: cars[0].key, s3 })
+        } catch (e) {
+          t.is(e.message, 'The specified key does not exist.')
+        }
+
+        const validationFile = await getValueContentFromS3({ bucket: validationBucket, key: cars[0].key, s3 })
+        t.truthy(
+          await validationFile.Body.transformToString()
+        )
+
         await stopConsumer(consumer)
         resolve()
       } catch (e) {
@@ -141,6 +165,7 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
 
 test('Process 1 message and succeed', async t => {
   t.timeout(1000 * 60)
+  t.plan(6)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
@@ -182,6 +207,19 @@ test('Process 1 message and succeed', async t => {
         t.is(item.size, cars[0].size)
         t.truthy(item.validatedAt > item.created)
         t.falsy(item.error)
+
+        try {
+          await getValueContentFromS3({ bucket: validationBucket, key: cars[0].key, s3 })
+        } catch (e) {
+          t.is(e.message, 'The specified key does not exist.')
+        }
+
+        const file = await getValueContentFromS3({ bucket, key: cars[0].key, s3 })
+        t.is(
+          await file.Body.transformToString(),
+          Buffer.from(await cars[0].car.arrayBuffer()).toString()
+        )
+
         await stopConsumer(consumer)
         resolve()
       } catch (e) {

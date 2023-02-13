@@ -2,6 +2,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { logger } from './logger.js'
 import { parseCid, parseCar } from './parsers.js'
 import { updatePinStatus } from './dynamo.js'
+import { copyFile, removeFile } from './s3.js'
 
 /**
  * Validate a CAR record.
@@ -41,9 +42,13 @@ export async function validateCar (record, { s3, validationBucket }) {
     }
 
     logger.info({ cid, key, bucket }, 'Car valid')
+    await copyFile({ client: s3, sourceBucket: validationBucket, destinationBucket: record.s3.bucket.name, key })
+
+    logger.info({ cid, key, bucket, validationBucket }, 'Car copied from validation bucket')
 
     return { cid, key, size }
   } catch (err) {
+    console.log(err)
     logger.error({ cid, key, err }, 'Validation car exception')
     return { cid, key, size, errors: { cid, detail: err.message } }
   }
@@ -87,6 +92,8 @@ export async function processCars (message, context) {
         size,
         status: 'pinned'
       })
+
+      await removeFile({ client: context.s3, bucket: context.validationBucket, key })
     }
   }
 
