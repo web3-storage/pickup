@@ -235,7 +235,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       environment: {
         SQS_QUEUE_URL: validationPinQueue.queueUrl,
         DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
-        VALIDATION_BUCKET: (validationBucket != null) ? validationBucket.bucketName : ''
+        DESTINATION_BUCKET: basicApi.bucket.bucketName
       },
       queue: validationPinQueue.cdk.queue,
       enableExecuteCommand: true,

@@ -27,7 +27,7 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
 
   // Preapre the data for the test
@@ -36,7 +36,7 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
   ]
 
   await sqs.send(new SendMessageCommand({
-    MessageBody: getMessage(bucket, cars[0].cid, cars[0].size),
+    MessageBody: getMessage(validationBucket, cars[0].cid, cars[0].size),
     QueueUrl: queueUrl
   }))
 
@@ -50,7 +50,7 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
       dynamoEndpoint,
       dynamoTable,
       timeoutFetchMs: 2000,
-      validationBucket
+      destinationBucket
     }
   )
 
@@ -67,7 +67,7 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
         t.truthy(item.validatedAt > item.created)
 
         try {
-          await getValueContentFromS3({ bucket, key: cars[0].key, s3 })
+          await getValueContentFromS3({ bucket: destinationBucket, key: cars[0].key, s3 })
         } catch (e) {
           t.is(e.message, 'The specified key does not exist.')
         }
@@ -98,7 +98,7 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
 
   // Preapre the data for the test
@@ -107,7 +107,7 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
   ]
 
   await sqs.send(new SendMessageCommand({
-    MessageBody: getMessage(bucket, cars[0].cid, cars[0].size),
+    MessageBody: getMessage(validationBucket, cars[0].cid, cars[0].size),
     QueueUrl: queueUrl
   }))
 
@@ -121,7 +121,7 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
       dynamoEndpoint,
       dynamoTable,
       timeoutFetchMs: 2000,
-      validationBucket
+      destinationBucket
     }
   )
 
@@ -138,7 +138,7 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
         t.truthy(item.validatedAt > item.created)
 
         try {
-          await getValueContentFromS3({ bucket, key: cars[0].key, s3 })
+          await getValueContentFromS3({ bucket: destinationBucket, key: cars[0].key, s3 })
         } catch (e) {
           t.is(e.message, 'The specified key does not exist.')
         }
@@ -169,7 +169,7 @@ test('Process 1 message and succeed', async t => {
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
 
   // Preapre the data for the test
@@ -178,7 +178,7 @@ test('Process 1 message and succeed', async t => {
   ]
 
   await sqs.send(new SendMessageCommand({
-    MessageBody: getMessage(bucket, cars[0].cid, cars[0].size),
+    MessageBody: getMessage(validationBucket, cars[0].cid, cars[0].size),
     QueueUrl: queueUrl
   }))
 
@@ -192,7 +192,7 @@ test('Process 1 message and succeed', async t => {
       dynamoEndpoint,
       dynamoTable,
       timeoutFetchMs: 2000,
-      validationBucket
+      destinationBucket
     }
   )
 
@@ -214,7 +214,7 @@ test('Process 1 message and succeed', async t => {
           t.is(e.message, 'The specified key does not exist.')
         }
 
-        const file = await getValueContentFromS3({ bucket, key: cars[0].key, s3 })
+        const file = await getValueContentFromS3({ bucket: destinationBucket, key: cars[0].key, s3 })
         t.is(
           await file.Body.transformToString(),
           Buffer.from(await cars[0].car.arrayBuffer()).toString()

@@ -15,7 +15,7 @@ import { logger } from './logger.js'
  * @param {number} handleMessageTimeout
  * @param {string} dynamoTable
  * @param {string} dynamoEndpoint
- * @param {string} validationBucket
+ * @param {string} destinationBucket
  * @returns {Promise<Consumer>}
  */
 export async function createConsumer ({
@@ -26,7 +26,7 @@ export async function createConsumer ({
   handleMessageTimeout = 4 * 60 * 60 * 1000,
   dynamoTable,
   dynamoEndpoint,
-  validationBucket
+  destinationBucket
 }) {
   const dynamo = new DynamoDBClient({ endpoint: dynamoEndpoint })
 
@@ -35,7 +35,7 @@ export async function createConsumer ({
     heartbeatInterval,
     queueUrl,
     handleMessageTimeout,
-    validationBucket
+    destinationBucket
   }, 'Create sqs consumer')
 
   const app = Consumer.create({
@@ -53,7 +53,7 @@ export async function createConsumer ({
         queueManager: app,
         dynamo,
         dynamoTable,
-        validationBucket
+        destinationBucket
       })
     }
   })
