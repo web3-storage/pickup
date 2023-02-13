@@ -22,12 +22,14 @@
     "debounce": "^1.2.1",
     "ipfs-unixfs-exporter": "10.0.0",
     "it-pipe": "^2.0.5",
+    "linkdex": "2.0.0",
     "multiaddr": "10.0.1",
     "multiformats": "11.0.1",
     "node-fetch": "^3.2.10",
     "pino": "8.8.0",
     "sqs-consumer": "^5.7.0",
-    "stream-to-it": "^0.2.4"
+    "stream-to-it": "^0.2.4",
+    "uint8arrays": "4.0.3"
   },
   "devDependencies": {
     "@aws-sdk/client-sqs": "^3.118.1",

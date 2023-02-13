@@ -1,6 +1,7 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { logger } from './logger.js'
-import { parseCid, parseCar } from './parsers.js'
+import { parseCid } from './parsers.js'
+import { carStats } from './carStats.js'
 import { updatePinStatus } from './dynamo.js'
 import { copyFile, removeFile } from './s3.js'
 
@@ -35,11 +36,17 @@ export async function validateCar (record, { s3, destinationBucket }) {
       Key: key
     }))
 
-    validationCarResult = await parseCar({ cid, carStream: s3Object.Body })
+    validationCarResult = await carStats(s3Object.Body)
 
-    if (validationCarResult.errors.length) {
-      return { cid, key, size, errors: validationCarResult.errors }
+    if (validationCarResult.structure !== 'Complete') {
+      throw new Error(`Structure not complete: ${validationCarResult.structure}, size: ${validationCarResult.size}, blocks: ${validationCarResult.blocks}`)
     }
+
+    // validationCarResult = await parseCar({ cid, carStream: s3Object.Body })
+
+    // if (validationCarResult.errors.length) {
+    //   return {cid, key, size, errors: validationCarResult.errors}
+    // }
 
     logger.info({ cid, key, validationBucket: record.s3.bucket.name }, 'Car valid')
     await copyFile({ client: s3, sourceBucket: record.s3.bucket.name, destinationBucket, key })
