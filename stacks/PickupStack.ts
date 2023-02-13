@@ -23,7 +23,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
 
   let validationBucket
   if (useValidation) {
-    const s3Topic = new Topic(stack, 'S3Events', {
+    const s3Topic = new Topic(stack, 'S3ValidationEvents', {
       subscribers: {
         updatePinQueue: basicApi.updatePinQueue
       }
