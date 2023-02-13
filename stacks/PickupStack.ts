@@ -1,4 +1,4 @@
-import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
+import { StackContext, use, Queue, Bucket, Table, Topic } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
 import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
@@ -19,6 +19,28 @@ export function PickupStack ({ app, stack }: StackContext): void {
   // Network calls to S3 and dynamodb through internal network
   createVPCGateways(cluster.vpc)
 
+  const useValidation = process.env.USE_VALIDATION === 'VALIDATE'
+
+  let validationBucket
+  if (useValidation) {
+    const s3Topic = new Topic(stack, 'S3Events', {
+      subscribers: {
+        updatePinQueue: basicApi.updatePinQueue
+      }
+    })
+
+    validationBucket = new Bucket(stack, 'ValidationCar', {
+      notifications: {
+        topic: {
+          type: 'topic',
+          topic: s3Topic,
+          events: ['object_created']
+        }
+      }
+    })
+    validationBucket.cdk.bucket.enableEventBridgeNotification()
+  }
+
   const baseServiceProps: MutableQueueProcessingFargateServiceProps & {
     ephemeralStorageGiB: number
   } = {
@@ -38,7 +60,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
       DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
       BATCH_SIZE: process.env.BATCH_SIZE ?? '5',
       TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60',
-      MAX_RETRY: process.env.MAX_RETRY ?? '10'
+      MAX_RETRY: process.env.MAX_RETRY ?? '10',
+      VALIDATION_BUCKET: (validationBucket != null) ? validationBucket.bucketName : ''
     },
     queue: basicApi.queue.cdk.queue,
     enableExecuteCommand: true,
@@ -143,7 +166,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
   }
 
-  if (process.env.USE_VALIDATION === 'VALIDATE') {
+  if (useValidation) {
     const productionParams: {
       logDriver?: LogDriver
       cpu?: number

@@ -35,6 +35,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
 
   const queueUrl = await createQueue()
   const bucket = await createBucket()
+  const validationBucket = await createBucket()
 
   // Preapre the data for the test
   const cars = [
@@ -77,7 +78,8 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
       dynamoEndpoint,
       dynamoTable,
       timeoutFetchMs: 2000,
-      downloadStatusManager: new DownloadStatusManager()
+      downloadStatusManager: new DownloadStatusManager(),
+      validationBucket
     }
   )
 
@@ -100,7 +102,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
 
     consumer.on('message_processed', async msg => {
       try {
-        await verifyMessage({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3, expectedError: 'Download timeout' })
+        await verifyMessage({ msg, cars, dynamoClient, dynamoTable, t, bucket: validationBucket, s3, expectedError: 'Download timeout' })
         resolved++
 
         if (resolved === cars.length) {
@@ -221,7 +223,7 @@ test('Process 1 message that fails and returns in the list', async t => {
   return done
 })
 
-test.only('Process 3 messages concurrently and the last has an error', async t => {
+test('Process 3 messages concurrently and the last has an error', async t => {
   t.timeout(1000 * 60)
   const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
