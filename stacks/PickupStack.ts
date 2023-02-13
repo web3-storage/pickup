@@ -250,14 +250,16 @@ export function PickupStack ({ app, stack }: StackContext): void {
       validationBucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
     }
 
-    validationService.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
-    // configure the custom image to log router
-    validationService.taskDefinition.addFirelensLogRouter('log-router', {
-      firelensConfig: {
-        type: FirelensLogRouterType.FLUENTBIT
-      },
-      image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
-    })
+    if (app.stage === 'prod' || app.stage === 'staging') {
+      validationService.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
+      // configure the custom image to log router
+      validationService.taskDefinition.addFirelensLogRouter('log-router', {
+        firelensConfig: {
+          type: FirelensLogRouterType.FLUENTBIT
+        },
+        image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
+      })
+    }
   }
 }
 
