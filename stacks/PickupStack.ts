@@ -38,7 +38,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
 
     const s3Topic = new Topic(stack, 'S3ValidationEvents', {
       subscribers: {
-        validationPinDlq
+        validationPinQueue
       }
     })
 
