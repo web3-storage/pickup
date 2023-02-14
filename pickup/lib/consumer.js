@@ -47,6 +47,7 @@ export async function deleteMessage ({ sqs, queueUrl }, message) {
  *                              fetch action do not respond while is downloading the blocks.
  * @param {string} dynamoTable - The dynamo DB table
  * @param {string} dynamoEndpoint - The dynamo DB endpoint
+ * @param {string} validationBucket - The s3 bucket for the validation, if exists replace the save bucket
  * @param {DownloadStatusManager} downloadStatusManager
  * @param {Number} downloadStatusLoggerSeconds - The interval in seconds for the download state
  * @returns {Promise<Consumer>}
@@ -65,6 +66,7 @@ export async function createConsumer ({
   timeoutFetchMs = 30000,
   dynamoTable,
   dynamoEndpoint,
+  validationBucket,
   downloadStatusManager,
   downloadStatusLoggerSeconds = 300 // logs every 5 minutes
 }) {
@@ -82,7 +84,8 @@ export async function createConsumer ({
     queueUrl,
     handleMessageTimeout,
     maxRetry,
-    timeoutFetchMs
+    timeoutFetchMs,
+    validationBucket
   }, 'Create sqs consumer')
 
   const app = Consumer.create({
@@ -110,6 +113,7 @@ export async function createConsumer ({
         queueManager: app,
         dynamo,
         dynamoTable,
+        validationBucket,
         timeoutFetchMs,
         maxRetry,
         downloadStatusManager

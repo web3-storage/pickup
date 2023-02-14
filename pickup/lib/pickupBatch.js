@@ -13,6 +13,7 @@ import { STATE_DONE, STATE_TIMEOUT, STATE_FAILED, STATE_QUEUED } from './downloa
  * @param {Consumer} queueManager
  * @param {import('@aws-sdk/lib-dynamodb'.DynamoDBClient)} dynamo
  * @param {string} dynamoTable
+ * @param {string} validationBucket
  * @param {number} timeoutFetchMs
  * @param {number} maxRetry
  * @param {DownloadStatusManager} downloadStatusManager
@@ -25,6 +26,7 @@ export async function pickupBatch (messages, {
   queueManager,
   dynamo,
   dynamoTable,
+  validationBucket,
   timeoutFetchMs,
   maxRetry,
   downloadStatusManager
@@ -39,7 +41,7 @@ export async function pickupBatch (messages, {
   for (const message of messages) {
     const { cid, origins, bucket, key, requestid } = JSON.parse(message.Body)
     logger.trace({ cid, requestid }, 'Push message in job list')
-    jobs.push({ message, requestid, cid, upload: createS3Uploader({ bucket, key, client: s3 }) })
+    jobs.push({ message, requestid, cid, upload: createS3Uploader({ bucket: validationBucket ?? bucket, key, client: s3 }) })
     allOrigins.concat(origins)
     requestIds.push(requestid)
   }

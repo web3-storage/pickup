@@ -10,7 +10,8 @@ const {
   BATCH_SIZE,
   MAX_RETRY,
   TIMEOUT_FETCH,
-  LOG_STATE_EVERY_SECONDS
+  LOG_STATE_EVERY_SECONDS,
+  VALIDATION_BUCKET
 } = process.env
 
 if (!IPFS_API_URL) throw new Error('IPFS_API_URL not found in ENV')
@@ -24,6 +25,7 @@ async function start () {
     queueUrl: SQS_QUEUE_URL,
     dynamoTable: DYNAMO_TABLE_NAME,
     dynamoEndpoint: DYNAMO_DB_ENDPOINT || undefined,
+    validationBucket: VALIDATION_BUCKET || undefined,
     batchSize: Number(BATCH_SIZE || 1),
     maxRetry: Number(MAX_RETRY || 5),
     timeoutFetchMs: Number(TIMEOUT_FETCH || 30) * 1000,

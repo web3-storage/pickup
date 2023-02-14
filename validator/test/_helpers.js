@@ -3,7 +3,7 @@ import retry from 'async-retry'
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { packToBlob } from 'ipfs-car/pack/blob'
 import { MemoryBlockStore } from 'ipfs-car/blockstore/memory'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 
 export async function getValueFromDynamo ({ dynamoClient, dynamoTable, cid }) {
   const client = DynamoDBDocumentClient.from(dynamoClient)
@@ -13,6 +13,15 @@ export async function getValueFromDynamo ({ dynamoClient, dynamoTable, cid }) {
   }))
 
   return dynamoCheckDocument.Item
+}
+
+export async function getValueContentFromS3 ({ bucket, key, s3 }) {
+  return await s3.send(new GetObjectCommand(
+    {
+      Bucket: bucket,
+      Key: key
+    }
+  ))
 }
 
 export async function prepareCid ({ dynamoClient, dynamoTable, s3, bucket, errorType }) {

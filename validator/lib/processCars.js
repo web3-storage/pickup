@@ -1,7 +1,8 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { logger } from './logger.js'
-import { parseCid, parseCar } from './parsers.js'
+import { parseCid, carStats } from './validators.js'
 import { updatePinStatus } from './dynamo.js'
+import { copyFile, removeFile } from './s3.js'
 
 /**
  * Validate a CAR record.
@@ -13,7 +14,7 @@ import { updatePinStatus } from './dynamo.js'
  * @param {import('@aws-sdk/client-s3'.S3Client)} s3
  * @returns {Promise<void>}
  */
-export async function validateCar (record, { s3 }) {
+export async function validateCar (record, { s3, destinationBucket }) {
   const bucket = record.s3.bucket.name
   const key = record.s3.object.key
   const size = record.s3.object.size
@@ -21,6 +22,7 @@ export async function validateCar (record, { s3 }) {
   let validationCarResult
   let cid
 
+  logger.info({ key, validationBucket: record.s3.bucket.name, destinationBucket }, 'Try to validate')
   try {
     cid = key.split('/').pop().split('.').shift()
     const ValidationCidResult = parseCid(cid)
@@ -33,18 +35,26 @@ export async function validateCar (record, { s3 }) {
       Key: key
     }))
 
-    validationCarResult = await parseCar({ cid, carStream: s3Object.Body })
+    validationCarResult = await carStats(s3Object.Body)
 
-    if (validationCarResult.errors.length) {
-      return { cid, key, size, errors: validationCarResult.errors }
+    if (validationCarResult.structure !== 'Complete') {
+      throw new Error(`Structure not complete: ${validationCarResult.structure}, size: ${validationCarResult.size}, blocks: ${validationCarResult.blocks}`)
     }
 
-    logger.info({ cid, key }, 'Car valid')
+    logger.info({ cid, key, validationBucket: record.s3.bucket.name }, 'Car valid')
+    await copyFile({ client: s3, sourceBucket: record.s3.bucket.name, destinationBucket, key })
+
+    logger.info({
+      cid,
+      key,
+      validationBucket: record.s3.bucket.name,
+      destinationBucket
+    }, 'Car copied from validation bucket')
 
     return { cid, key, size }
   } catch (err) {
     logger.error({ cid, key, err }, 'Validation car exception')
-    return { cid, key, size, errors: { cid, detail: err.message } }
+    return { cid, key, size, errors: [{ cid, detail: err.message }] }
   }
 }
 
@@ -54,6 +64,7 @@ export async function validateCar (record, { s3 }) {
  * @param {import('sqs-consumer').SQSMessage} message
  * @param {import('@aws-sdk/lib-dynamodb'.DynamoDBClient)} context.dynamo
  * @param {string} context.dynamoTable
+ * @param {string} context.destinationBucket
  * @returns {Promise<boolean>}
  */
 export async function processCars (message, context) {
@@ -85,6 +96,8 @@ export async function processCars (message, context) {
         size,
         status: 'pinned'
       })
+
+      await removeFile({ client: context.s3, bucket: record.s3.bucket.name, key })
     }
   }
 

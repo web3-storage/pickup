@@ -8,7 +8,7 @@ import {
   getMessage,
   sleep,
   stopConsumer,
-  getValueFromDynamo
+  getValueFromDynamo, getValueContentFromS3
 } from './_helpers.js'
 
 test.before(async t => {
@@ -23,18 +23,20 @@ test.after(async t => {
 
 test('Process 1 message and fails due an unexpected end of data', async t => {
   t.timeout(1000 * 60)
+  t.plan(6)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
+  const validationBucket = await createBucket()
 
   // Preapre the data for the test
   const cars = [
-    await prepareCid({ dynamoClient, dynamoTable, s3, bucket, errorType: 'cut' })
+    await prepareCid({ dynamoClient, dynamoTable, s3, bucket: validationBucket, errorType: 'cut' })
   ]
 
   await sqs.send(new SendMessageCommand({
-    MessageBody: getMessage(bucket, cars[0].cid, cars[0].size),
+    MessageBody: getMessage(validationBucket, cars[0].cid, cars[0].size),
     QueueUrl: queueUrl
   }))
 
@@ -47,7 +49,8 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      destinationBucket
     }
   )
 
@@ -62,6 +65,17 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
         t.is(item.status, 'failed')
         t.is(item.size, cars[0].size)
         t.truthy(item.validatedAt > item.created)
+
+        try {
+          await getValueContentFromS3({ bucket: destinationBucket, key: cars[0].key, s3 })
+        } catch (e) {
+          t.is(e.message, 'The specified key does not exist.')
+        }
+
+        const validationFile = await getValueContentFromS3({ bucket: validationBucket, key: cars[0].key, s3 })
+        t.truthy(
+          await validationFile.Body.transformToString()
+        )
 
         await stopConsumer(consumer)
         resolve()
@@ -80,18 +94,20 @@ test('Process 1 message and fails due an unexpected end of data', async t => {
 
 test('Process 1 message and fails due a CBOR decode error', async t => {
   t.timeout(1000 * 60)
+  t.plan(6)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
+  const validationBucket = await createBucket()
 
   // Preapre the data for the test
   const cars = [
-    await prepareCid({ dynamoClient, dynamoTable, s3, bucket, errorType: 'invalid' })
+    await prepareCid({ dynamoClient, dynamoTable, s3, bucket: validationBucket, errorType: 'invalid' })
   ]
 
   await sqs.send(new SendMessageCommand({
-    MessageBody: getMessage(bucket, cars[0].cid, cars[0].size),
+    MessageBody: getMessage(validationBucket, cars[0].cid, cars[0].size),
     QueueUrl: queueUrl
   }))
 
@@ -104,7 +120,8 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      destinationBucket
     }
   )
 
@@ -119,6 +136,17 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
         t.is(item.status, 'failed')
         t.is(item.size, cars[0].size)
         t.truthy(item.validatedAt > item.created)
+
+        try {
+          await getValueContentFromS3({ bucket: destinationBucket, key: cars[0].key, s3 })
+        } catch (e) {
+          t.is(e.message, 'The specified key does not exist.')
+        }
+
+        const validationFile = await getValueContentFromS3({ bucket: validationBucket, key: cars[0].key, s3 })
+        t.truthy(
+          await validationFile.Body.transformToString()
+        )
 
         await stopConsumer(consumer)
         resolve()
@@ -137,18 +165,20 @@ test('Process 1 message and fails due a CBOR decode error', async t => {
 
 test('Process 1 message and succeed', async t => {
   t.timeout(1000 * 60)
+  t.plan(6)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoEndpoint, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
+  const validationBucket = await createBucket()
 
   // Preapre the data for the test
   const cars = [
-    await prepareCid({ dynamoClient, dynamoTable, s3, bucket, errorType: 'none' })
+    await prepareCid({ dynamoClient, dynamoTable, s3, bucket: validationBucket, errorType: 'none' })
   ]
 
   await sqs.send(new SendMessageCommand({
-    MessageBody: getMessage(bucket, cars[0].cid, cars[0].size),
+    MessageBody: getMessage(validationBucket, cars[0].cid, cars[0].size),
     QueueUrl: queueUrl
   }))
 
@@ -161,7 +191,8 @@ test('Process 1 message and succeed', async t => {
       visibilityTimeout: 3,
       dynamoEndpoint,
       dynamoTable,
-      timeoutFetchMs: 2000
+      timeoutFetchMs: 2000,
+      destinationBucket
     }
   )
 
@@ -176,6 +207,19 @@ test('Process 1 message and succeed', async t => {
         t.is(item.size, cars[0].size)
         t.truthy(item.validatedAt > item.created)
         t.falsy(item.error)
+
+        try {
+          await getValueContentFromS3({ bucket: validationBucket, key: cars[0].key, s3 })
+        } catch (e) {
+          t.is(e.message, 'The specified key does not exist.')
+        }
+
+        const file = await getValueContentFromS3({ bucket: destinationBucket, key: cars[0].key, s3 })
+        t.is(
+          await file.Body.transformToString(),
+          Buffer.from(await cars[0].car.arrayBuffer()).toString()
+        )
+
         await stopConsumer(consumer)
         resolve()
       } catch (e) {

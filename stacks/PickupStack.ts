@@ -1,4 +1,4 @@
-import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
+import { StackContext, use, Queue, Bucket, Table, Topic } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
 import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
@@ -12,12 +12,47 @@ type MutableQueueProcessingFargateServiceProps = { // The same object without re
 }
 
 export function PickupStack ({ app, stack }: StackContext): void {
-  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table, updatePinQueue: Queue }
+  const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
   const cluster = new Cluster(stack, 'ipfs', {
     containerInsights: true
   })
   // Network calls to S3 and dynamodb through internal network
   createVPCGateways(cluster.vpc)
+
+  const useValidation = process.env.USE_VALIDATION === 'VALIDATE'
+
+  let validationBucket
+  let validationPinQueue
+  if (useValidation) {
+    const validationPinDlq = new Queue(stack, 'ValidationPinDlq')
+    validationPinQueue = new Queue(stack, 'ValidationPinQueue', {
+      cdk: {
+        queue: {
+          deadLetterQueue: {
+            queue: validationPinDlq.cdk.queue,
+            maxReceiveCount: 2
+          }
+        }
+      }
+    })
+
+    const s3Topic = new Topic(stack, 'S3ValidationEvents', {
+      subscribers: {
+        validationPinQueue
+      }
+    })
+
+    validationBucket = new Bucket(stack, 'ValidationCar', {
+      notifications: {
+        topic: {
+          type: 'topic',
+          topic: s3Topic,
+          events: ['object_created']
+        }
+      }
+    })
+    validationBucket.cdk.bucket.enableEventBridgeNotification()
+  }
 
   const baseServiceProps: MutableQueueProcessingFargateServiceProps & {
     ephemeralStorageGiB: number
@@ -38,7 +73,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
       DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
       BATCH_SIZE: process.env.BATCH_SIZE ?? '5',
       TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60',
-      MAX_RETRY: process.env.MAX_RETRY ?? '10'
+      MAX_RETRY: process.env.MAX_RETRY ?? '10',
+      VALIDATION_BUCKET: (validationBucket != null) ? validationBucket.bucketName : ''
     },
     queue: basicApi.queue.cdk.queue,
     enableExecuteCommand: true,
@@ -114,8 +150,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
       }
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    if (validationBucket !== undefined) {
+      validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+    }
   } else {
     const service = new QueueProcessingFargateService(stack, 'Service', {
       ...baseServiceProps,
@@ -141,9 +182,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
+
+    if (validationBucket !== undefined) {
+      validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
+    }
   }
 
-  if (process.env.USE_VALIDATION === 'VALIDATE') {
+  if (useValidation && validationPinQueue !== undefined) {
     const productionParams: {
       logDriver?: LogDriver
       cpu?: number
@@ -188,26 +233,33 @@ export function PickupStack ({ app, stack }: StackContext): void {
       memoryLimitMiB: 16 * 1024,
       ephemeralStorageGiB: 30, // max 200
       environment: {
-        SQS_QUEUE_URL: basicApi.updatePinQueue.queueUrl,
-        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName
+        SQS_QUEUE_URL: validationPinQueue.queueUrl,
+        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
+        DESTINATION_BUCKET: basicApi.bucket.bucketName
       },
-      queue: basicApi.updatePinQueue.cdk.queue,
+      queue: validationPinQueue.cdk.queue,
       enableExecuteCommand: true,
       cluster,
       ...productionParams
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
-    basicApi.updatePinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
+    validationPinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
 
-    validationService.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
-    // configure the custom image to log router
-    validationService.taskDefinition.addFirelensLogRouter('log-router', {
-      firelensConfig: {
-        type: FirelensLogRouterType.FLUENTBIT
-      },
-      image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
-    })
+    if (validationBucket !== undefined) {
+      validationBucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
+    }
+
+    if (app.stage === 'prod' || app.stage === 'staging') {
+      validationService.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
+      // configure the custom image to log router
+      validationService.taskDefinition.addFirelensLogRouter('log-router', {
+        firelensConfig: {
+          type: FirelensLogRouterType.FLUENTBIT
+        },
+        image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
+      })
+    }
   }
 }
 
