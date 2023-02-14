@@ -7,7 +7,6 @@
   "scripts": {
     "start": "node index.js",
     "test": "LOG_LEVEL=trace ava --serial",
-    "test:debug": "node test/_before && DEBUG=testcontainers* ava --serial",
     "lint": "standard"
   },
   "author": "olizilla",
