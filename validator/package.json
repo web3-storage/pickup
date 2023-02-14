@@ -24,8 +24,7 @@
     "multiformats": "11.0.1",
     "node-fetch": "^3.2.10",
     "pino": "8.8.0",
-    "sqs-consumer": "^5.7.0",
-    "uint8arrays": "4.0.3"
+    "sqs-consumer": "^5.7.0"
   },
   "devDependencies": {
     "@aws-sdk/client-sqs": "^3.118.1",
