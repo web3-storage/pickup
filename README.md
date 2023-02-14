@@ -229,8 +229,9 @@ sequenceDiagram
 The system provides a validation step that run after the upload on S3.
 To enable it the ENV var USE_VALIDATION should be set to 'VALIDATE'.
 
-The process with the validation enabled uses a temporary `bucket` tu upload the file. When the file is uploaded, a trigger run the validation process.
-If the file is valid, it's copied in the finale `bucket`, removed from the temporary and the item state is updated on `DynamoDb`   
+With validation enabled CARs are written to a temporary bucket. The s3 `object_created` event triggers the validator process.
+
+If the CAR is valid, it's copied to the target bucket, removed from the temporary one, and the pin state is updated to `pinned` on DynamoDB
 
 
 
