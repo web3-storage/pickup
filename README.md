@@ -236,7 +236,7 @@ If the file is valid, it's copied in the finale `bucket`, removed from the tempo
 
 ## Pickup and validator logic
 
-In the following schema the architecture of `pickup` with the `validator` enabled.
+This flowchart shows the logic of `pickup` with the `validator` enabled.
 
 ![Router diagram](docs/flowchart-validation.jpg)
 
