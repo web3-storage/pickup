@@ -21,6 +21,8 @@ export async function validateCar (record, { s3, destinationBucket }) {
 
   let cid
 
+  let report
+
   logger.info({ key, validationBucket: record.s3.bucket.name, destinationBucket }, 'Try to validate')
   try {
     cid = key.split('/').pop().split('.').shift()
@@ -34,14 +36,14 @@ export async function validateCar (record, { s3, destinationBucket }) {
       Key: key
     }))
 
-    const { structure, blocksIndexed } = await checkForCompleteDag(s3Object.Body)
+    report = await checkForCompleteDag(s3Object.Body)
 
-    if (blocksIndexed === 0) {
+    if (report.blocksIndexed === 0) {
       throw new Error('empty CAR, zero blocks found')
     }
 
-    if (structure !== 'Complete') {
-      throw new Error(`Structure not complete: ${structure}, blocks: ${blocksIndexed}`)
+    if (report.structure !== 'Complete') {
+      throw new Error(`Structure not complete: ${report.structure}, blocks: ${report.blocksIndexed}`)
     }
 
     logger.info({ cid, key, validationBucket: record.s3.bucket.name }, 'Car valid')
@@ -56,7 +58,7 @@ export async function validateCar (record, { s3, destinationBucket }) {
 
     return { cid, key, size }
   } catch (err) {
-    logger.error({ cid, key, err }, 'Validation car exception')
+    logger.error({ cid, key, report, err }, 'Validation car exception')
     return { cid, key, size, errors: [{ cid, detail: err.message }] }
   }
 }
