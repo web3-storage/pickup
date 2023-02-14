@@ -233,13 +233,13 @@ With validation enabled CARs are written to a temporary bucket. The s3 `object_c
 
 If the CAR is valid, it's copied to the target bucket, removed from the temporary one, and the pin state is updated to `pinned` on DynamoDB
 
-
-
 ## Pickup and validator logic
 
 This flowchart shows the logic of `pickup` with the `validator` enabled.
 
 ![Router diagram](docs/flowchart-validation.jpg)
+
+The source file for the image file is available in the `docs` folder as `miro` backup ([miro-flowchars.rtb](/docs/miro-flowchars.rtb)).
 
 ## Integration with Elastic Provider
 

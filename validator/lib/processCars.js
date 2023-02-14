@@ -1,6 +1,6 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { logger } from './logger.js'
-import { parseCid, carStats } from './validators.js'
+import { parseCid, checkForCompleteDag } from './validators.js'
 import { updatePinStatus } from './dynamo.js'
 import { copyFile, removeFile } from './s3.js'
 
@@ -19,8 +19,9 @@ export async function validateCar (record, { s3, destinationBucket }) {
   const key = record.s3.object.key
   const size = record.s3.object.size
 
-  let validationCarResult
   let cid
+
+  let report
 
   logger.info({ key, validationBucket: record.s3.bucket.name, destinationBucket }, 'Try to validate')
   try {
@@ -35,10 +36,14 @@ export async function validateCar (record, { s3, destinationBucket }) {
       Key: key
     }))
 
-    validationCarResult = await carStats(s3Object.Body)
+    report = await checkForCompleteDag(s3Object.Body)
 
-    if (validationCarResult.structure !== 'Complete') {
-      throw new Error(`Structure not complete: ${validationCarResult.structure}, size: ${validationCarResult.size}, blocks: ${validationCarResult.blocks}`)
+    if (report.blocksIndexed === 0) {
+      throw new Error('empty CAR, zero blocks found')
+    }
+
+    if (report.structure !== 'Complete') {
+      throw new Error(`Structure not complete: ${report.structure}, blocks: ${report.blocksIndexed}`)
     }
 
     logger.info({ cid, key, validationBucket: record.s3.bucket.name }, 'Car valid')
@@ -53,7 +58,7 @@ export async function validateCar (record, { s3, destinationBucket }) {
 
     return { cid, key, size }
   } catch (err) {
-    logger.error({ cid, key, err }, 'Validation car exception')
+    logger.error({ cid, key, report, err }, 'Validation car exception')
     return { cid, key, size, errors: [{ cid, detail: err.message }] }
   }
 }
