@@ -2,7 +2,6 @@ import { createConsumer } from './lib/consumer.js'
 import { logger } from './lib/logger.js'
 
 const {
-  IPFS_API_URL,
   SQS_QUEUE_URL,
   DYNAMO_TABLE_NAME,
   DYNAMO_DB_ENDPOINT,
@@ -19,7 +18,6 @@ if (!DESTINATION_BUCKET) throw new Error('VALIDATION_BUCKET not found in ENV')
 async function start () {
   logger.info({}, 'Pickup starting...')
   const app = await createConsumer({
-    ipfsApiUrl: IPFS_API_URL,
     queueUrl: SQS_QUEUE_URL,
     dynamoTable: DYNAMO_TABLE_NAME,
     dynamoEndpoint: DYNAMO_DB_ENDPOINT || undefined,
