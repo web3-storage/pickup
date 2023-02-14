@@ -2,6 +2,8 @@ import { CID } from 'multiformats/cid'
 import { CarBlockIterator } from '@ipld/car'
 import { LinkIndexer } from 'linkdex'
 
+import { logger } from './logger.js'
+
 /**
  * Parse and validate the CID
  *
@@ -44,7 +46,7 @@ export async function carStats (carBytes) {
       linkIndexer.decodeAndIndex(block)
       blocks++
     } catch (err) {
-      logger.error({ err }, "Block validation error")
+      logger.error({ err }, 'Block validation error')
     }
   }
 
