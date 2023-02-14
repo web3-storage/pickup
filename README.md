@@ -234,7 +234,7 @@ To enable it the ENV var USE_VALIDATION should be set to 'VALIDATE'
 In the following schema the architecture of `pickup` and the `validator`.
 
 ![Router diagram](docs/flowchart.jpg)
-
+The source file for the image file is available in the `docs` folder as `miro` backup ([miro-flowchars.rtb](/docs/miro-flowchars.rtb)).
 
 ## Integration with Elastic Provider
 
