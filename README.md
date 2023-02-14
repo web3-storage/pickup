@@ -192,7 +192,7 @@ A temporary router is added to the project to manage a balancing between the `In
 
 ### GET pin where exists in cluster
 
-When checking a pin status with `GET /pins/:cid` the api checks for that cid in the dynamoDB table first, and then checks ipfs-cluster if it's not found in the table.
+When checking a pin status with `GET /pins/:cid` the api checks for that cid in the DynamoDB table first, and then checks ipfs-cluster if it's not found in the table.
 
 ```mermaid
 sequenceDiagram
@@ -227,14 +227,19 @@ sequenceDiagram
 ## Validation
 
 The system provides a validation step that run after the upload on S3.
-To enable it the ENV var USE_VALIDATION should be set to 'VALIDATE'
+To enable it the ENV var USE_VALIDATION should be set to 'VALIDATE'.
+
+With validation enabled CARs are written to a temporary bucket. The s3 `object_created` event triggers the validator process.
+
+If the CAR is valid, it's copied to the target bucket, removed from the temporary one, and the pin state is updated to `pinned` on DynamoDB
+
+
 
 ## Pickup and validator logic
 
-In the following schema the architecture of `pickup` and the `validator`.
+This flowchart shows the logic of `pickup` with the `validator` enabled.
 
-![Router diagram](docs/flowchart.jpg)
-
+![Router diagram](docs/flowchart-validation.jpg)
 
 ## Integration with Elastic Provider
 
