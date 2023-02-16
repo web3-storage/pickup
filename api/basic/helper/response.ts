@@ -1,4 +1,4 @@
-import { ClusterAddResponseBody, ClusterGetResponseBody, Pin, Response } from '../schema'
+import { ClusterAddResponseBody, ClusterGetResponseBody, Pin, Response, TrackerStatus } from '../schema'
 
 export function toResponseError (code = 500, reason: string, details?: string): Response {
   return { statusCode: code, body: JSON.stringify({ error: { reason, details } }) }
@@ -65,7 +65,7 @@ export function toGetPinResponse (
         ipfs_peer_addresses: [
           ipfsAddr
         ],
-        status: pin?.status ?? 'unpinned',
+        status: toClusterTrackerStatus(pin?.status),
         timestamp: new Date().toISOString(),
         error: '',
         attempt_count: 0,
@@ -73,4 +73,14 @@ export function toGetPinResponse (
       }
     }
   }
+}
+
+/**
+ * Convert psa pin status to cluster pin status!
+ */
+function toClusterTrackerStatus (pinStatus?: Pin['status']): TrackerStatus {
+  if (pinStatus === undefined) return 'unpinned'
+  if (pinStatus === 'queued') return 'pin_queued'
+  if (pinStatus === 'failed') return 'pin_error'
+  return pinStatus
 }
