@@ -17,6 +17,7 @@
     "pino-lambda": "4.1.0"
   },
   "devDependencies": {
+    "@nftstorage/ipfs-cluster": "^5.0.1",
     "@types/aws-lambda": "^8.10.97",
     "@types/node": "^18.0.0"
   },

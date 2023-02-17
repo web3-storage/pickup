@@ -1,3 +1,7 @@
+import { TrackerStatus } from './schema'
+
+export type { TrackerStatus } from '@nftstorage/ipfs-cluster/src/interface'
+
 export interface Response {
   statusCode: number
   body: any
@@ -18,7 +22,7 @@ export interface PeerMapValue {
   'peername': string
   'ipfs_peer_id': string
   'ipfs_peer_addresses': string[]
-  'status': Pin['status']
+  'status': TrackerStatus
   'timestamp': string
   'error': string
   'attempt_count': number
