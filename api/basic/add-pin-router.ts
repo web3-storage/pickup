@@ -112,6 +112,11 @@ export async function addPin ({
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
   if (pinFromDynamo) {
     logger.info({ code: 'FROM_DYNAMO' }, 'CID exists on dynamo')
+    if (pinFromDynamo.status === 'failed') { 
+      // try to fetch a previously failed pin if the user asks it to be pinned again.
+      logger.info({ code: 'FROM_PICKUP' }, 'Call POST addPin on pickup')
+      return await fetchAddPin({ origins, cid, endpoint: pickupUrl, token, isInternal: true })
+    }
     return toAddPinResponse(pinFromDynamo, origins)
   }
 
