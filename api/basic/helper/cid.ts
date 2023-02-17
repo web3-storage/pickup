@@ -1,5 +1,4 @@
 import { CID } from 'multiformats/cid'
-import { Multiaddr } from 'multiaddr'
 import { base58btc } from 'multiformats/bases/base58'
 
 export function isCID (str = ''): boolean {
@@ -10,16 +9,6 @@ export function isCID (str = ''): boolean {
     }
     return Boolean(CID.parse(str))
   } catch (err) {
-    return false
-  }
-}
-
-export function isMultiaddr (input = ''): boolean {
-  if (input === '' || input === null) return false
-  try {
-    new Multiaddr(input) // eslint-disable-line no-new
-    return true
-  } catch (e) {
     return false
   }
 }

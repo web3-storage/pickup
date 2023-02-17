@@ -10,6 +10,7 @@ import {
   validateEventParameters, validateS3Configuration, validateSQSConfiguration
 } from './helper/validators.js'
 import { sanitizeCid } from './helper/cid.js'
+import { isMultiaddr, isNotPrivateIP } from './helper/multiaddr.js'
 import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
 import { toAddPinResponse, toResponse, toResponseError } from './helper/response.js'
 
@@ -50,7 +51,9 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   /* eslint-disable @typescript-eslint/strict-boolean-expressions */
   const cid = event.pathParameters?.cid ? sanitizeCid(event.pathParameters.cid) : ''
-  const origins = event.queryStringParameters?.origins?.split(',') ?? []
+  const origins = (event.queryStringParameters?.origins?.split(',') ?? [])
+    .filter(isMultiaddr)
+    .filter(isNotPrivateIP)
 
   logger.level = logLevel
   context.functionName = 'ADD_PIN_LAMBDA'
