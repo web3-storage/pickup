@@ -1,5 +1,5 @@
 import { ValidationError } from '../schema.js'
-import { isCID, isMultiaddr } from './cid.js'
+import { isCID } from './cid.js'
 
 export function validateDynamoDBConfiguration ({ table }: { table: string }): ValidationError | undefined {
   // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
@@ -68,15 +68,6 @@ export function validateEventParameters ({
     return {
       code: 'INVALID_EVENT_PARAMS_INVALID_CID',
       message: 'Invalid CID'
-    }
-  }
-
-  for (const str of origins) {
-    if (!isMultiaddr(str)) {
-      return {
-        code: 'INVALID_EVENT_PARAMS_INVALID_ORIGIN',
-        message: `${str} in origins is not a valid multiaddr`
-      }
     }
   }
 }
