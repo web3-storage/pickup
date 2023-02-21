@@ -14,7 +14,7 @@ export function findUsableMultiaddrs (input = ''): string[] {
   return input
     .split(',')
     .filter(isMultiaddr)
-    .filter(hasValidIpAddress)
+    .filter(hasPublicIpAddress)
 }
 
 export function isMultiaddr (input = ''): boolean {
@@ -27,11 +27,11 @@ export function isMultiaddr (input = ''): boolean {
   }
 }
 
-export function hasValidIpAddress (input = ''): boolean {
+export function hasPublicIpAddress (input = ''): boolean {
   if (input === '' || input === null) return false
   if (input.startsWith('/ip6/') || input.startsWith('/ip4/')) {
     const ip = input.split('/').at(2)
-    if (!ip) return false
+    if (ip === undefined) return false
     return !bogon(ip)
   }
   // not a IP based multiaddr, so we allow it.
