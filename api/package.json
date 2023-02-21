@@ -11,7 +11,7 @@
     "@aws-sdk/lib-dynamodb": "^3.112.0",
     "@multiformats/multiaddr": "^11.4.0",
     "aws-sdk": "^2.1145.0",
-    "is-local-ip": "^1.1.0",
+    "bogon": "^1.1.0",
     "multiaddr": "^10.0.1",
     "nanoid": "^4.0.0",
     "node-fetch": "^3.3.0",
@@ -21,6 +21,7 @@
   "devDependencies": {
     "@nftstorage/ipfs-cluster": "^5.0.1",
     "@types/aws-lambda": "^8.10.97",
+    "@types/bogon": "^1.0.0",
     "@types/node": "^18.0.0"
   },
   "ava": {
