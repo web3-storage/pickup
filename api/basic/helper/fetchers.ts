@@ -1,5 +1,5 @@
 import * as querystring from 'node:querystring'
-import fetch, { RequestInit } from 'node-fetch'
+import fetch, { RequestInit, Response } from 'node-fetch'
 import retry from 'p-retry'
 
 import { ClusterAddResponseBody, ClusterGetResponseBody } from '../schema.js'
@@ -30,8 +30,8 @@ export interface FetchGetPinsParams {
 /**
  * Retry if fetch throws or there was a server-side error
  */
-function fetchWithRetry (url: URL, init?: RequestInit) {
-  async function fetchAndCheckStatus (url: URL, init?: RequestInit) {
+async function fetchWithRetry (url: URL, init?: RequestInit): Promise<Response> {
+  async function fetchAndCheckStatus (url: URL, init?: RequestInit): Promise<Response> {
     const res = await fetch(url.href, init)
     if (res.status >= 500) {
       throw new Error(res.statusText)
@@ -39,7 +39,7 @@ function fetchWithRetry (url: URL, init?: RequestInit) {
     return res
   }
 
-  return retry(() => fetchAndCheckStatus(url, init), {
+  return await retry(async () => await fetchAndCheckStatus(url, init), {
     retries: 5,
     randomize: true,
     onFailedAttempt: ({ attemptNumber, retriesLeft, message }) => logger.debug({ code: 'FETCH_RETRY', url, attemptNumber, retriesLeft }, `Fetch failed: ${message}`)
