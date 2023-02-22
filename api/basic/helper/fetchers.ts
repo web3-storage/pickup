@@ -1,5 +1,6 @@
 import * as querystring from 'node:querystring'
-import fetch from 'node-fetch'
+import fetch, { RequestInit } from 'node-fetch'
+import retry from 'p-retry'
 
 import { ClusterAddResponseBody, ClusterGetResponseBody } from '../schema.js'
 import { logger } from './logger.js'
@@ -26,6 +27,25 @@ export interface FetchGetPinsParams {
   isInternal?: boolean
 }
 
+/**
+ * Retry if fetch throws or there was a server-side error
+ */
+function fetchWithRetry (url: URL, init?: RequestInit) {
+  async function fetchAndCheckStatus (url: URL, init?: RequestInit) {
+    const res = await fetch(url.href, init)
+    if (res.status >= 500) {
+      throw new Error(res.statusText)
+    }
+    return res
+  }
+
+  return retry(() => fetchAndCheckStatus(url, init), {
+    retries: 5,
+    randomize: true,
+    onFailedAttempt: ({ attemptNumber, retriesLeft, message }) => logger.debug({ code: 'FETCH_RETRY', url, attemptNumber, retriesLeft }, `Fetch failed: ${message}`)
+  })
+}
+
 export async function fetchAddPin ({
   cid,
   endpoint,
@@ -38,7 +58,7 @@ export async function fetchAddPin ({
     const query = (origins.length > 0) ? `?${querystring.stringify({ origins: origins.join(',') })}` : ''
     const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}${query}`, baseUrl.origin)
     logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchAddPin')
-    const result = await fetch(myURL.href, { method: 'POST', headers: { Authorization: `Basic ${token}` } })
+    const result = await fetchWithRetry(myURL, { method: 'POST', headers: { Authorization: `Basic ${token}` } })
     const resultJSON = (await result.json()) as ClusterAddResponseBody
     logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchAddPin DONE')
 
@@ -63,7 +83,7 @@ export async function fetchGetPin ({
     const baseUrl = (new URL(endpoint))
     const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins/${cid}`, baseUrl.origin)
     logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPin')
-    const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
+    const result = await fetchWithRetry(myURL, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
     const resultJSON = (await result.json()) as ClusterGetResponseBody
     logger.trace({ endpoint, isInternal, href: myURL.href, result: resultJSON, statusCode: result.status }, 'fetchGetPin DONE')
@@ -90,7 +110,7 @@ export async function fetchGetPins ({
     const query = querystring.stringify({ cids: cids.join(',') })
     const myURL = new URL(`${baseUrl.pathname !== '/' ? baseUrl.pathname : ''}${isInternal ? '/internal' : ''}/pins?${query}`, baseUrl.origin)
     logger.trace({ endpoint, isInternal, href: myURL.href }, 'fetchGetPins')
-    const result = await fetch(myURL.href, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
+    const result = await fetchWithRetry(myURL, { method: 'GET', headers: { Authorization: `Basic ${token}` } })
 
     const resultText = await result.text()
     logger.trace({ endpoint, isInternal, href: myURL.href, result: resultText, statusCode: result.status }, 'fetchGetPins DONE')
