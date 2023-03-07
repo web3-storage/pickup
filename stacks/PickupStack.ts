@@ -1,6 +1,6 @@
 import { StackContext, use, Queue, Bucket, Table, Topic } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver } from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver, PropagatedTagSource } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService, QueueProcessingFargateServiceProps } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
@@ -64,6 +64,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       platform: Platform.LINUX_AMD64
     }),
     containerName: 'pickup',
+    propagateTags: PropagatedTagSource.TASK_DEFINITION,
     minScalingCapacity: process.env.MIN_SCALING_CAPACITY !== undefined ? parseInt(process.env.MIN_SCALING_CAPACITY) : 1,
     maxScalingCapacity: 10,
     ephemeralStorageGiB: 64, // max 200
