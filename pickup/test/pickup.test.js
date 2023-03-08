@@ -2,7 +2,7 @@ import nock from 'nock'
 import test from 'ava'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
 
-import { createConsumer } from '../lib/consumer.js'
+import { createPickup } from '../lib/pickup.js'
 import { compose } from './_compose.js'
 import { prepareCid, verifyMessage, sleep, getMessagesFromSQS, stopConsumer, getValueFromDynamo } from './_helpers.js'
 import { DownloadStatusManager, STATE_DONE, STATE_QUEUED, STATE_DOWNLOADING } from '../lib/downloadStatusManager.js'

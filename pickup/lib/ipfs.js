@@ -1,57 +1,45 @@
-import { compose } from 'node:stream'
+import { compose, Readable } from 'node:stream'
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import debounce from 'debounce'
 import fetch from 'node-fetch'
-
 import { logger } from './logger.js'
-import { STATE_DOWNLOADING } from './downloadStatusManager.js'
 
 export const ERROR_TIMEOUT = 'TIMEOUT'
 
 /**
  * Start the fetch of a car
  *
- * @param string cid - The CID requested
- * @param string ipfsApiUrl - The IPFS server url
- * @param object downloadError - The error object, is filled in if an error occurs
- * @param int timeoutMs - The timeout for each block fetch in milliseconds.
- *                        The Download is set to `failed` if the IPFS server
- *                        fetch action do not respond while is downloading the blocks.
- * @param {DownloadStatusManager} downloadStatusManager
- * @returns {Promise<*>}
+ * @param {string} cid - The CID requested
+ * @param {string} ipfsApiUrl - The IPFS server url
+ * @param {AbortController} abortCtl - Can i kill it?
+ * @param {number} timeoutMs - The timeout for each block fetch in milliseconds.
+ * @returns {Promise<Readable>}
  */
-export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 30000, downloadStatusManager) {
+export async function fetchCar ({cid, ipfsApiUrl, abortCtl = new AbortController(), timeoutMs = 30000}) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
   const url = new URL(`/api/v0/dag/export?arg=${cid}`, ipfsApiUrl)
-  const ctl = new AbortController()
 
-  const startCountdown = debounce(() => {
-    downloadError.code = ERROR_TIMEOUT
-    ctl.abort()
-  }, timeoutMs)
+  const startCountdown = debounce(() => abortCtl.abort(), timeoutMs)
   startCountdown()
-  const res = await fetch(url, { method: 'POST', signal: ctl.signal })
+  
+  const signal = abortCtl.signal
+  const res = await fetch(url, { method: 'POST', signal })
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText} ${url}`)
   }
 
-  let downloadSize = 0
   async function * restartCountdown (source) {
-    // startCountdown.clear()
-    // throw new Error('There was an error!!')
     for await (const chunk of source) {
-      downloadSize += chunk.length
-      downloadStatusManager.setStatus(cid, STATE_DOWNLOADING, downloadSize)
       startCountdown()
       yield chunk
     }
     startCountdown.clear()
   }
 
-  return compose(res.body, restartCountdown)
+  return compose(res.body, restartCountdown, { signal })
 }
 
 /**
@@ -136,7 +124,7 @@ export function isCID (cid) {
  * Test the connection with IPFS server
  * @param {string} ipfsApiUrl
  * @param {number} timeoutMs
- * @returns {Promise<void>}
+ * @returns {Promise<Record<string, string>>}
  */
 export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
   const url = new URL('/api/v0/id', ipfsApiUrl)
@@ -149,10 +137,38 @@ export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
       }
       throw new Error(`IPFS API test failed. POST ${url} returned ${res.status} ${res.statusText}`)
     }
-    const { AgentVersion, ID } = await res.json()
-    logger.info({ agentVersion: AgentVersion, peerId: ID }, 'Connected')
+    return await res.json()
   } catch (err) {
-    logger.error({ err }, 'Test ipfs fail')
     throw new Error('IPFS API test failed.', { cause: err })
+  }
+}
+
+export class CarFetcher {
+  /**
+   * @param {object} config
+   * @param {string} ipfsApiUrl
+   * @param {number} fetchTimeoutMs
+   */
+  constructor ({ ipfsApiUrl, fetchTimeoutMs = 60000 }) {
+    this.ipfsApiUrl = ipfsApiUrl
+    this.fetchTimeoutMs = fetchTimeoutMs
+  }
+
+  /**
+   * @param {object} config
+   * @param {string} config.cid
+   * @param {string[]} config.origins
+   * @param {(Readable) => Promise<void>} config.upload
+   */
+  async fetch ({ cid, origins, upload }) {
+    const { ipfsApiUrl, fetchTimeoutMs } = this
+    try {
+      await connectTo(origins, ipfsApiUrl)
+      const body = await fetchCar({ cid, ipfsApiUrl, timeoutMs: fetchTimeoutMs })
+      await upload(body)
+    } finally {
+      await disconnect(origins, ipfsApiUrl)
+      await waitForGC(ipfsApiUrl)
+    }
   }
 }

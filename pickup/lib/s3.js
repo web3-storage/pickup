@@ -10,11 +10,9 @@ import { logger } from './logger.js'
  * @param {string} key
  * @param {Stream} body
  * @param {string} cid
- * @param {object} downloadError
- * @param {string} downloadError.code
  * @returns {Promise<CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput>}
  */
-export async function sendToS3 ({ client, bucket, key }, { body, cid, downloadError }) {
+export async function sendToS3 ({ client, bucket, key, body, cid }) {
   const params = {
     Metadata: { structure: 'complete' },
     Bucket: bucket,
@@ -26,12 +24,12 @@ export async function sendToS3 ({ client, bucket, key }, { body, cid, downloadEr
   // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
   const s3Upload = new Upload({ client, params })
 
-  body.on('error', (err) => {
+  body.on('error', (error) => {
     if (err.code === 'AbortError' || err.constructor.name === 'AbortError') {
-      logger.trace({ err, cid }, 'The abort command was thrown by a ipfs timeout')
+      logger.trace({ error, cid }, 'The abort command was thrown by a ipfs timeout')
       return
     }
-    logger.error({ err, code: downloadError.code, cid }, 'S3 upload error')
+    logger.error({ error, cid }, 'S3 upload error')
   })
 
   return s3Upload.done()
@@ -41,11 +39,12 @@ export async function sendToS3 ({ client, bucket, key }, { body, cid, downloadEr
  * Create the uploader
  * @param {import('@aws-sdk/client-s3'.S3Client)} client
  * @param {string} bucket
- * @param {string} key
  * @returns {import('@aws-sdk/client-s3'.S3Client)}
  */
-export function createS3Uploader ({ client = createS3Client(), bucket, key }) {
-  return sendToS3.bind(null, { client, bucket, key })
+export function createS3Uploader ({ client = createS3Client(), bucket }) {
+  return function (key) {
+    sendToS3()
+  }
 }
 
 /**
@@ -56,4 +55,34 @@ export function createS3Uploader ({ client = createS3Client(), bucket, key }) {
 export function createS3Client () {
   // Expects AWS_* ENV vars set.
   return new S3Client({})
+}
+
+export class S3Uploader {
+  /**
+   * @param {object} config
+   * @param {S3Client} s3
+   * @param {string} bucket
+   */
+  constructor ({ s3, bucket }) {
+    this.s3 = s3
+    this.bucket = bucket
+  }
+
+  /**
+   * @param {object} config
+   * @param {string} cid
+   * @param {string} key
+   */
+  createUploader ({ cid, key }) {
+    const { s3, bucket } = this
+    return async function (body) {
+      return sendToS3({
+        client: s3,
+        bucket,
+        key,
+        body,
+        cid
+      })
+    }
+  }
 }
