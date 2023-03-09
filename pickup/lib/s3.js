@@ -25,37 +25,15 @@ export async function sendToS3 ({ client, bucket, key, body, cid }) {
     }
   })
 
-  body.on('error', (error) => {
-    if (error.code === 'AbortError' || error.constructor.name === 'AbortError') {
-      logger.trace({ error, cid }, 'The abort command was thrown by a ipfs timeout')
+  body.on('error', (err) => {
+    if (err.code === 'AbortError' || err.constructor.name === 'AbortError') {
+      logger.trace({ err, cid }, 'The abort command was thrown by a ipfs timeout')
       return
     }
-    logger.error({ error, cid }, 'S3 upload error')
+    logger.error({ err, cid }, 'S3 upload error')
   })
 
   return s3Upload.done()
-}
-
-/**
- * Create the uploader
- * @param {import('@aws-sdk/client-s3'.S3Client)} client
- * @param {string} bucket
- * @returns {import('@aws-sdk/client-s3'.S3Client)}
- */
-export function createS3Uploader ({ client = createS3Client(), bucket }) {
-  return function (key) {
-    sendToS3()
-  }
-}
-
-/**
- * Create the S3Client
- *
- * @returns {import('@aws-sdk/client-s3'.S3Client)}
- */
-export function createS3Client () {
-  // Expects AWS_* ENV vars set.
-  return new S3Client({})
 }
 
 export class S3Uploader {
