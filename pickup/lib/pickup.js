@@ -65,13 +65,13 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
 
   sqsPoller.on('message', messageHandler)
 
-  const pollerStart = sqsPoller.start
-  const start = async () => {
+  const pollerStart = sqsPoller.start.bind(sqsPoller)
+  sqsPoller.start = async () => {
     // throw if we can't connect to kubo
     await carFetcher.testIpfsApi()
-    pollerStart()
+    return pollerStart()
   }
-  return { ...sqsPoller, start }
+  return sqsPoller
 }
 
 /**

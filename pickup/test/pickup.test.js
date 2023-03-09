@@ -1,5 +1,6 @@
 import nock from 'nock'
 import test from 'ava'
+import { nanoid } from 'nanoid'
 import { SendMessageCommand } from '@aws-sdk/client-sqs'
 import { createPickup, createSqsPoller } from '../lib/pickup.js'
 import { compose } from './_compose.js'
@@ -18,14 +19,22 @@ test.after(async t => {
 })
 
 test('throw an error if can\'t connect to IPFS', async t => {
-  await t.throwsAsync(createPickup({
-    carFetcher: new CarFetcher({ ipfsApiUrl: 'http://127.0.0.1' })
-  }))
+  const { createQueue, createBucket, s3 } = t.context
+  const queueUrl = await createQueue()
+  const bucket = await createBucket()
+  const ipfsApiUrl = `https://${nanoid()}:6000`
+
+  const pickup = createPickup({
+    sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
+    carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 2000 }),
+    s3Uploader: new S3Uploader({ s3, bucket })
+  })
+  await t.throwsAsync(() => pickup.start())
 })
 
 test('Process 3 messages concurrently and the last has a timeout', async t => {
   t.timeout(1000 * 60)
-  const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoTable } = t.context
+  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
   const bucket = await createBucket()
@@ -38,6 +47,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
     await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 3000, expectedResult: 'failed' })
   ]
 
+  const ipfsApiUrl = `https://${nanoid()}:6000`
   // Configure nock to mock the response
   const nockPickup = nock(ipfsApiUrl)
   nockPickup
@@ -61,7 +71,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
     }))
   }
 
-  const pickup = await createPickup({
+  const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 2000 }),
     s3Uploader: new S3Uploader({ s3, bucket: validationBucket })
@@ -105,14 +115,14 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
     pickup.on('timeoutReached', reject)
   })
 
-  pickup.start()
+  await pickup.start()
 
   return done
 })
 
 test('Process 1 message that fails and returns in the list', async t => {
   t.timeout(1000 * 60)
-  const { createQueue, createBucket, ipfsApiUrl, sqs, s3, dynamoClient, dynamoTable } = t.context
+  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
   const bucket = await createBucket()
@@ -122,6 +132,7 @@ test('Process 1 message that fails and returns in the list', async t => {
     await prepareCid({ dynamoClient, dynamoTable, timeBetweenChunks: 500, expectedResult: 'success' })
   ]
 
+  const ipfsApiUrl = `https://${nanoid()}:6000`
   // Configure nock to mock the response
   const nockPickup = nock(ipfsApiUrl)
   nockPickup
@@ -147,7 +158,7 @@ test('Process 1 message that fails and returns in the list', async t => {
     }))
   }
 
-  const pickup = await createPickup({
+  const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 5000 }),
     s3Uploader: new S3Uploader({ s3, bucket })
@@ -191,7 +202,7 @@ test('Process 1 message that fails and returns in the list', async t => {
     pickup.on('timeoutReached', reject)
   })
 
-  pickup.start()
+  await pickup.start()
 
   return done
 })
