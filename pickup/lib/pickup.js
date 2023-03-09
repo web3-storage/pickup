@@ -1,5 +1,5 @@
 import { Squiss } from 'squiss-ts'
-import { CarFetcher, testIpfsApi } from './ipfs.js'
+import { CarFetcher } from './ipfs.js'
 import { S3Uploader } from './s3.js'
 import { logger } from './logger.js'
 
@@ -8,7 +8,7 @@ import { logger } from './logger.js'
  *
  * @param {Record<string, string>} env
  */
-export async function createPickupFromEnv (env = process.env) {
+export function createPickupFromEnv (env = process.env) {
   const {
     IPFS_API_URL,
     SQS_QUEUE_URL,
@@ -21,7 +21,7 @@ export async function createPickupFromEnv (env = process.env) {
   if (!SQS_QUEUE_URL) throw new Error('SQS_QUEUE_URL not found in ENV')
   if (!VALIDATION_BUCKET) throw new Error('VALIDATION_BUCKET not found in ENV')
 
-  const pickup = await createPickup({
+  const pickup = createPickup({
     sqsPoller: createSqsPoller({
       queueUrl: SQS_QUEUE_URL,
       maxInFlight: BATCH_SIZE
@@ -44,10 +44,7 @@ export async function createPickupFromEnv (env = process.env) {
  * @param {CarFetcher} config.carFetcher
  * @param {S3Uploader} config.s3Uploader
  */
-export async function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
-  // throw if we can't connect to kubo
-  await testIpfsApi(carFetcher.ipfsApiUrl)
-
+export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
   /**
    * @param {import('squiss-ts').Message} msg
    */
@@ -68,7 +65,13 @@ export async function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
 
   sqsPoller.on('message', messageHandler)
 
-  return sqsPoller
+  const pollerStart = sqsPoller.start
+  const start = async () => {
+    // throw if we can't connect to kubo
+    await carFetcher.testIpfsApi()
+    pollerStart()
+  }
+  return { ...sqsPoller, start }
 }
 
 /**

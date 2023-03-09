@@ -1,5 +1,5 @@
 import stream from 'node:stream'
-import retry from 'async-retry'
+import retry from 'p-retry'
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { packToBlob } from 'ipfs-car/pack/blob'
 import { MemoryBlockStore } from 'ipfs-car/blockstore/memory'

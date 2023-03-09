@@ -3,6 +3,7 @@ import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import debounce from 'debounce'
 import fetch from 'node-fetch'
+import retry from 'p-retry'
 import { logger } from './logger.js'
 
 export const ERROR_TIMEOUT = 'TIMEOUT'
@@ -172,5 +173,9 @@ export class CarFetcher {
       await disconnect(origins, ipfsApiUrl)
       await waitForGC(ipfsApiUrl)
     }
+  }
+
+  async testIpfsApi () {
+    return retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 4 })
   }
 }
