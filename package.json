@@ -35,8 +35,7 @@
   ],
   "dependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
-    "aws-cdk-lib": "2.50.0",
-    "squiss-ts": "^4.4.1"
+    "aws-cdk-lib": "2.50.0"
   },
   "ts-standard": {
     "ignore": [

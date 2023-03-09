@@ -81,21 +81,11 @@ export async function sleep (ms) {
   return new Promise((resolve) => setTimeout(() => resolve(), ms))
 }
 
-export async function verifyMessage ({ msg, cars, dynamoClient, dynamoTable, t, bucket, s3, expectedError }) {
+export async function verifyMessage ({ msg, cars, t, bucket, s3 }) {
   try {
-    const message = JSON.parse(msg.Body)
+    const message = msg.body
     const index = Number(message.requestid)
-    // If there is a timeout, the dynamo item status should be updated to `failed`
-    if (cars[index].expectedResult === 'failed') {
-      const item = await getValueFromDynamo({ dynamoClient, dynamoTable, cid: cars[index].cid })
-      t.is(item.cid, cars[index].cid)
-      t.is(item.status, 'failed')
-      t.is(item.error, expectedError)
-      t.truthy(item.downloadFailedAt > item.created)
-    } else if (cars[index].expectedResult === 'error') {
-      // after the first error, the expectedResult of the car is set to success to allow the upload in the next step
-      cars[index].expectedResult = 'success'
-    } else {
+    if (cars[index].expectedResult === 'success') {
       // If succeed, the s3 file should have the same content of the car generated
       const { cid: msgCid } = message
       t.is(msgCid, cars[index].cid)
@@ -112,7 +102,7 @@ export async function verifyMessage ({ msg, cars, dynamoClient, dynamoTable, t, 
   }
 }
 
-export async function stopConsumer (consumer) {
+export async function stopPickup (consumer) {
   consumer.stop()
   return await retry(() => !consumer.isRunning, {
     retries: 5

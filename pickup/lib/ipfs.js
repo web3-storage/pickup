@@ -1,4 +1,4 @@
-import { compose, Readable } from 'node:stream'
+import { compose } from 'node:stream'
 import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import debounce from 'debounce'
@@ -6,6 +6,8 @@ import fetch from 'node-fetch'
 import { logger } from './logger.js'
 
 export const ERROR_TIMEOUT = 'TIMEOUT'
+
+/** @typedef {import('node:stream').Readable} Readable */
 
 /**
  * Start the fetch of a car
@@ -16,7 +18,7 @@ export const ERROR_TIMEOUT = 'TIMEOUT'
  * @param {number} timeoutMs - The timeout for each block fetch in milliseconds.
  * @returns {Promise<Readable>}
  */
-export async function fetchCar ({cid, ipfsApiUrl, abortCtl = new AbortController(), timeoutMs = 30000}) {
+export async function fetchCar ({ cid, ipfsApiUrl, abortCtl = new AbortController(), timeoutMs = 30000 }) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
@@ -24,7 +26,7 @@ export async function fetchCar ({cid, ipfsApiUrl, abortCtl = new AbortController
 
   const startCountdown = debounce(() => abortCtl.abort(), timeoutMs)
   startCountdown()
-  
+
   const signal = abortCtl.signal
   const res = await fetch(url, { method: 'POST', signal })
   if (!res.ok) {
@@ -39,7 +41,7 @@ export async function fetchCar ({cid, ipfsApiUrl, abortCtl = new AbortController
     startCountdown.clear()
   }
 
-  return compose(res.body, restartCountdown, { signal })
+  return compose(res.body, restartCountdown)
 }
 
 /**
@@ -146,8 +148,8 @@ export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
 export class CarFetcher {
   /**
    * @param {object} config
-   * @param {string} ipfsApiUrl
-   * @param {number} fetchTimeoutMs
+   * @param {string} config.ipfsApiUrl
+   * @param {number} config.fetchTimeoutMs
    */
   constructor ({ ipfsApiUrl, fetchTimeoutMs = 60000 }) {
     this.ipfsApiUrl = ipfsApiUrl
@@ -158,7 +160,7 @@ export class CarFetcher {
    * @param {object} config
    * @param {string} config.cid
    * @param {string[]} config.origins
-   * @param {(Readable) => Promise<void>} config.upload
+   * @param {(body: Readable) => Promise<void>} config.upload
    */
   async fetch ({ cid, origins, upload }) {
     const { ipfsApiUrl, fetchTimeoutMs } = this
