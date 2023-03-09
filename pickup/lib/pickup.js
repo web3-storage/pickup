@@ -82,7 +82,6 @@ export function createSqsPoller (config) {
 
     // allow 4hrs before timeout. 2/3rs of the world can upload faster than
     // 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs.
-    // we can make this more or less generous, but note it ties up a worker.
     // see: https://www.speedtest.net/global-index
     // see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
     // TODO: enforce 32GiB limit
