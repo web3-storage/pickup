@@ -2,12 +2,45 @@ import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverl
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 import * as cfnApig from 'aws-cdk-lib/aws-apigatewayv2'
 import * as apig from '@aws-cdk/aws-apigatewayv2-alpha'
+import { Duration } from 'aws-cdk-lib'
 
 export function BasicApiStack ({
   app,
   stack
 }: StackContext): { queue: Queue, bucket: Bucket, dynamoDbTable: Table } {
-  const dlq = new Queue(stack, 'PinDlq')
+  const dynamoDbTable = new Table(stack, 'BasicV2', {
+    fields: {
+      cid: 'string'
+    },
+    primaryIndex: {
+      partitionKey: 'cid'
+    }
+  })
+
+  const dlq = new Queue(stack, 'PinDlq', {
+    cdk: {
+      queue: {
+        visibilityTimeout: Duration.seconds(40) // should be greater than the lambda timeout
+      }
+    },
+    consumer: {
+      function: {
+        timeout: '30 seconds',
+        handler: 'basic/fail-pin.sqsPinQueueDeadLetterHandler',
+        functionName: formatResourceName(app.stage, 'failPin'),
+        environment: {
+          TABLE_NAME: dynamoDbTable.tableName
+        }
+      },
+      cdk: {
+        eventSource: {
+          reportBatchItemFailures: true,
+          batchSize: 10,
+          maxBatchingWindow: Duration.seconds(10)
+        }
+      }
+    }
+  })
 
   const queue = new Queue(stack, 'Pin', {
     cdk: {
@@ -17,15 +50,6 @@ export function BasicApiStack ({
           maxReceiveCount: 3
         }
       }
-    }
-  })
-
-  const dynamoDbTable = new Table(stack, 'BasicV2', {
-    fields: {
-      cid: 'string'
-    },
-    primaryIndex: {
-      partitionKey: 'cid'
     }
   })
 
