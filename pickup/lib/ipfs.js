@@ -161,23 +161,36 @@ export class CarFetcher {
    */
   async fetch ({ cid, abortCtl }) {
     const { ipfsApiUrl, maxCarBytes, fetchTimeoutMs, fetchChunkTimeoutMs } = this
-
+    /**
+     * @param {AsyncIterable<Uint8Array>} source
+     */
     async function * streamWatcher (source) {
-      let size = 0
-      const fetchTimer = debounce(() => abortCtl.abort(FETCH_TOO_SLOW), fetchTimeoutMs)
-      const chunkTimer = debounce(() => abortCtl.abort(CHUNK_TOO_SLOW), fetchChunkTimeoutMs)
+      const fetchTimer = debounce(() => abort(FETCH_TOO_SLOW), fetchTimeoutMs)
+      const chunkTimer = debounce(() => abort(CHUNK_TOO_SLOW), fetchChunkTimeoutMs)
+      const clearTimers = () => {
+        fetchTimer.clear()
+        chunkTimer.clear()
+      }
+      function abort (reason) {
+        clearTimers()
+        if (!abortCtl.signal.aborted) {
+          abortCtl.abort(reason)
+        }
+      }
       fetchTimer()
       chunkTimer()
+      let size = 0
       for await (const chonk of source) {
         chunkTimer()
         size += chonk.byteLength
         if (size > maxCarBytes) {
-          abortCtl.abort(TOO_BIG)
+          abort(TOO_BIG)
+          throw new Error(TOO_BIG) // kill the stream now so we dont send more bytes
+        } else {
+          yield chonk
         }
-        yield chonk
       }
-      fetchTimer.clear()
-      chunkTimer.clear()
+      clearTimers()
     }
 
     const body = await fetchCar({ cid, ipfsApiUrl, signal: abortCtl.signal })

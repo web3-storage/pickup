@@ -62,22 +62,23 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
       const body = await carFetcher.fetch({ cid, origins, abortCtl })
       await upload(body)
       logger.info({ cid }, 'OK. Car in S3')
-      msg.del() // the message is handled, remove it from queue.
+      await msg.del() // the message is handled, remove it from queue.
     } catch (err) {
       if (abortCtl.signal.reason === TOO_BIG) {
         logger.error({ cid, err }, 'Failed to fetch CAR: Too big')
-        return msg.release()
-      }
-      if (abortCtl.signal.reason === CHUNK_TOO_SLOW) {
+        await msg.release()
+      } else if (abortCtl.signal.reason === CHUNK_TOO_SLOW) {
         logger.error({ cid, err }, 'Failed to fetch CAR: chunk too slow')
-        return msg.release()
-      }
-      if (abortCtl.signal.reason === FETCH_TOO_SLOW) {
+        await msg.release()
+      } else if (abortCtl.signal.reason === FETCH_TOO_SLOW) {
         logger.error({ cid, err }, 'Failed to fetch CAR: fetch too slow')
-        return msg.release()
+        await msg.release()
+      } else {
+        logger.error({ cid, err }, 'Failed to fetch CAR')
+        if (!msg.isHandled) {
+          await msg.release() // back to the queue, try again
+        }
       }
-      logger.error({ cid, err }, 'Failed to fetch CAR')
-      return msg.release() // back to the queue, try again
     } finally {
       await carFetcher.disconnect(origins)
       await carFetcher.waitForGc()
