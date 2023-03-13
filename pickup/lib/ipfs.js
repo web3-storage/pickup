@@ -6,43 +6,27 @@ import fetch from 'node-fetch'
 import retry from 'p-retry'
 import { logger } from './logger.js'
 
-export const ERROR_TIMEOUT = 'TIMEOUT'
-
 /** @typedef {import('node:stream').Readable} Readable */
 
 /**
- * Start the fetch of a car
+ * Fetch a CAR from kubo
  *
  * @param {string} cid - The CID requested
  * @param {string} ipfsApiUrl - The IPFS server url
- * @param {AbortController} abortCtl - Can i kill it?
- * @param {number} timeoutMs - The timeout for each block fetch in milliseconds.
+ * @param {AbortSignal} signal - Cancel the fetch
  * @returns {Promise<Readable>}
  */
-export async function fetchCar ({ cid, ipfsApiUrl, abortCtl = new AbortController(), timeoutMs = 30000 }) {
+export async function fetchCar ({ cid, ipfsApiUrl, signal }) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
   const url = new URL(`/api/v0/dag/export?arg=${cid}`, ipfsApiUrl)
 
-  const startCountdown = debounce(() => abortCtl.abort(), timeoutMs)
-  startCountdown()
-
-  const signal = abortCtl.signal
   const res = await fetch(url, { method: 'POST', signal })
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText} ${url}`)
   }
-
-  async function * restartCountdown (source) {
-    for await (const chunk of source) {
-      startCountdown()
-      yield chunk
-    }
-    startCountdown.clear()
-  }
-
-  return compose(res.body, restartCountdown)
+  return res.body
 }
 
 /**
@@ -146,36 +130,79 @@ export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
   }
 }
 
+export const TOO_BIG = 'TOO_BIG'
+export const FETCH_TOO_SLOW = 'FETCH_TOO_SLOW'
+export const CHUNK_TOO_SLOW = 'CHUNK_TOO_SLOW'
+
 export class CarFetcher {
   /**
    * @param {object} config
    * @param {string} config.ipfsApiUrl
+   * @param {number} config.maxCarBytes
    * @param {number} config.fetchTimeoutMs
+   * @param {number} config.fetchChunkTimeoutMs
    */
-  constructor ({ ipfsApiUrl, fetchTimeoutMs = 60000 }) {
+  constructor ({
+    ipfsApiUrl = 'http://127.0.0.1:5001',
+    maxCarBytes = 31 * (1024 ** 3), /* 31 GiB */
+    fetchTimeoutMs = 4 * 60 * 60 * 1000, /* 4 hrs */
+    fetchChunkTimeoutMs = 2 * 60 * 1000 /* 2 mins */
+  }) {
     this.ipfsApiUrl = ipfsApiUrl
+    this.maxCarBytes = maxCarBytes
     this.fetchTimeoutMs = fetchTimeoutMs
+    this.fetchChunkTimeoutMs = fetchChunkTimeoutMs
   }
 
   /**
    * @param {object} config
    * @param {string} config.cid
-   * @param {string[]} config.origins
-   * @param {(body: Readable) => Promise<void>} config.upload
+   * @param {AbortController} config.abortCtl
    */
-  async fetch ({ cid, origins, upload }) {
-    const { ipfsApiUrl, fetchTimeoutMs } = this
-    try {
-      await connectTo(origins, ipfsApiUrl)
-      const body = await fetchCar({ cid, ipfsApiUrl, timeoutMs: fetchTimeoutMs })
-      await upload(body)
-    } finally {
-      await disconnect(origins, ipfsApiUrl)
-      await waitForGC(ipfsApiUrl)
+  async fetch ({ cid, abortCtl }) {
+    const { ipfsApiUrl, maxCarBytes, fetchTimeoutMs, fetchChunkTimeoutMs } = this
+
+    async function * streamWatcher (source) {
+      let size = 0
+      const fetchTimer = debounce(() => abortCtl.abort(FETCH_TOO_SLOW), fetchTimeoutMs)
+      const chunkTimer = debounce(() => abortCtl.abort(CHUNK_TOO_SLOW), fetchChunkTimeoutMs)
+      fetchTimer()
+      chunkTimer()
+      for await (const chonk of source) {
+        chunkTimer()
+        size += chonk.byteLength
+        if (size > maxCarBytes) {
+          abortCtl.abort(TOO_BIG)
+        }
+        yield chonk
+      }
+      fetchTimer.clear()
+      chunkTimer.clear()
     }
+
+    const body = await fetchCar({ cid, ipfsApiUrl, signal: abortCtl.signal })
+    return compose(body, streamWatcher)
   }
 
   async testIpfsApi () {
     return retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 4 })
+  }
+
+  /**
+   * @param {string[]} origins
+   */
+  async connectTo (origins) {
+    return connectTo(origins, this.ipfsApiUrl)
+  }
+
+  /**
+   * @param {string[]} origins
+   */
+  async disconnect (origins) {
+    return disconnect(origins, this.ipfsApiUrl)
+  }
+
+  async waitForGc () {
+    return waitForGC(this.ipfsApiUrl)
   }
 }

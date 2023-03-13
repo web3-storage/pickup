@@ -1,5 +1,5 @@
 import { Squiss } from 'squiss-ts'
-import { CarFetcher } from './ipfs.js'
+import { CarFetcher, TOO_BIG, CHUNK_TOO_SLOW, FETCH_TOO_SLOW } from './ipfs.js'
 import { S3Uploader } from './s3.js'
 import { logger } from './logger.js'
 
@@ -13,7 +13,9 @@ export function createPickupFromEnv (env = process.env) {
     IPFS_API_URL,
     SQS_QUEUE_URL,
     BATCH_SIZE,
-    TIMEOUT_FETCH,
+    MAX_CAR_BYTES,
+    FETCH_TIMEOUT_MS,
+    FETCH_CHUNK_TIMEOUT_MS,
     VALIDATION_BUCKET
   } = env
 
@@ -24,11 +26,14 @@ export function createPickupFromEnv (env = process.env) {
   const pickup = createPickup({
     sqsPoller: createSqsPoller({
       queueUrl: SQS_QUEUE_URL,
-      maxInFlight: BATCH_SIZE
+      maxInFlight: BATCH_SIZE,
+      noExtensionsAfterSecs: FETCH_TIMEOUT_MS
     }),
     carFetcher: new CarFetcher({
       ipfsApiUrl: IPFS_API_URL,
-      fetchTimeoutMs: TIMEOUT_FETCH
+      maxCarBytes: MAX_CAR_BYTES,
+      fetchTimeoutMs: FETCH_TIMEOUT_MS,
+      fetchChunkTimeoutMs: FETCH_CHUNK_TIMEOUT_MS
     }),
     s3Uploader: new S3Uploader({
       bucket: VALIDATION_BUCKET
@@ -50,16 +55,32 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
    */
   async function messageHandler (msg) {
     const { cid, origins, key } = msg.body
+    const abortCtl = new AbortController()
+    const upload = s3Uploader.createUploader({ cid, key })
     try {
-      logger.info({ cid }, 'Fetching car')
-      const upload = s3Uploader.createUploader({ cid, key })
-      await carFetcher.fetch({ cid, origins, upload })
+      await carFetcher.connectTo(origins)
+      const body = await carFetcher.fetch({ cid, origins, abortCtl })
+      await upload(body)
       logger.info({ cid }, 'OK. Car in S3')
       msg.del() // the message is handled, remove it from queue.
     } catch (err) {
+      if (abortCtl.signal.reason === TOO_BIG) {
+        logger.error({ cid, err }, 'Failed to fetch CAR: Too big')
+        return msg.release()
+      }
+      if (abortCtl.signal.reason === CHUNK_TOO_SLOW) {
+        logger.error({ cid, err }, 'Failed to fetch CAR: chunk too slow')
+        return msg.release()
+      }
+      if (abortCtl.signal.reason === FETCH_TOO_SLOW) {
+        logger.error({ cid, err }, 'Failed to fetch CAR: fetch too slow')
+        return msg.release()
+      }
       logger.error({ cid, err }, 'Failed to fetch CAR')
-      // return the msg to the queue for another go
-      msg.release()
+      return msg.release() // back to the queue, try again
+    } finally {
+      await carFetcher.disconnect(origins)
+      await carFetcher.waitForGc()
     }
   }
 
@@ -71,6 +92,7 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
     await carFetcher.testIpfsApi()
     return pollerStart()
   }
+
   return sqsPoller
 }
 
@@ -82,13 +104,6 @@ export function createSqsPoller (config) {
     // set our default overrides here, we always want these.
     autoExtendTimeout: true,
     receiveSqsAttributes: ['ApproximateReceiveCount'],
-
-    // allow 4hrs before timeout. 2/3rs of the world can upload faster than
-    // 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs.
-    // see: https://www.speedtest.net/global-index
-    // see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
-    // TODO: enforce 32GiB limit
-    noExtensionsAfterSecs: 4 * 60 * 60,
     bodyFormat: 'json',
     ...config
   })

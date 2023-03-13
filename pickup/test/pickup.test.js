@@ -26,7 +26,7 @@ test('throw an error if can\'t connect to IPFS', async t => {
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
-    carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 2000 }),
+    carFetcher: new CarFetcher({ ipfsApiUrl }),
     s3Uploader: new S3Uploader({ s3, bucket })
   })
   await t.throwsAsync(() => pickup.start())
@@ -73,7 +73,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
-    carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 2000 }),
+    carFetcher: new CarFetcher({ ipfsApiUrl, fetchChunkTimeoutMs: 2000 }),
     s3Uploader: new S3Uploader({ s3, bucket: validationBucket })
   })
 
@@ -160,7 +160,7 @@ test('Process 1 message that fails and returns in the list', async t => {
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
-    carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 5000 }),
+    carFetcher: new CarFetcher({ ipfsApiUrl, fetchChunkTimeoutMs: 5000 }),
     s3Uploader: new S3Uploader({ s3, bucket })
   })
 
