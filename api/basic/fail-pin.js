@@ -17,7 +17,7 @@ export async function sqsPinQueueDeadLetterHandler (sqsEvent) {
   for (const msg of sqsEvent.Records) {
     const { cid } = JSON.parse(msg.body)
     try {
-      await retry(updatePinStatus(dynamo, table, cid, 'failed'), { retries: 3 })
+      await retry(() => updatePinStatus(dynamo, table, cid, 'failed'), { retries: 3 })
     } catch (err) {
       console.error(err)
       batchItemFailures.push({ itemIdentifier: msg.messageId })
