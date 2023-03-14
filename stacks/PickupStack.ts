@@ -70,12 +70,15 @@ export function PickupStack ({ app, stack }: StackContext): void {
     ephemeralStorageGiB: 64, // max 200
     environment: {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
-      IPFS_API_URL: 'http://127.0.0.1:5001',
       DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
-      BATCH_SIZE: process.env.BATCH_SIZE ?? '5',
-      TIMEOUT_FETCH: process.env.TIMEOUT_FETCH ?? '60',
-      MAX_RETRY: process.env.MAX_RETRY ?? '10',
-      VALIDATION_BUCKET: (validationBucket != null) ? validationBucket.bucketName : ''
+      VALIDATION_BUCKET: (validationBucket != null) ? validationBucket.bucketName : '',
+      ...optionalEnv([
+        'IPFS_API_URL',
+        'BATCH_SIZE',
+        'MAX_CAR_BYTES',
+        'FETCH_TIMEOUT_MS',
+        'FETCH_CHUNK_TIMEOUT_MS'
+      ])
     },
     queue: basicApi.queue.cdk.queue,
     enableExecuteCommand: true,
@@ -282,4 +285,18 @@ function createVPCGateways (vpc: ec2.IVpc): void {
     console.error(errMessage)
     throw new Error('Can\'t add gateway to undefined VPC')
   }
+}
+
+/**
+ * Create an env object to pass specified keys to an sst construct
+ * from keys that may be on the current process.env
+ */
+export function optionalEnv (keys: string[]): Record<string, string> {
+  const res: Record<string, string> = {}
+  for (const key of keys) {
+    const val = process.env[key]
+    if (val === undefined) continue
+    res[key] = val
+  }
+  return res
 }
