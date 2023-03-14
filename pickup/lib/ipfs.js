@@ -146,7 +146,7 @@ export class CarFetcher {
     ipfsApiUrl = 'http://127.0.0.1:5001',
     maxCarBytes = 31 * (1024 ** 3), /* 31 GiB */
     fetchTimeoutMs = 4 * 60 * 60 * 1000, /* 4 hrs */
-    fetchChunkTimeoutMs = 2 * 60 * 1000 /* 2 mins */
+    fetchChunkTimeoutMs = 5 * 60 * 1000 /* 5 mins */
   }) {
     this.ipfsApiUrl = ipfsApiUrl
     this.maxCarBytes = maxCarBytes

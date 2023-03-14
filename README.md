@@ -90,16 +90,16 @@ How long to wait for fetching a CAR before failing the job. Caps the amount of t
 
 **default: 4 hrs**
 
+_2/3rs of home internet users can upload faster than 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs._
+
+see: https://www.speedtest.net/global-index
+see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
+
 ### `FETCH_CHUNK_TIMEOUT_MS`
 
 How long to wait between chunks of data before failing a CAR. Limit the amount of time we spend waiting of a stalled fetch.
 
 **default: 2 min**
-
-2/3rs of home internet users can upload faster than 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs.
-
-see: https://www.speedtest.net/global-index
-see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
 
 ### `BATCH_SIZE`
 
