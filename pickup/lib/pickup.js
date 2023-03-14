@@ -57,25 +57,6 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
     const abortCtl = new AbortController()
     const upload = s3Uploader.createUploader({ cid, key })
     try {
-<<<<<<< HEAD
-      await carFetcher.connectTo(origins)
-      const body = await carFetcher.fetch({ cid, origins, abortCtl })
-      await upload(body)
-      logger.info({ cid }, 'OK. Car in S3')
-      await msg.del() // the message is handled, remove it from queue.
-    } catch (err) {
-      if (abortCtl.signal.reason === TOO_BIG) {
-        logger.error({ cid, err }, 'Failed to fetch CAR: Too big')
-        await msg.release()
-      } else if (abortCtl.signal.reason === CHUNK_TOO_SLOW) {
-        logger.error({ cid, err }, 'Failed to fetch CAR: chunk too slow')
-        await msg.release()
-      } else if (abortCtl.signal.reason === FETCH_TOO_SLOW) {
-        logger.error({ cid, err }, 'Failed to fetch CAR: fetch too slow')
-        await msg.release()
-      } else {
-        logger.error({ cid, err }, 'Failed to fetch CAR')
-=======
       logger.info({ cid, origins }, 'Fetching CAR')
       await carFetcher.connectTo(origins)
       const body = await carFetcher.fetch({ cid, origins, abortCtl })
@@ -94,7 +75,6 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
         await msg.release()
       } else {
         logger.error({ cid, origins, err }, 'Failed to fetch CAR')
->>>>>>> origin/main
         if (!msg.isHandled) {
           await msg.release() // back to the queue, try again
         }
