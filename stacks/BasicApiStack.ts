@@ -30,7 +30,8 @@ export function BasicApiStack ({
         functionName: formatResourceName(app.stage, 'failPin'),
         environment: {
           TABLE_NAME: dynamoDbTable.tableName
-        }
+        },
+        permissions: [dynamoDbTable]
       },
       cdk: {
         eventSource: {
