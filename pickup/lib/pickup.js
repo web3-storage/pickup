@@ -19,7 +19,6 @@ export function createPickupFromEnv (env = process.env) {
     VALIDATION_BUCKET
   } = env
 
-  if (!IPFS_API_URL) throw new Error('IPFS_API_URL not found in ENV')
   if (!SQS_QUEUE_URL) throw new Error('SQS_QUEUE_URL not found in ENV')
   if (!VALIDATION_BUCKET) throw new Error('VALIDATION_BUCKET not found in ENV')
 

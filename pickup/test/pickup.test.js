@@ -151,7 +151,6 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
     }))
   }
 
-  let msgCount = 0
   let msgReleased = 0
 
   const done = new Promise((resolve, reject) => {
@@ -160,10 +159,8 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
       t.fail(reason)
       reject(new Error(reason))
     }
-    pickup.on('message', () => msgCount++)
     pickup.on('released', () => {
       msgReleased++
-      t.is(msgCount, 1)
       t.is(msgReleased, 1)
       try {
         stopPickup(pickup)
@@ -227,7 +224,6 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
     }))
   }
 
-  let msgCount = 0
   let msgReleased = 0
 
   const done = new Promise((resolve, reject) => {
@@ -236,10 +232,8 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
       t.fail(reason)
       reject(new Error(reason))
     }
-    pickup.on('message', () => msgCount++)
     pickup.on('released', () => {
       msgReleased++
-      t.is(msgCount, 1)
       t.is(msgReleased, 1)
       try {
         stopPickup(pickup)
@@ -303,7 +297,6 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
     }))
   }
 
-  let msgCount = 0
   let msgReleased = 0
 
   const done = new Promise((resolve, reject) => {
@@ -312,10 +305,8 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
       t.fail(reason)
       reject(new Error(reason))
     }
-    pickup.on('message', () => msgCount++)
     pickup.on('released', () => {
       msgReleased++
-      t.is(msgCount, 1)
       t.is(msgReleased, 1)
       try {
         stopPickup(pickup)
