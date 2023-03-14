@@ -71,7 +71,7 @@ export async function createQueue (sqsPort, sqs) {
   await sqs.send(new CreateQueueCommand({
     QueueName,
     Attributes: {
-      DelaySeconds: '1',
+      DelaySeconds: '0',
       MessageRetentionPeriod: '10'
     }
   }))

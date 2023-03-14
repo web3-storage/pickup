@@ -7,4 +7,4 @@ COPY package*.json ./
 COPY pickup/package.json ./pickup/package.json
 RUN npm ci -w pickup --no-audit
 COPY . .
-CMD [ "npm", "start", "-w", "pickup" ]
+CMD [ "npm", "start", "-w", "pickup", "--silent"]

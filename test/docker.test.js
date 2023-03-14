@@ -4,10 +4,6 @@ import test from 'ava'
 // builds image and starts container
 test('build', async t => {
   t.timeout(1000 * 120)
-  const SQS_QUEUE_URL = 'http://127.0.0.1'
-  const IPFS_API_URL = 'http://127.0.0.1:5001'
-  const DYNAMO_TABLE_NAME = 'test-table'
-  const DYNAMO_DB_ENDPOINT = 'http://127.0.0.1:9000'
   const img = await GenericContainer.fromDockerfile(new URL('../', import.meta.url).pathname)
     .build()
   // In case the test fails comment this and uncomment the log snippet
@@ -16,10 +12,9 @@ test('build', async t => {
   await t.throwsAsync(img.start())
 
   // set all the things it needs
-  img.withEnv('IPFS_API_URL', IPFS_API_URL)
-  img.withEnv('SQS_QUEUE_URL', SQS_QUEUE_URL)
-  img.withEnv('DYNAMO_TABLE_NAME', DYNAMO_TABLE_NAME)
-  img.withEnv('DYNAMO_DB_ENDPOINT', DYNAMO_DB_ENDPOINT)
+  img.withEnv('IPFS_API_URL', 'http://127.0.0.1:5001')
+  img.withEnv('SQS_QUEUE_URL', 'http://127.0.0.1')
+  img.withEnv('VALIDATION_BUCKET', 'foo')
 
   let pickup
   try {

@@ -74,6 +74,41 @@ Find the status of a pin
 }
 ```
 
+## Environment
+
+Set the following in the pickup worker env to tune it's behavior
+
+### `MAX_CAR_BYTES`
+
+Maximum bytes size of a CAR that pickup will fetch. Caps the anmount of data we will pull in a single job.
+
+**default: 31 GiB** _(33,285,996,544 bytes)_
+
+### `FETCH_TIMEOUT_MS`
+
+How long to wait for fetching a CAR before failing the job. Caps the amount of time we spend on a job.
+
+**default: 4 hrs**
+
+_2/3rs of home internet users can upload faster than 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs._
+
+see: https://www.speedtest.net/global-index
+see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
+
+### `FETCH_CHUNK_TIMEOUT_MS`
+
+How long to wait between chunks of data before failing a CAR. Limit the amount of time we spend waiting of a stalled fetch.
+
+**default: 2 min**
+
+### `BATCH_SIZE`
+
+How many pin requests to handle concurrently per worker.
+
+Used to set both the concurrency per worker *and* the max number of messages each worker fetches from the queue in a single batch. 
+
+**default: 10**
+
 ## Getting Started
 
 PR's are deployed automatically to `https://<pr#>.pickup.dag.haus`. The `main` branch is deployed to https://staging.pickup.dag.haus and staging builds are promoted to prod manually via the UI at https://console.seed.run/dag-house/pickup

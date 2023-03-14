@@ -14,7 +14,7 @@ export function BasicApiStack ({
       queue: {
         deadLetterQueue: {
           queue: dlq.cdk.queue,
-          maxReceiveCount: 11
+          maxReceiveCount: 3
         }
       }
     }

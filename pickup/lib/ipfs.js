@@ -3,55 +3,30 @@ import { CID } from 'multiformats/cid'
 import { Multiaddr } from 'multiaddr'
 import debounce from 'debounce'
 import fetch from 'node-fetch'
-
+import retry from 'p-retry'
 import { logger } from './logger.js'
-import { STATE_DOWNLOADING } from './downloadStatusManager.js'
 
-export const ERROR_TIMEOUT = 'TIMEOUT'
+/** @typedef {import('node:stream').Readable} Readable */
 
 /**
- * Start the fetch of a car
+ * Fetch a CAR from kubo
  *
- * @param string cid - The CID requested
- * @param string ipfsApiUrl - The IPFS server url
- * @param object downloadError - The error object, is filled in if an error occurs
- * @param int timeoutMs - The timeout for each block fetch in milliseconds.
- *                        The Download is set to `failed` if the IPFS server
- *                        fetch action do not respond while is downloading the blocks.
- * @param {DownloadStatusManager} downloadStatusManager
- * @returns {Promise<*>}
+ * @param {string} cid - The CID requested
+ * @param {string} ipfsApiUrl - The IPFS server url
+ * @param {AbortSignal} signal - Cancel the fetch
+ * @returns {Promise<Readable>}
  */
-export async function fetchCar (cid, ipfsApiUrl, downloadError, timeoutMs = 30000, downloadStatusManager) {
+export async function fetchCar ({ cid, ipfsApiUrl, signal }) {
   if (!isCID(cid)) {
     throw new Error({ message: `Invalid CID: ${cid}` })
   }
   const url = new URL(`/api/v0/dag/export?arg=${cid}`, ipfsApiUrl)
-  const ctl = new AbortController()
 
-  const startCountdown = debounce(() => {
-    downloadError.code = ERROR_TIMEOUT
-    ctl.abort()
-  }, timeoutMs)
-  startCountdown()
-  const res = await fetch(url, { method: 'POST', signal: ctl.signal })
+  const res = await fetch(url, { method: 'POST', signal })
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText} ${url}`)
   }
-
-  let downloadSize = 0
-  async function * restartCountdown (source) {
-    // startCountdown.clear()
-    // throw new Error('There was an error!!')
-    for await (const chunk of source) {
-      downloadSize += chunk.length
-      downloadStatusManager.setStatus(cid, STATE_DOWNLOADING, downloadSize)
-      startCountdown()
-      yield chunk
-    }
-    startCountdown.clear()
-  }
-
-  return compose(res.body, restartCountdown)
+  return res.body
 }
 
 /**
@@ -136,7 +111,7 @@ export function isCID (cid) {
  * Test the connection with IPFS server
  * @param {string} ipfsApiUrl
  * @param {number} timeoutMs
- * @returns {Promise<void>}
+ * @returns {Promise<Record<string, string>>}
  */
 export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
   const url = new URL('/api/v0/id', ipfsApiUrl)
@@ -149,10 +124,98 @@ export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
       }
       throw new Error(`IPFS API test failed. POST ${url} returned ${res.status} ${res.statusText}`)
     }
-    const { AgentVersion, ID } = await res.json()
-    logger.info({ agentVersion: AgentVersion, peerId: ID }, 'Connected')
+    return await res.json()
   } catch (err) {
-    logger.error({ err }, 'Test ipfs fail')
     throw new Error('IPFS API test failed.', { cause: err })
+  }
+}
+
+export const TOO_BIG = 'TOO_BIG'
+export const FETCH_TOO_SLOW = 'FETCH_TOO_SLOW'
+export const CHUNK_TOO_SLOW = 'CHUNK_TOO_SLOW'
+
+export class CarFetcher {
+  /**
+   * @param {object} config
+   * @param {string} config.ipfsApiUrl
+   * @param {number} config.maxCarBytes
+   * @param {number} config.fetchTimeoutMs
+   * @param {number} config.fetchChunkTimeoutMs
+   */
+  constructor ({
+    ipfsApiUrl = 'http://127.0.0.1:5001',
+    maxCarBytes = 31 * (1024 ** 3), /* 31 GiB */
+    fetchTimeoutMs = 4 * 60 * 60 * 1000, /* 4 hrs */
+    fetchChunkTimeoutMs = 5 * 60 * 1000 /* 5 mins */
+  }) {
+    this.ipfsApiUrl = ipfsApiUrl
+    this.maxCarBytes = maxCarBytes
+    this.fetchTimeoutMs = fetchTimeoutMs
+    this.fetchChunkTimeoutMs = fetchChunkTimeoutMs
+  }
+
+  /**
+   * @param {object} config
+   * @param {string} config.cid
+   * @param {AbortController} config.abortCtl
+   */
+  async fetch ({ cid, abortCtl }) {
+    const { ipfsApiUrl, maxCarBytes, fetchTimeoutMs, fetchChunkTimeoutMs } = this
+    /**
+     * @param {AsyncIterable<Uint8Array>} source
+     */
+    async function * streamWatcher (source) {
+      const fetchTimer = debounce(() => abort(FETCH_TOO_SLOW), fetchTimeoutMs)
+      const chunkTimer = debounce(() => abort(CHUNK_TOO_SLOW), fetchChunkTimeoutMs)
+      const clearTimers = () => {
+        fetchTimer.clear()
+        chunkTimer.clear()
+      }
+      function abort (reason) {
+        clearTimers()
+        if (!abortCtl.signal.aborted) {
+          abortCtl.abort(reason)
+        }
+      }
+      fetchTimer()
+      chunkTimer()
+      let size = 0
+      for await (const chonk of source) {
+        chunkTimer()
+        size += chonk.byteLength
+        if (size > maxCarBytes) {
+          abort(TOO_BIG)
+          throw new Error(TOO_BIG) // kill the stream now so we dont send more bytes
+        } else {
+          yield chonk
+        }
+      }
+      clearTimers()
+    }
+
+    const body = await fetchCar({ cid, ipfsApiUrl, signal: abortCtl.signal })
+    return compose(body, streamWatcher)
+  }
+
+  async testIpfsApi () {
+    return retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 4 })
+  }
+
+  /**
+   * @param {string[]} origins
+   */
+  async connectTo (origins) {
+    return connectTo(origins, this.ipfsApiUrl)
+  }
+
+  /**
+   * @param {string[]} origins
+   */
+  async disconnect (origins) {
+    return disconnect(origins, this.ipfsApiUrl)
+  }
+
+  async waitForGc () {
+    return waitForGC(this.ipfsApiUrl)
   }
 }
