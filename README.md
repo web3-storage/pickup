@@ -219,46 +219,6 @@ ECS ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ 
 
 </pre>
 
-## Route balancer
-
-A temporary router is added to the project to manage a balancing between the `Indexer` and the `Pickup` implementation.
-
-![Router diagram](docs/pickup.png)
-
-### GET pin where exists in cluster
-
-When checking a pin status with `GET /pins/:cid` the api checks for that cid in the DynamoDB table first, and then checks ipfs-cluster if it's not found in the table.
-
-```mermaid
-sequenceDiagram
-  web3.storage->>+pickup: GET /pin/:cid
-  pickup->>+DynamoDB:     Get(Key: cid)
-  DynamoDB-->>-pickup:    undefined
-  pickup->>+ipfs-cluster: GET /pin/:cid
-  ipfs-cluster-->>-pickup: { cid, peerMap }
-  pickup-->>-web3.storage: { cid, peerMap }
-```
-
-### POST new pin with balancer
-
-When creating a new pin, the api checks the table, and then cluster to see if it is already pinned. If not it then uses the value of `BALANCER_RATE` to decide if it will ask ipfs-cluster or the pickup worker nodes to attempt to fetch the DAG.
-
-```mermaid
-sequenceDiagram
-  web3.storage->>+pickup:  POST /pin/:cid
-  pickup->>+DynamoDB:      Get(Key: cid)
-  DynamoDB-->>-pickup:     undefined
-  pickup->>+ipfs-cluster:  GET /pin/:cid
-  ipfs-cluster-->>-pickup: { peerMap(unpinned) } 
-  alt balancer=cluster
-    pickup->>+ipfs-cluster: POST /pin/:cid
-    ipfs-cluster-->-pickup: { cid }
-  else balancer=pickup
-    pickup--)SQS: send pin msg
-  end
-  pickup-->>-web3.storage: { cid }
-```
-
 ## Validation
 
 The system provides a validation step that run after the upload on S3.
