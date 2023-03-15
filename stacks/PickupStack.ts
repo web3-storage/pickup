@@ -57,6 +57,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
   const baseServiceProps: MutableQueueProcessingFargateServiceProps & {
     ephemeralStorageGiB: number
   } = {
+    cluster,
     // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
     // Requires Docker running locally
     // Note: this is run from /.build/<somehting> so the path to the Dockerfile is not quite what you'd expect.
@@ -66,8 +67,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
     containerName: 'pickup',
     propagateTags: PropagatedTagSource.TASK_DEFINITION,
     minScalingCapacity: process.env.MIN_SCALING_CAPACITY !== undefined ? parseInt(process.env.MIN_SCALING_CAPACITY) : 1,
-    maxScalingCapacity: 10,
-    ephemeralStorageGiB: 64, // max 200
+    maxScalingCapacity: 8,
+    ephemeralStorageGiB: 200, // max 200
     environment: {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
       DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
@@ -81,7 +82,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       ])
     },
     queue: basicApi.queue.cdk.queue,
-    enableExecuteCommand: true,
+    enableExecuteCommand: app.stage === 'staging',
     healthCheck: {
       command: ['CMD-SHELL', 'ps -ef | grep pickup || exit 1'],
       // the properties below are optional
@@ -90,11 +91,10 @@ export function PickupStack ({ app, stack }: StackContext): void {
       startPeriod: Duration.seconds(5),
       timeout: Duration.seconds(20)
     },
-    cluster,
     scalingSteps: [
       { upper: 0, change: -1 },
-      { lower: 20, change: +1 },
-      { lower: 100, change: +5 }
+      { lower: 100, change: +1 },
+      { lower: 400, change: +2 }
     ]
   }
 
@@ -220,10 +220,6 @@ export function PickupStack ({ app, stack }: StackContext): void {
           url: Secret.fromSsmParameter(grafanaSecret)
         }
       })
-
-      productionParams.cpu = 16384
-      productionParams.memoryLimitMiB = 80 * 1024
-      productionParams.ephemeralStorageGiB = 80
     }
 
     const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
@@ -233,7 +229,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       }),
       containerName: 'validator',
       maxScalingCapacity: 1,
-      cpu: 4096,
+      cpu: 16384,
       memoryLimitMiB: 16 * 1024,
       ephemeralStorageGiB: 30, // max 200
       environment: {
@@ -242,7 +238,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
         DESTINATION_BUCKET: basicApi.bucket.bucketName
       },
       queue: validationPinQueue.cdk.queue,
-      enableExecuteCommand: true,
+      enableExecuteCommand: app.stage === 'staging',
       cluster,
       ...productionParams
     })
