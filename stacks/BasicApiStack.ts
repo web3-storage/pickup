@@ -109,9 +109,6 @@ export function BasicApiStack ({
     TABLE_NAME: dynamoDbTable.tableName,
     QUEUE_URL: queue.queueUrl,
     CLUSTER_IPFS_ADDR: process.env.CLUSTER_IPFS_ADDR ?? '',
-    LEGACY_CLUSTER_IPFS_URL: process.env.LEGACY_CLUSTER_IPFS_URL ?? '',
-    PICKUP_URL: (customDomain !== undefined) ? `https://${customDomain.domainName}` : '',
-    BALANCER_RATE: process.env.BALANCER_RATE ?? '100',
     LOG_LEVEL: process.env.LAMBDA_LOG_LEVEL ?? 'info'
   }
   const AUTH_TOKEN = new Config.Secret(stack, 'AUTH_TOKEN')
@@ -127,43 +124,25 @@ export function BasicApiStack ({
       }
     },
     routes: {
-      'GET    /pins/{cid}': {
-        function: {
-          handler: 'basic/get-pin-router.handler',
-          functionName: formatResourceName(app.stage, 'getPinRouter'),
-          timeout: '31 seconds'
-        }
-      },
-      'GET    /pins': {
-        function: {
-          handler: 'basic/get-pins-router.handler',
-          functionName: formatResourceName(app.stage, 'getPinsRouter'),
-          timeout: '31 seconds'
-        }
-      },
-      'POST   /pins/{cid}': {
-        function: {
-          handler: 'basic/add-pin-router.handler',
-          functionName: formatResourceName(app.stage, 'postPinRouter'),
-          timeout: '31 seconds'
-        }
-      },
-      'GET    /internal/pins/{cid}': {
+      'GET /pins/{cid}': {
         function: {
           handler: 'basic/get-pin.handler',
-          functionName: formatResourceName(app.stage, 'getPin')
+          functionName: formatResourceName(app.stage, 'getPin'),
+          timeout: '31 seconds'
         }
       },
-      'GET    /internal/pins': {
+      'GET /pins': {
         function: {
           handler: 'basic/get-pins.handler',
-          functionName: formatResourceName(app.stage, 'getPins')
+          functionName: formatResourceName(app.stage, 'getPins'),
+          timeout: '31 seconds'
         }
       },
-      'POST   /internal/pins/{cid}': {
+      'POST /pins/{cid}': {
         function: {
           handler: 'basic/add-pin.handler',
-          functionName: formatResourceName(app.stage, 'postPin')
+          functionName: formatResourceName(app.stage, 'postPin'),
+          timeout: '31 seconds'
         }
       }
     }
