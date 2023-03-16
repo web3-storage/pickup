@@ -90,16 +90,16 @@ How long to wait for fetching a CAR before failing the job. Caps the amount of t
 
 **default: 4 hrs**
 
+_2/3rs of home internet users can upload faster than 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs._
+
+see: https://www.speedtest.net/global-index
+see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
+
 ### `FETCH_CHUNK_TIMEOUT_MS`
 
 How long to wait between chunks of data before failing a CAR. Limit the amount of time we spend waiting of a stalled fetch.
 
 **default: 2 min**
-
-2/3rs of home internet users can upload faster than 20Mbit/s (fixed broadband), at which 32GiB would transfer in 3.5hrs.
-
-see: https://www.speedtest.net/global-index
-see: https://www.omnicalculator.com/other/download-time?c=GBP&v=fileSize:32!gigabyte,downloadSpeed:5!megabit
 
 ### `BATCH_SIZE`
 
@@ -218,46 +218,6 @@ On succesful write to s3, a lambda is triggered to update status of DynamoDB rec
 ECS ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
 
 </pre>
-
-## Route balancer
-
-A temporary router is added to the project to manage a balancing between the `Indexer` and the `Pickup` implementation.
-
-![Router diagram](docs/pickup.png)
-
-### GET pin where exists in cluster
-
-When checking a pin status with `GET /pins/:cid` the api checks for that cid in the DynamoDB table first, and then checks ipfs-cluster if it's not found in the table.
-
-```mermaid
-sequenceDiagram
-  web3.storage->>+pickup: GET /pin/:cid
-  pickup->>+DynamoDB:     Get(Key: cid)
-  DynamoDB-->>-pickup:    undefined
-  pickup->>+ipfs-cluster: GET /pin/:cid
-  ipfs-cluster-->>-pickup: { cid, peerMap }
-  pickup-->>-web3.storage: { cid, peerMap }
-```
-
-### POST new pin with balancer
-
-When creating a new pin, the api checks the table, and then cluster to see if it is already pinned. If not it then uses the value of `BALANCER_RATE` to decide if it will ask ipfs-cluster or the pickup worker nodes to attempt to fetch the DAG.
-
-```mermaid
-sequenceDiagram
-  web3.storage->>+pickup:  POST /pin/:cid
-  pickup->>+DynamoDB:      Get(Key: cid)
-  DynamoDB-->>-pickup:     undefined
-  pickup->>+ipfs-cluster:  GET /pin/:cid
-  ipfs-cluster-->>-pickup: { peerMap(unpinned) } 
-  alt balancer=cluster
-    pickup->>+ipfs-cluster: POST /pin/:cid
-    ipfs-cluster-->-pickup: { cid }
-  else balancer=pickup
-    pickup--)SQS: send pin msg
-  end
-  pickup-->>-web3.storage: { cid }
-```
 
 ## Validation
 
