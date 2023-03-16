@@ -217,9 +217,9 @@ The system provides a validation step that run after the upload on S3.
 
 CARs are written to a temporary bucket. If the CAR is valid, it's copied to the target bucket, removed from the temporary one, and the pin state is updated to `pinned` on DynamoDB
 
-## Integration with Elastic Provider
+## Integration with Elastic IPFS
 
-see: https://github.com/ipfs-elastic-provider/ipfs-elastic-provider
+see: https://github.com/elastic-ipfs/elastic-ipfs
 
 Sends a message on the indexer SQS topic from our lambda when the CAR is written to our s3 bucket.
 
