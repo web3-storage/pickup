@@ -33,7 +33,7 @@ test('throw an error if can\'t connect to IPFS', async t => {
 })
 
 test('Process 1 message successfully', async t => {
-  t.timeout(1000 * 60)
+  t.timeout(1000 * 60 * 2)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
@@ -109,7 +109,7 @@ test('Process 1 message successfully', async t => {
 })
 
 test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
-  t.timeout(1000 * 60)
+  t.timeout(1000 * 60 * 2)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
@@ -182,7 +182,7 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
 })
 
 test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t => {
-  t.timeout(1000 * 60)
+  t.timeout(1000 * 60 * 2)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
@@ -255,7 +255,7 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
 })
 
 test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
-  t.timeout(1000 * 60)
+  t.timeout(1000 * 60 * 2)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
@@ -328,7 +328,7 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
 })
 
 test('Process 3 messages concurrently and the last has a timeout', async t => {
-  t.timeout(1000 * 60)
+  t.timeout(1000 * 60 * 2)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()

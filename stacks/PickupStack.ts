@@ -19,45 +19,20 @@ export function PickupStack ({ app, stack }: StackContext): void {
   // Network calls to S3 and dynamodb through internal network
   createVPCGateways(cluster.vpc)
 
-  const useValidation = process.env.USE_VALIDATION === 'VALIDATE'
-
-  let validationBucket
-  let validationPinQueue
-  if (useValidation) {
-    const validationPinDlq = new Queue(stack, 'ValidationPinDlq')
-    validationPinQueue = new Queue(stack, 'ValidationPinQueue', {
-      cdk: {
-        queue: {
-          deadLetterQueue: {
-            queue: validationPinDlq.cdk.queue,
-            maxReceiveCount: 2
-          }
-        }
+  const validationBucket = new Bucket(stack, 'ValidationCar', {
+    cdk: {
+      bucket: {
+        lifecycleRules: [
+          { expiration: Duration.hours(6) } // delete anything older than 6hrs!
+        ]
       }
-    })
-
-    const s3Topic = new Topic(stack, 'S3ValidationEvents', {
-      subscribers: {
-        validationPinQueue
-      }
-    })
-
-    validationBucket = new Bucket(stack, 'ValidationCar', {
-      notifications: {
-        topic: {
-          type: 'topic',
-          topic: s3Topic,
-          events: ['object_created']
-        }
-      }
-    })
-    validationBucket.cdk.bucket.enableEventBridgeNotification()
-  }
+    }
+  })
 
   const baseServiceProps: MutableQueueProcessingFargateServiceProps & {
     ephemeralStorageGiB: number
   } = {
-    // Builing image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
+    // Building image from local Dockerfile https://docs.aws.amazon.com/cdk/v2/guide/assets.html
     // Requires Docker running locally
     // Note: this is run from /.build/<somehting> so the path to the Dockerfile is not quite what you'd expect.
     image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
@@ -65,9 +40,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
     }),
     containerName: 'pickup',
     propagateTags: PropagatedTagSource.TASK_DEFINITION,
-    minScalingCapacity: process.env.MIN_SCALING_CAPACITY !== undefined ? parseInt(process.env.MIN_SCALING_CAPACITY) : 1,
+    minScalingCapacity: 1,
     maxScalingCapacity: 10,
-    ephemeralStorageGiB: 64, // max 200
+    ephemeralStorageGiB: 200, // max 200
     environment: {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
       DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
@@ -101,32 +76,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
   // https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#queue-processing-services
   // export logs to loki just on prod and stg environments
   if (app.stage === 'prod' || app.stage === 'staging') {
-    // read secret url from parameter store
-    const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
-      stack,
-      'gf-id',
-      'grafanahost'
-    )
-    const lokiLogs = LogDrivers.firelens({
-      options: {
-        Name: 'loki',
-        env: app.stage,
-        labels: `{job="${app.stage}-pickup"}`,
-        remove_keys: 'ecs_task_arn',
-        label_keys: 'container_name,container_id,ecs_task_definition,source,ecs_cluster',
-        line_format: 'key_value'
-      },
-      secretOptions: { // Retrieved from AWS Systems Manager Parameter Store
-        url: Secret.fromSsmParameter(grafanaSecret)
-      }
-    })
-
     const service = new QueueProcessingFargateService(stack, 'Service', {
       ...baseServiceProps,
       cpu: 8192,
       memoryLimitMiB: 60 * 1024,
-      logDriver: lokiLogs
+      logDriver: getLogger(app, stack)
     })
+
     // add role to read parameter
     service.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
     // configure the custom image to log router
@@ -154,13 +110,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
       }
     })
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
-
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
-
-    if (validationBucket !== undefined) {
-      validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
-    }
+    validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
   } else {
     const service = new QueueProcessingFargateService(stack, 'Service', {
       ...baseServiceProps,
@@ -186,84 +138,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
     basicApi.dynamoDbTable.cdk.table.grantReadWriteData(service.taskDefinition.taskRole)
     basicApi.queue.cdk.queue.grantConsumeMessages(service.taskDefinition.taskRole)
-
-    if (validationBucket !== undefined) {
-      validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
-    }
-  }
-
-  if (useValidation && validationPinQueue !== undefined) {
-    const productionParams: {
-      logDriver?: LogDriver
-      cpu?: number
-      memoryLimitMiB?: number
-      ephemeralStorageGiB?: number
-    } = {}
-
-    if (app.stage === 'prod' || app.stage === 'staging') {
-      const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
-        stack,
-        'gf-id-validator',
-        'grafanahost'
-      )
-
-      productionParams.logDriver = LogDrivers.firelens({
-        options: {
-          Name: 'loki',
-          env: app.stage,
-          labels: `{job="${app.stage}-pickup-validator"}`,
-          remove_keys: 'ecs_task_arn',
-          label_keys: 'container_name,container_id,ecs_task_definition,source,ecs_cluster',
-          line_format: 'key_value'
-        },
-        secretOptions: { // Retrieved from AWS Systems Manager Parameter Store
-          url: Secret.fromSsmParameter(grafanaSecret)
-        }
-      })
-
-      productionParams.cpu = 16384
-      productionParams.memoryLimitMiB = 80 * 1024
-      productionParams.ephemeralStorageGiB = 80
-    }
-
-    const validationService = new QueueProcessingFargateService(stack, 'ServiceValidator', {
-      image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
-        platform: Platform.LINUX_AMD64,
-        file: 'Dockerfile.Validator'
-      }),
-      containerName: 'validator',
-      maxScalingCapacity: 1,
-      cpu: 4096,
-      memoryLimitMiB: 16 * 1024,
-      ephemeralStorageGiB: 30, // max 200
-      environment: {
-        SQS_QUEUE_URL: validationPinQueue.queueUrl,
-        DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
-        DESTINATION_BUCKET: basicApi.bucket.bucketName
-      },
-      queue: validationPinQueue.cdk.queue,
-      enableExecuteCommand: true,
-      cluster,
-      ...productionParams
-    })
-    basicApi.bucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
-    basicApi.dynamoDbTable.cdk.table.grantReadWriteData(validationService.taskDefinition.taskRole)
-    validationPinQueue.cdk.queue.grantConsumeMessages(validationService.taskDefinition.taskRole)
-
-    if (validationBucket !== undefined) {
-      validationBucket.cdk.bucket.grantReadWrite(validationService.taskDefinition.taskRole)
-    }
-
-    if (app.stage === 'prod' || app.stage === 'staging') {
-      validationService.taskDefinition.taskRole.addManagedPolicy(ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMReadOnlyAccess'))
-      // configure the custom image to log router
-      validationService.taskDefinition.addFirelensLogRouter('log-router', {
-        firelensConfig: {
-          type: FirelensLogRouterType.FLUENTBIT
-        },
-        image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
-      })
-    }
+    validationBucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
   }
 }
 
@@ -299,4 +174,27 @@ export function optionalEnv (keys: string[]): Record<string, string> {
     res[key] = val
   }
   return res
+}
+
+export function getLogger (app, stack) {
+  // read secret url from parameter store
+  const grafanaSecret = aws_ssm.StringParameter.fromStringParameterName(
+    stack,
+    'gf-id',
+    'grafanahost'
+  )
+  const lokiLogs = LogDrivers.firelens({
+    options: {
+      Name: 'loki',
+      env: app.stage,
+      labels: `{job="${app.stage}-pickup"}`,
+      remove_keys: 'ecs_task_arn',
+      label_keys: 'container_name,container_id,ecs_task_definition,source,ecs_cluster',
+      line_format: 'key_value'
+    },
+    secretOptions: { // Retrieved from AWS Systems Manager Parameter Store
+      url: Secret.fromSsmParameter(grafanaSecret)
+    }
+  })
+  return lokiLogs
 }

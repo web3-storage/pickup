@@ -1,18 +1,19 @@
-import { S3Client } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
-import { logger } from './logger.js'
+import retry from 'p-retry'
+import { linkdex } from './car.js'
+import { logger } from './logger'
 
 /**
- * Init the S3 uploader
+ * Upload CAR stream to temp bucket, verify it, then copy to destination bucket
  *
  * @param {import('@aws-sdk/client-s3'.S3Client)} client
  * @param {string} bucket
  * @param {string} key
  * @param {Readable} body
  * @param {string} cid
- * @returns {Promise<CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput>}
  */
-export async function sendToS3 ({ client, bucket, key, body, cid }) {
+export async function uploadAndVerify ({ client, bucket, destinationBucket, key, body, cid }) {
   // Handles s3 multipart uploading
   // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
   const s3Upload = new Upload({
@@ -25,15 +26,40 @@ export async function sendToS3 ({ client, bucket, key, body, cid }) {
     }
   })
 
-  body.on('error', (err) => {
-    if (err.code === 'AbortError' || err.constructor.name === 'AbortError') {
-      logger.trace({ err, cid }, 'The abort command was thrown by a ipfs timeout')
-      return
-    }
-    logger.error({ err, cid }, 'S3 upload error')
-  })
+  await s3Upload.done()
 
-  return s3Upload.done()
+  await checkCar({ client, bucket, key, cid })
+
+  return retry(() => client.send(new CopyObjectCommand({
+    CopySource: `${sourceBucket}/${key}`,
+    Bucket: destinationBucket,
+    Key: key
+  })))
+}
+
+export async function checkCar ({ client, bucket, key, cid }) {
+  let report
+  try {
+    report = await retry(async () => {
+      const res = await client.send(new GetObjectCommand({
+        Bucket: bucket,
+        Key: key
+      }))
+      return linkdex(res.body)
+    })
+  } catch (cause) {
+    throw new Error('checkCar failed', { cause })
+  }
+
+  if (report.blocksIndexed === 0) {
+    logger.info({ report, cid }, 'linkdex: Empty CAR')
+    throw new Error('Empty CAR')
+  }
+
+  if (report.structure !== 'Complete') {
+    logger.info({ report, cid }, 'linkdex: DAG not complete')
+    throw new Error('DAG not complete')
+  }
 }
 
 export class S3Uploader {
@@ -59,7 +85,7 @@ export class S3Uploader {
      * @param {Readable} body
      */
     return async function (body) {
-      return sendToS3({
+      return uploadAndVerify({
         client: s3,
         bucket,
         key,
