@@ -15,7 +15,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     cdk: {
       bucket: {
         lifecycleRules: [
-          { expiration: Duration.hours(6) } // delete anything older than 6hrs!
+          { expiration: Duration.days(1) } // minimum is 1 day
         ]
       }
     }
