@@ -38,7 +38,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     propagateTags: PropagatedTagSource.TASK_DEFINITION,
     minScalingCapacity: 1,
     maxScalingCapacity: 10,
-    ephemeralStorageGiB: isPrBuild(app) ? 20 : 200,
+    ephemeralStorageGiB: isPrBuild(app) ? 21 : 200, // requried to be > 20!
     logDriver: isPrBuild(app) ? undefined : getLokiLogDriver(app, stack), // use aws cloudwatch in PRs, loki in prod.
     cpu: 4096, /* 4 vCPU. Task eats CPU. */
     memoryLimitMiB: 8 * 1024, /* 8 GB RAM, min allowed with 4 vCPU */
