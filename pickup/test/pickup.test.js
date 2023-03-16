@@ -21,30 +21,31 @@ test.after(async t => {
 test('throw an error if can\'t connect to IPFS', async t => {
   const { createQueue, createBucket, s3 } = t.context
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
+  const validationBucket = await createBucket()
   const ipfsApiUrl = `https://${nanoid()}:6000`
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
     carFetcher: new CarFetcher({ ipfsApiUrl }),
-    s3Uploader: new S3Uploader({ s3, bucket })
+    s3Uploader: new S3Uploader({ s3, destinationBucket, validationBucket })
   })
   await t.throwsAsync(() => pickup.start())
 })
 
 test('Process 1 message successfully', async t => {
-  t.timeout(1000 * 60 * 2)
+  t.timeout(1000 * 60)
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
   const ipfsApiUrl = `https://${nanoid()}:6000`
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 1000, fetchChunkTimeoutMs: 1000 }),
-    s3Uploader: new S3Uploader({ s3, bucket: validationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
   })
 
   // Preapre the data for the test
@@ -60,17 +61,15 @@ test('Process 1 message successfully', async t => {
     .post('/api/v0/repo/gc?silent=true')// Garbage collector
     .optionally().reply(200, 'GC Success').persist()
 
-  cars.forEach((car, index) => {
-    nockPickup.post(`/api/v0/dag/export?arg=${car.cid}`) // Get pin
-      .reply(200, () => {
-        return cars[index].car // send the whole car body at once
-      })
-  })
+  for (const item of cars) {
+    const buf = Buffer.from(await item.car.arrayBuffer())
+    nockPickup.post(`/api/v0/dag/export?arg=${item.cid}`).reply(200, buf)
+  }
 
   // Send the SQS messages in queue
   for (let i = 0; i < cars.length; i++) {
     await sqs.send(new SendMessageCommand({
-      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket: destinationBucket, key: cars[i].key, origins: [], requestid: i }),
       QueueUrl: queueUrl
     }))
   }
@@ -113,14 +112,14 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
   const ipfsApiUrl = `https://${nanoid()}:6000`
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000, idlePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 500, fetchChunkTimeoutMs: 2000 }),
-    s3Uploader: new S3Uploader({ s3, bucket: validationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
   })
 
   // Preapre the data for the test
@@ -146,7 +145,7 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
   // Send the SQS messages in queue
   for (let i = 0; i < cars.length; i++) {
     await sqs.send(new SendMessageCommand({
-      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket: destinationBucket, key: cars[i].key, origins: [], requestid: i }),
       QueueUrl: queueUrl
     }))
   }
@@ -186,14 +185,14 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
   const ipfsApiUrl = `https://${nanoid()}:6000`
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000, idlePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 2000, fetchChunkTimeoutMs: 1000 }),
-    s3Uploader: new S3Uploader({ s3, bucket: validationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
   })
 
   // Preapre the data for the test
@@ -219,7 +218,7 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
   // Send the SQS messages in queue
   for (let i = 0; i < cars.length; i++) {
     await sqs.send(new SendMessageCommand({
-      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket: destinationBucket, key: cars[i].key, origins: [], requestid: i }),
       QueueUrl: queueUrl
     }))
   }
@@ -259,14 +258,14 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
   const ipfsApiUrl = `https://${nanoid()}:6000`
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000, idlePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, maxCarBytes: 1 }),
-    s3Uploader: new S3Uploader({ s3, bucket: validationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
   })
 
   // Preapre the data for the test
@@ -292,7 +291,7 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
   // Send the SQS messages in queue
   for (let i = 0; i < cars.length; i++) {
     await sqs.send(new SendMessageCommand({
-      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket: destinationBucket, key: cars[i].key, origins: [], requestid: i }),
       QueueUrl: queueUrl
     }))
   }
@@ -332,7 +331,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
   const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
 
   const queueUrl = await createQueue()
-  const bucket = await createBucket()
+  const destinationBucket = await createBucket()
   const validationBucket = await createBucket()
 
   // Preapre the data for the test
@@ -361,7 +360,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
   // Send the SQS messages in queue
   for (let i = 0; i < cars.length; i++) {
     await sqs.send(new SendMessageCommand({
-      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket, key: cars[i].key, origins: [], requestid: i }),
+      MessageBody: JSON.stringify({ cid: cars[i].cid, bucket: destinationBucket, key: cars[i].key, origins: [], requestid: i }),
       QueueUrl: queueUrl
     }))
   }
@@ -369,7 +368,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchChunkTimeoutMs: 2000 }),
-    s3Uploader: new S3Uploader({ s3, bucket: validationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
   })
 
   // The number of the messages resolved, when is max close the test and finalize

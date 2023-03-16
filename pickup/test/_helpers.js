@@ -1,4 +1,3 @@
-import stream from 'node:stream'
 import retry from 'p-retry'
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { packToBlob } from 'ipfs-car/pack/blob'
@@ -38,14 +37,8 @@ export async function getMessagesFromSQS ({ queueUrl, length, sqs }) {
 
 export async function prepareCid ({ dynamoClient, dynamoTable, timeBetweenChunks, expectedResult }) {
   const text = (Math.random() + 1).toString(36)
-  const writable = new stream.Writable({
-    write: function (chunk, encoding, next) {
-      next()
-    }
-  })
   const { root, car } = await packToBlob({
-    input: Buffer.from(text),
-    writable,
+    input: text,
     blockstore: new MemoryBlockStore(),
     wrapWithDirectory: false // Wraps input into a directory. Defaults to `true`
   })

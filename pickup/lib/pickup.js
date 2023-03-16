@@ -16,11 +16,13 @@ export function createPickupFromEnv (env = process.env) {
     MAX_CAR_BYTES,
     FETCH_TIMEOUT_MS,
     FETCH_CHUNK_TIMEOUT_MS,
-    VALIDATION_BUCKET
+    VALIDATION_BUCKET,
+    DESTINATION_BUCKET
   } = env
 
   if (!SQS_QUEUE_URL) throw new Error('SQS_QUEUE_URL not found in ENV')
   if (!VALIDATION_BUCKET) throw new Error('VALIDATION_BUCKET not found in ENV')
+  if (!DESTINATION_BUCKET) throw new Error('DESTINATION_BUCKET not found in ENV')
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({
@@ -35,7 +37,8 @@ export function createPickupFromEnv (env = process.env) {
       fetchChunkTimeoutMs: FETCH_CHUNK_TIMEOUT_MS
     }),
     s3Uploader: new S3Uploader({
-      bucket: VALIDATION_BUCKET
+      validationBucket: VALIDATION_BUCKET,
+      destinationBucket: DESTINATION_BUCKET
     })
   })
 
