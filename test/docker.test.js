@@ -15,6 +15,7 @@ test('build', async t => {
   img.withEnv('IPFS_API_URL', 'http://127.0.0.1:5001')
   img.withEnv('SQS_QUEUE_URL', 'http://127.0.0.1')
   img.withEnv('VALIDATION_BUCKET', 'foo')
+  img.withEnv('DESTINATION_BUCKET', 'bar')
 
   let pickup
   try {
