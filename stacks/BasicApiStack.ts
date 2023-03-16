@@ -27,7 +27,6 @@ export function BasicApiStack ({
       function: {
         timeout: '30 seconds',
         handler: 'basic/fail-pin.sqsPinQueueDeadLetterHandler',
-        functionName: formatResourceName(app.stage, 'failPin'),
         environment: {
           TABLE_NAME: dynamoDbTable.tableName
         },
@@ -60,7 +59,6 @@ export function BasicApiStack ({
     consumer: {
       function: {
         handler: 'basic/update-pin.sqsEventHandler',
-        functionName: formatResourceName(app.stage, 'updatePin'),
         bind: [dynamoDbTable],
         environment: {
           TABLE_NAME: dynamoDbTable.tableName
@@ -117,29 +115,24 @@ export function BasicApiStack ({
     defaults: {
       function: {
         bind: apiFunctionBindList,
-        environment: apiFunctionEnvironment
+        environment: apiFunctionEnvironment,
+        timeout: '31 seconds'
       }
     },
     routes: {
       'GET /pins/{cid}': {
         function: {
-          handler: 'basic/get-pin.handler',
-          functionName: formatResourceName(app.stage, 'getPin'),
-          timeout: '31 seconds'
+          handler: 'basic/get-pin.handler'
         }
       },
       'GET /pins': {
         function: {
-          handler: 'basic/get-pins.handler',
-          functionName: formatResourceName(app.stage, 'getPins'),
-          timeout: '31 seconds'
+          handler: 'basic/get-pins.handler'
         }
       },
       'POST /pins/{cid}': {
         function: {
-          handler: 'basic/add-pin.handler',
-          functionName: formatResourceName(app.stage, 'postPin'),
-          timeout: '31 seconds'
+          handler: 'basic/add-pin.handler'
         }
       }
     }
@@ -179,8 +172,4 @@ function getCustomDomain (stage: string, hostedZone?: string): { domainName: str
   }
   const domainName = stage === 'prod' ? hostedZone : `${stage}.${hostedZone}`
   return { domainName, hostedZone }
-}
-
-function formatResourceName (stage: string, name: string): string {
-  return `${stage}-pickup-${name}`
 }
