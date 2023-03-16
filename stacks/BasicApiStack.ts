@@ -55,26 +55,23 @@ export function BasicApiStack ({
   })
 
   const updatePinDlq = new Queue(stack, 'UpdatePinDlq')
-  const consumer = process.env.USE_VALIDATION !== 'VALIDATE'
-    ? {
-        function: {
-          handler: 'basic/update-pin.sqsEventHandler',
-          functionName: formatResourceName(app.stage, 'updatePin'),
-          bind: [dynamoDbTable],
-          environment: {
-            TABLE_NAME: dynamoDbTable.tableName
-          }
-        },
-        cdk: {
-          eventSource: {
-            batchSize: 1
-          }
-        }
-      }
-    : undefined
 
   const updatePinQueue = new Queue(stack, 'UpdatePinQueue', {
-    consumer,
+    consumer: {
+      function: {
+        handler: 'basic/update-pin.sqsEventHandler',
+        functionName: formatResourceName(app.stage, 'updatePin'),
+        bind: [dynamoDbTable],
+        environment: {
+          TABLE_NAME: dynamoDbTable.tableName
+        }
+      },
+      cdk: {
+        eventSource: {
+          batchSize: 1 // why?
+        }
+      }
+    },
     cdk: {
       queue: {
         deadLetterQueue: {

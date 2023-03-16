@@ -10,15 +10,7 @@ A minimal [ipfs-cluster](https://github.com/ipfs-cluster/ipfs-cluster) compatibl
 
 🏗 A full [pinning service api] is also implemented in [api/functions/PinningService.ts](api/functions/PinningService.ts), but is not currently in use. A future release may switch this to be the main interface once we need it.
 
-### GET /pins/:cid
-
-Manage the balanced request using `GET /internal/pins/:cid` and the `Indexer server` as endpoint.
-
-### POST /internal/pins/:cid
-
-Manage the balanced request using `POST /internal/pins/:cid` and the `Indexer server` as endpoint.
-
-### POST /internal/pins/:cid
+### POST pins/:cid
 
 Make a pin request by CID, asking the service to fetch the content from IPFS.
 
@@ -44,7 +36,7 @@ $ curl -X POST 'https://pickup.dag.haus/pins/bafybeifpaez32hlrz5tmr7scndxtjgw3au
 }
 ```
 
-### GET /internal/pins/:cid
+### GET /pins/:cid
 
 Find the status of a pin
 
@@ -114,7 +106,7 @@ Used to set both the concurrency per worker *and* the max number of messages eac
 PR's are deployed automatically to `https://<pr#>.pickup.dag.haus`. The `main` branch is deployed to https://staging.pickup.dag.haus and staging builds are promoted to prod manually via the UI at https://console.seed.run/dag-house/pickup
 
 To work on this codebase you need:
-- node >= 16
+- node v16
 - An AWS account with the AWS CLI configured locally
 - Copy `.env.tpl` to `.env.local` and set `CLUSTER_BASIC_AUTH_TOKEN` with a base64 encoded user:pass string.
 - Install the deps with `npm i`
@@ -221,67 +213,15 @@ ECS ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ 
 
 ## Validation
 
-The system provides a validation step that run after the upload on S3.
-To enable it the ENV var USE_VALIDATION should be set to 'VALIDATE'.
+The system provides a validation step that run after the upload on S3. 
 
-With validation enabled CARs are written to a temporary bucket. The s3 `object_created` event triggers the validator process.
+CARs are written to a temporary bucket. If the CAR is valid, it's copied to the target bucket, removed from the temporary one, and the pin state is updated to `pinned` on DynamoDB
 
-If the CAR is valid, it's copied to the target bucket, removed from the temporary one, and the pin state is updated to `pinned` on DynamoDB
+## Integration with Elastic IPFS
 
-## Pickup and validator logic
+see: https://github.com/elastic-ipfs/elastic-ipfs
 
-This flowchart shows the logic of `pickup` with the `validator` enabled.
-
-![Router diagram](docs/flowchart-validation.jpg)
-
-The source file for the image file is available in the `docs` folder as `miro` backup ([miro-flowchars.rtb](/docs/miro-flowchars.rtb)).
-
-## Integration with Elastic Provider
-
-see: https://github.com/ipfs-elastic-provider/ipfs-elastic-provider
-
-### Option 1 - use uploads v2
-
-The initial /pins lambda asks web3.storage for a signed s3 upload url instead of picking the bucket to write to itself.
-- Means we write the CAR directly into Elastic Provider. But we need something to say "upload complete" so that we update the PinRequests DynamoDB table... This could be done by pickup once the upload is complete. We would at that point have the full CAR, so we could mark it as pinned at that point, but it won't be available until later, after the elastic provider has processed it.
-
-
-### Option 2 - inform Elastic provider on upload complete
-
-Send a message on the indexer SQS topic from our lambda when the CAR is written to our s3 bucket.
-
-## Questions
-
-Rate limiting per user!
-Thing to check before adding to the SQS queue
-- do we already have the thing? Check with elastic provider.
-- does the user have too many pin requests pending already.
-- is the queue long? drop reqs at some threshold.
-
-
-## References
-
-> When a consumer (component 2) is ready to process messages, it consumes messages from the queue, and message A is returned. While message A is being processed, it remains in the queue and isn't returned to subsequent receive requests for the duration of the visibility timeout.
->
-> The consumer (component 2) deletes message A from the queue to prevent the message from being received and processed again when the visibility timeout expires. 
-> 
->https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-basic-architecture.html
-
-> If you don't know how long it takes to process a message, create a heartbeat for your consumer process: Specify the initial visibility timeout (for example, 2 minutes) and then—as long as your consumer still works on the message—keep extending the visibility timeout by 2 minutes every minute.
->
-> https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/working-with-messages.html
-
-> Worker Services allow you to implement asynchronous service-to-service communication with pub/sub architectures. Your microservices in your application can publish events to Amazon SNS topics that can then be consumed by a "Worker Service".
->
-> https://aws.github.io/copilot-cli/docs/concepts/services/#request-driven-web-service
-
-> A Backend Service on AWS Copilot a one-click deployment of a gateway as a "backend service" (autoscaling at Fargate Spot pricing, each node has a port open so is a full participant in libp2p, 200G ssd for the datastore, 4cores and up to 30G RAM, no LB though - dns based discovery for client-side load balancing).
->
-> https://github.com/ipfs-shipyard/go-ipfs-docker-examples/tree/main/gateway-copilot-backend-service
-
-
-[pinning service api]: https://ipfs.github.io/pinning-services-api-spec/
-
+Sends a message on the indexer SQS topic from our lambda when the CAR is written to our s3 bucket.
 
 ## aws notes
 
@@ -291,3 +231,5 @@ remove a bunch of buckets by bucket prefix name
 # danger! will delete things!
 aws s3 ls | grep olizilla-pickup | awk '{print "s3://"$3}' | xargs -n 1 -I {} aws s3 rb {} --force;
 ```
+
+[pinning service api]: https://ipfs.github.io/pinning-services-api-spec/

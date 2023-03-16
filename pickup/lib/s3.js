@@ -1,50 +1,89 @@
-import { S3Client } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
+import retry from 'p-retry'
+import { linkdex } from './car.js'
 import { logger } from './logger.js'
 
 /**
- * Init the S3 uploader
+ * Upload CAR stream to temp bucket, verify it, then copy to destination bucket
  *
- * @param {import('@aws-sdk/client-s3'.S3Client)} client
- * @param {string} bucket
- * @param {string} key
- * @param {Readable} body
- * @param {string} cid
- * @returns {Promise<CompleteMultipartUploadCommandOutput | AbortMultipartUploadCommandOutput>}
+ * @param {object} config
+ * @param {S3Client} config.client
+ * @param {string} config.validationBucket
+ * @param {string} config.destinationBucket
+ * @param {string} config.key
+ * @param {Readable} config.body
+ * @param {string} config.cid
  */
-export async function sendToS3 ({ client, bucket, key, body, cid }) {
+export async function uploadAndVerify ({ client, validationBucket, destinationBucket, key, body, cid }) {
   // Handles s3 multipart uploading
   // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
   const s3Upload = new Upload({
     client,
     params: {
       Metadata: { structure: 'complete' },
-      Bucket: bucket,
+      Bucket: validationBucket,
       Key: key,
       Body: body
     }
   })
 
-  body.on('error', (err) => {
-    if (err.code === 'AbortError' || err.constructor.name === 'AbortError') {
-      logger.trace({ err, cid }, 'The abort command was thrown by a ipfs timeout')
-      return
-    }
-    logger.error({ err, cid }, 'S3 upload error')
-  })
+  await s3Upload.done()
 
-  return s3Upload.done()
+  await checkCar({ client, bucket: validationBucket, key, cid })
+
+  return retry(() => client.send(new CopyObjectCommand({
+    CopySource: `${validationBucket}/${key}`,
+    Bucket: destinationBucket,
+    Key: key
+  })), { retries: 5, onFailedAttempt: (err) => logger.info({ err, cid }, 'Copy to destination failed, retrying') })
+}
+
+/**
+ * Fetch the car and stream it through linkdex to check if it's complete
+ *
+ * @param {object} config
+ * @param {S3Client} config.client
+ * @param {string} config.bucket
+ * @param {string} config.key
+ * @param {string} config.cid
+ */
+export async function checkCar ({ client, bucket, key, cid }) {
+  let report
+  try {
+    report = await retry(async () => {
+      const res = await client.send(new GetObjectCommand({
+        Bucket: bucket,
+        Key: key
+      }))
+      return linkdex(res.Body)
+    }, { retries: 3, onFailedAttempt: (err) => logger.info({ err, cid }, 'checkCar failed, retrying') })
+  } catch (cause) {
+    throw new Error('checkCar failed', { cause })
+  }
+
+  if (report.blocksIndexed === 0) {
+    logger.info({ report, cid }, 'linkdex: Empty CAR')
+    throw new Error('Empty CAR')
+  }
+
+  if (report.structure !== 'Complete') {
+    logger.info({ report, cid }, 'linkdex: DAG not complete')
+    throw new Error('DAG not complete')
+  }
 }
 
 export class S3Uploader {
   /**
    * @param {object} config
    * @param {S3Client} s3
-   * @param {string} bucket
+   * @param {string} validationBucket
+   * @param {string} destinationBucket
    */
-  constructor ({ s3 = new S3Client(), bucket }) {
+  constructor ({ s3 = new S3Client(), validationBucket, destinationBucket }) {
     this.s3 = s3
-    this.bucket = bucket
+    this.validationBucket = validationBucket
+    this.destinationBucket = destinationBucket
   }
 
   /**
@@ -53,15 +92,16 @@ export class S3Uploader {
    * @param {string} key
    */
   createUploader ({ cid, key }) {
-    const { s3, bucket } = this
+    const { s3, validationBucket, destinationBucket } = this
     /**
      * @typedef {import('node:stream').Readable} Readable
      * @param {Readable} body
      */
     return async function (body) {
-      return sendToS3({
+      return uploadAndVerify({
         client: s3,
-        bucket,
+        validationBucket,
+        destinationBucket,
         key,
         body,
         cid
