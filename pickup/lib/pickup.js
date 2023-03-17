@@ -77,7 +77,7 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
         logger.error({ cid, origins, err }, 'Failed to fetch CAR: fetch too slow')
         await msg.release()
       } else {
-        logger.error({ cid, origins, err }, 'Failed to fetch CAR')
+        logger.error({ cid, origins, err }, 'Failed to fetch CAR: other error')
         if (!msg.isHandled) {
           await msg.release() // back to the queue, try again
         }
