@@ -77,7 +77,7 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
         logger.error({ cid, origins, err }, 'Failed to fetch CAR: fetch too slow')
         await msg.release()
       } else {
-        logger.error({ cid, origins, err }, 'Failed to fetch CAR')
+        logger.error({ cid, origins, err }, 'Failed to fetch CAR: other error')
         if (!msg.isHandled) {
           await msg.release() // back to the queue, try again
         }
@@ -92,9 +92,14 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
 
   const pollerStart = sqsPoller.start.bind(sqsPoller)
   sqsPoller.start = async () => {
-    // throw if we can't connect to kubo
-    await carFetcher.testIpfsApi()
-    return pollerStart()
+    try {
+      // throw if we can't connect to kubo
+      await carFetcher.testIpfsApi()
+      return pollerStart()
+    } catch (err) {
+      logger.error({ err, ipfsApiUrl: carFetcher.ipfsApiUrl }, 'Failed to connect to ipfs api')
+      throw new Error('Failed to connect to ipfs api')
+    }
   }
 
   return sqsPoller

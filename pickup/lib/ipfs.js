@@ -198,7 +198,7 @@ export class CarFetcher {
   }
 
   async testIpfsApi () {
-    return retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 4 })
+    return retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 5 })
   }
 
   /**
