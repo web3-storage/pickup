@@ -9,7 +9,7 @@ async function start () {
     logger.info('Pickup started')
   } catch (err) {
     logger.error(err, 'Pickup ded!')
-    throw err
+    process.exit(1)
   }
 }
 

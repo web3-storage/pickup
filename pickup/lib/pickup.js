@@ -92,9 +92,14 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
 
   const pollerStart = sqsPoller.start.bind(sqsPoller)
   sqsPoller.start = async () => {
-    // throw if we can't connect to kubo
-    await carFetcher.testIpfsApi()
-    return pollerStart()
+    try {
+      // throw if we can't connect to kubo
+      await carFetcher.testIpfsApi()
+      return pollerStart()
+    } catch (err) {
+      logger.error({ err, ipfsApiUrl: carFetcher.ipfsApiUrl }, 'Failed to connect to ipfs api')
+      throw new Error('Failed to connect to ipfs api')
+    }
   }
 
   return sqsPoller
