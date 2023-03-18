@@ -6,6 +6,9 @@
 
 # kubo config docs: https://github.com/ipfs/kubo/blob/master/docs/config.md
 
+# dont announce localhost ips, DisableNatPortMap: true, Discovery.MDNS.Enabled false: false
+ipfs config profile apply server
+
 # use the IPFS DHT and parallel HTTP routers for additional speed. (but without running a DHT server.)
 ipfs config --json Routing.Type "autoclient"
 
@@ -18,9 +21,6 @@ ipfs config --json Swarm.DisableBandwidthMetrics true
 # we manually connect to nodes that send `origins` so we dont need loads of connections here.
 ipfs config --json Swarm.ConnMgr.HighWater 100
 ipfs config --json Swarm.ConnMgr.LowWater 50
-
-# no MDNS plz
-ipfs config --json Discovery.MDNS.Enabled false
 
 # plz fail early if bits get flipped in blockstore
 ipfs config --json Datastore.HashOnRead true
