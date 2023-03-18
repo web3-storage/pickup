@@ -9,8 +9,8 @@
 # dont announce localhost ips, DisableNatPortMap: true, Discovery.MDNS.Enabled false: false
 ipfs config profile apply server
 
-# use the IPFS DHT and parallel HTTP routers for additional speed. (but without running a DHT server.)
-ipfs config --json Routing.Type "autoclient"
+# use the IPFS DHT and parallel HTTP routers for additional speed.
+ipfs config --json Routing.Type "auto"
 
 # dont add provider records to the dht... e-ipfs will do that.
 ipfs config --json Experimental.StrategicProviding true
@@ -50,6 +50,3 @@ ipfs config --json Datastore.Spec.mounts '[
     "type": "measure"
   }
 ]'
-
-# maybe have go faster dht... but makes it unusable for the first 5 mins!! https://github.com/ipfs/kubo/blob/master/docs/experimental-features.md#accelerated-dht-client
-# ipfs config --json Experimental.AcceleratedDHTClient true
