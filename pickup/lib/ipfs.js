@@ -198,7 +198,9 @@ export class CarFetcher {
   }
 
   async testIpfsApi () {
-    return retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 5 })
+    const res = await retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 5 })
+    this.ipfs = res
+    logger.info(res, 'ipfs id')
   }
 
   /**

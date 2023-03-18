@@ -6,6 +6,9 @@
 
 # kubo config docs: https://github.com/ipfs/kubo/blob/master/docs/config.md
 
+# use the IPFS DHT and parallel HTTP routers for additional speed. (but without running a DHT server.)
+ipfs config --json Routing.Type "autoclient"
+
 # dont add provider records to the dht... e-ipfs will do that.
 ipfs config --json Experimental.StrategicProviding true
 

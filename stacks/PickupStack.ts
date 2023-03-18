@@ -42,6 +42,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     logDriver: isPrBuild(app) ? undefined : getLokiLogDriver(app, stack), // use aws cloudwatch in PRs, loki in prod.
     cpu: 4096, /* 4 vCPU. Task eats CPU. */
     memoryLimitMiB: 8 * 1024, /* 8 GB RAM, min allowed with 4 vCPU */
+    assignPublicIp: true,
     environment: {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
       DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
