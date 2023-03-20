@@ -10,7 +10,7 @@
 ipfs config profile apply server
 
 # use the IPFS DHT and parallel HTTP routers for additional speed.
-ipfs config --json Routing.Type "auto"
+ipfs config --json Routing.Type '"auto"'
 
 # dont add provider records to the dht... e-ipfs will do that.
 ipfs config --json Experimental.StrategicProviding true
