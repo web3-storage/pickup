@@ -44,19 +44,6 @@ export function PickupStack ({ app, stack }: StackContext): void {
       { lower: 20, change: +1 },
       { lower: 100, change: +5 }
     ],
-    environment: {
-      SQS_QUEUE_URL: basicApi.queue.queueUrl,
-      PIN_TABLE: basicApi.dynamoDbTable.tableName,
-      DESTINATION_BUCKET: basicApi.bucket.bucketName,
-      VALIDATION_BUCKET: validationBucket.bucketName,
-      ...optionalEnv([
-        'IPFS_API_URL',
-        'BATCH_SIZE',
-        'MAX_CAR_BYTES',
-        'FETCH_TIMEOUT_MS',
-        'FETCH_CHUNK_TIMEOUT_MS'
-      ])
-    },
     containerName: 'ipfs',
     portMappings: [
       { containerPort: 4001, hostPort: 4001, protocol: Protocol.UDP }
@@ -87,6 +74,19 @@ export function PickupStack ({ app, stack }: StackContext): void {
       retries: 2,
       startPeriod: Duration.seconds(5),
       timeout: Duration.seconds(20)
+    },
+    environment: {
+      SQS_QUEUE_URL: basicApi.queue.queueUrl,
+      PIN_TABLE: basicApi.dynamoDbTable.tableName,
+      DESTINATION_BUCKET: basicApi.bucket.bucketName,
+      VALIDATION_BUCKET: validationBucket.bucketName,
+      ...optionalEnv([
+        'IPFS_API_URL',
+        'BATCH_SIZE',
+        'MAX_CAR_BYTES',
+        'FETCH_TIMEOUT_MS',
+        'FETCH_CHUNK_TIMEOUT_MS'
+      ])
     }
   })
 
