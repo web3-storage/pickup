@@ -7,6 +7,7 @@ import { QueueProcessingFargateService } from './lib/queue-processing-fargate-se
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
 import { Duration, aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import { Port } from 'aws-cdk-lib/aws-ec2'
 
 export function PickupStack ({ app, stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
@@ -89,6 +90,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
       ])
     }
   })
+
+  service.service.connections.allowFromAnyIpv4(Port.udp(4001), 'ipfs swarm udp')
+  service.service.connections.allowFromAnyIpv4(Port.tcp(4001), 'ipfs swarm tcp')
 
   // set up permissions so cluster tasks can use buckets and db
   basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)
