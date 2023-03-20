@@ -7,6 +7,7 @@ import { compose } from './_compose.js'
 import { prepareCid, verifyMessage, sleep, getMessagesFromSQS, stopPickup } from './_helpers.js'
 import { CarFetcher } from '../lib/ipfs.js'
 import { S3Uploader } from '../lib/s3.js'
+import { PinTable } from '../lib/dynamo.js'
 
 test.before(async t => {
   t.timeout(1000 * 60)
@@ -16,6 +17,28 @@ test.before(async t => {
 test.after(async t => {
   await sleep(5000)
   await t.context.shutDownDockers()
+})
+
+test.only('add delegates to a pin record', async t => {
+  const { dynamoTable, dynamoEndpoint } = t.context
+  const pinTable = new PinTable({
+    table: dynamoTable,
+    endpoint: dynamoEndpoint
+  })
+  const cid = 'foo'
+  const delegates = new Set(['/ip4/test'])
+  await pinTable.addDelegates({ cid, delegates })
+  const pin = await pinTable.getPin({ cid })
+  // verify it adds delegates
+  t.is(pin.cid, cid)
+  t.deepEqual(pin.delegates, delegates)
+
+  // verify that it appends additional delegates
+  const nextDelegate = new Set(['/ip4/next'])
+  await pinTable.addDelegates({ cid, delegates: nextDelegate })
+  const pin2 = await pinTable.getPin({ cid })
+  t.is(pin2.cid, cid)
+  t.deepEqual(pin2.delegates, new Set([...nextDelegate, ...delegates]))
 })
 
 test('throw an error if can\'t connect to IPFS', async t => {

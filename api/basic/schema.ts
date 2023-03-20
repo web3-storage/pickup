@@ -16,6 +16,7 @@ export interface Pin {
   cid: string
   status: 'queued' | 'pinning' | 'pinned' | 'failed' | 'unpinned'
   created: string
+  delegates?: Set<string>
 }
 
 export interface PeerMapValue {
@@ -35,7 +36,7 @@ export interface ClusterGetResponseBody {
   'allocations': []
   'origins': []
   'created': string
-  'metadata': null
+  'metadata': Record<string, any>
   'peer_map': Record<string, PeerMapValue>
 }
 

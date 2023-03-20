@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 
 export class PinTable {
   /**
@@ -29,5 +29,19 @@ export class PinTable {
       ReturnValues: 'ALL_NEW'
     })
     return this.dynamo.send(cmd)
+  }
+
+  /**
+   * Get a single Pin record
+   * @param {object} config
+   * @param {string} config.cid
+   */
+  async getPin ({ cid }) {
+    const cmd = new GetCommand({
+      TableName: this.table,
+      Key: { cid }
+    })
+    const res = await this.dynamo.send(cmd)
+    return res.Item
   }
 }
