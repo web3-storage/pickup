@@ -16,6 +16,7 @@ test('build', async t => {
   img.withEnv('SQS_QUEUE_URL', 'http://127.0.0.1')
   img.withEnv('VALIDATION_BUCKET', 'foo')
   img.withEnv('DESTINATION_BUCKET', 'bar')
+  img.withEnv('PIN_TABLE', 'baz')
 
   let pickup
   try {

@@ -45,7 +45,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     assignPublicIp: true,
     environment: {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
-      DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
+      PIN_TABLE: basicApi.dynamoDbTable.tableName,
       DESTINATION_BUCKET: basicApi.bucket.bucketName,
       VALIDATION_BUCKET: validationBucket.bucketName,
       ...optionalEnv([
