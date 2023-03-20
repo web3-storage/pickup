@@ -1,7 +1,7 @@
 import type { App, Stack } from '@serverless-stack/resources'
 import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver, PropagatedTagSource } from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver, PropagatedTagSource, Protocol } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
@@ -75,6 +75,9 @@ export function PickupStack ({ app, stack }: StackContext): void {
 
   // add go-ipfs as sidecar! see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
   service.taskDefinition.addContainer('ipfs', {
+    portMappings: [
+      { containerPort: 4001, hostPort: 4001, protocol: Protocol.UDP }
+    ],
     logging: service.logDriver,
     image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
       platform: Platform.LINUX_AMD64
