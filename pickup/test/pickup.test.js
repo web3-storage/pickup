@@ -19,7 +19,7 @@ test.after(async t => {
   await t.context.shutDownDockers()
 })
 
-test.only('add delegates to a pin record', async t => {
+test('add delegates to a pin record', async t => {
   const { dynamoTable, dynamoEndpoint } = t.context
   const pinTable = new PinTable({
     table: dynamoTable,
