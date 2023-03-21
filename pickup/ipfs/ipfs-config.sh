@@ -6,8 +6,8 @@
 
 # kubo config docs: https://github.com/ipfs/kubo/blob/master/docs/config.md
 
-# dont announce localhost ips, DisableNatPortMap: true, Discovery.MDNS.Enabled false: false
-ipfs config profile apply server
+# dont announce localhost ips, DisableNatPortMap: true, Discovery.MDNS.Enabled false: false, and pipe to null as it so noisy.
+ipfs config profile apply server > /dev/null 
 
 # use the IPFS DHT and parallel HTTP routers for additional speed.
 ipfs config --json Routing.Type '"auto"'
