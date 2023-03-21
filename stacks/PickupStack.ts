@@ -47,7 +47,8 @@ export function PickupStack ({ app, stack }: StackContext): void {
     ],
     containerName: 'ipfs',
     portMappings: [
-      { containerPort: 4001, hostPort: 4001, protocol: Protocol.UDP }
+      { containerPort: 4001, hostPort: 4001, protocol: Protocol.UDP },
+      { containerPort: 4001, hostPort: 4001, protocol: Protocol.TCP }
     ],
     image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
       platform: Platform.LINUX_AMD64
