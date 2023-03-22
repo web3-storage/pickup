@@ -1,5 +1,6 @@
 import { Squiss } from 'squiss-ts'
 import { CarFetcher, TOO_BIG, CHUNK_TOO_SLOW, FETCH_TOO_SLOW } from './ipfs.js'
+import { PinTable } from './dynamo.js'
 import { S3Uploader } from './s3.js'
 import { logger } from './logger.js'
 
@@ -17,12 +18,15 @@ export function createPickupFromEnv (env = process.env) {
     FETCH_TIMEOUT_MS,
     FETCH_CHUNK_TIMEOUT_MS,
     VALIDATION_BUCKET,
-    DESTINATION_BUCKET
+    DESTINATION_BUCKET,
+    PIN_TABLE,
+    DYNAMO_ENDPOINT
   } = env
 
   if (!SQS_QUEUE_URL) throw new Error('SQS_QUEUE_URL not found in ENV')
   if (!VALIDATION_BUCKET) throw new Error('VALIDATION_BUCKET not found in ENV')
   if (!DESTINATION_BUCKET) throw new Error('DESTINATION_BUCKET not found in ENV')
+  if (!PIN_TABLE) throw new Error('PIN_TABLE not found in ENV')
 
   const pickup = createPickup({
     sqsPoller: createSqsPoller({
@@ -39,6 +43,10 @@ export function createPickupFromEnv (env = process.env) {
     s3Uploader: new S3Uploader({
       validationBucket: VALIDATION_BUCKET,
       destinationBucket: DESTINATION_BUCKET
+    }),
+    pinTable: new PinTable({
+      table: PIN_TABLE,
+      endpoint: DYNAMO_ENDPOINT
     })
   })
 
@@ -50,13 +58,16 @@ export function createPickupFromEnv (env = process.env) {
  * @param {Squiss} config.sqsPoller
  * @param {CarFetcher} config.carFetcher
  * @param {S3Uploader} config.s3Uploader
+ * @param {PinTable} config.pinTable
  */
-export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
+export function createPickup ({ sqsPoller, carFetcher, s3Uploader, pinTable }) {
   /**
    * @param {import('squiss-ts').Message} msg
    */
   async function messageHandler (msg) {
     const { cid, origins, key } = msg.body
+    const delegates = await carFetcher.findPublicMultiaddrs()
+    await pinTable.addDelegates({ cid, delegates })
     const abortCtl = new AbortController()
     const upload = s3Uploader.createUploader({ cid, key })
     try {
@@ -94,7 +105,7 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader }) {
   sqsPoller.start = async () => {
     try {
       // throw if we can't connect to kubo
-      await carFetcher.testIpfsApi()
+      await carFetcher.findPublicMultiaddrs()
       return pollerStart()
     } catch (err) {
       logger.error({ err, ipfsApiUrl: carFetcher.ipfsApiUrl }, 'Failed to connect to ipfs api')

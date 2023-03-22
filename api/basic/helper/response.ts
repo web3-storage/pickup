@@ -12,7 +12,13 @@ export function toResponseFromString (body: string): Response {
   return { statusCode: 200, body }
 }
 
+function toDelegatesArray (pin?: Pin): string[] {
+  return Array.from(pin?.delegates ?? [])
+}
+
 export function toAddPinResponse (pin: Pin, origins: string[]): ClusterAddResponseBody {
+  const { cid, created: timestamp } = pin
+  const delegates = toDelegatesArray(pin)
   return {
     replication_factor_min: -1,
     replication_factor_max: -1,
@@ -21,15 +27,17 @@ export function toAddPinResponse (pin: Pin, origins: string[]): ClusterAddRespon
     shard_size: 0,
     user_allocations: null,
     expire_at: '0001-01-01T00:00:00Z',
-    metadata: {},
+    metadata: {
+      delegates
+    },
     pin_update: null,
     origins: origins,
-    cid: pin.cid,
+    cid,
     type: 'pin',
     allocations: [],
     max_depth: -1,
     reference: null,
-    timestamp: pin.created
+    timestamp
   }
 }
 
@@ -50,13 +58,17 @@ export function toGetPinResponse (
   if (ipfsPeerId === undefined) {
     throw new Error('CLUSTER_IPFS_ADDR must be a valid multiaddr')
   }
+  const created = pin?.created ?? new Date().toISOString()
+  const delegates = toDelegatesArray(pin)
   return {
     cid: cid,
     name: '',
     allocations: [],
     origins: [],
-    created: pin?.created ?? new Date().toISOString(),
-    metadata: null,
+    created,
+    metadata: {
+      delegates
+    },
     peer_map: {
       // Fake cluster ID to give correct shape to output, not expected to be used. dotStorge dont care.
       '12D3KooWArSKMUUeLk3z2m5LKyb9wGyFL1BtWCT7Gq7Apoo77PUR': {

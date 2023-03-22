@@ -1,12 +1,13 @@
 import type { App, Stack } from '@serverless-stack/resources'
 import { StackContext, use, Queue, Bucket, Table } from '@serverless-stack/resources'
 import { BasicApiStack } from './BasicApiStack'
-import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver, PropagatedTagSource } from 'aws-cdk-lib/aws-ecs'
+import { Cluster, ContainerImage, LogDrivers, Secret, FirelensLogRouterType, LogDriver, PropagatedTagSource, Protocol } from 'aws-cdk-lib/aws-ecs'
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets'
 import { QueueProcessingFargateService } from './lib/queue-processing-fargate-service'
 import { ManagedPolicy } from 'aws-cdk-lib/aws-iam'
 import { Duration, aws_ssm } from 'aws-cdk-lib'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import { Port } from 'aws-cdk-lib/aws-ec2'
 
 export function PickupStack ({ app, stack }: StackContext): void {
   const basicApi = use(BasicApiStack) as unknown as { queue: Queue, bucket: Bucket, dynamoDbTable: Table }
@@ -29,22 +30,56 @@ export function PickupStack ({ app, stack }: StackContext): void {
 
   const service = new QueueProcessingFargateService(stack, 'Service', {
     cluster,
-    // Build image from local Dockerfile. Requires Docker running locally. https://docs.aws.amazon.com/cdk/v2/guide/assets.html
-    // This is run from /.build/<something> so the path to the Dockerfile traveses up one more level than in the source tree.
-    image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
-      platform: Platform.LINUX_AMD64
-    }),
-    containerName: 'pickup',
+    queue: basicApi.queue.cdk.queue,
     propagateTags: PropagatedTagSource.TASK_DEFINITION,
+    assignPublicIp: true,
     minScalingCapacity: 1,
     maxScalingCapacity: 10,
+    enableExecuteCommand: isPrBuild(app),
     ephemeralStorageGiB: isPrBuild(app) ? 21 : 200, // requried to be > 20!
     logDriver: isPrBuild(app) ? undefined : getLokiLogDriver(app, stack), // use aws cloudwatch in PRs, loki in prod.
     cpu: 4096, /* 4 vCPU. Task eats CPU. */
     memoryLimitMiB: 8 * 1024, /* 8 GB RAM, min allowed with 4 vCPU */
+    scalingSteps: [
+      { upper: 0, change: -1 },
+      { lower: 20, change: +1 },
+      { lower: 100, change: +5 }
+    ],
+    containerName: 'ipfs',
+    portMappings: [
+      { containerPort: 4001, hostPort: 4001, protocol: Protocol.UDP },
+      { containerPort: 4001, hostPort: 4001, protocol: Protocol.TCP }
+    ],
+    image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
+      platform: Platform.LINUX_AMD64
+    }),
+    healthCheck: {
+      command: ['CMD-SHELL', 'ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme || exit 1'],
+      interval: Duration.seconds(5),
+      retries: 2,
+      startPeriod: Duration.seconds(5),
+      timeout: Duration.seconds(20)
+    }
+  })
+  // add pickup as sidecar! see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
+  // Build image from local Dockerfile. Requires Docker running locally. https://docs.aws.amazon.com/cdk/v2/guide/assets.html
+  // This is run from /.build/<something> so the path to the Dockerfile traveses up one more level than in the source tree.
+  service.taskDefinition.addContainer('pickup', {
+    logging: service.logDriver,
+    image: ContainerImage.fromAsset(new URL('../../', import.meta.url).pathname, {
+      platform: Platform.LINUX_AMD64
+    }),
+    healthCheck: {
+      command: ['CMD-SHELL', 'ps -ef | grep pickup || exit 1'],
+      // the properties below are optional
+      interval: Duration.seconds(5),
+      retries: 2,
+      startPeriod: Duration.seconds(5),
+      timeout: Duration.seconds(20)
+    },
     environment: {
       SQS_QUEUE_URL: basicApi.queue.queueUrl,
-      DYNAMO_TABLE_NAME: basicApi.dynamoDbTable.tableName,
+      PIN_TABLE: basicApi.dynamoDbTable.tableName,
       DESTINATION_BUCKET: basicApi.bucket.bucketName,
       VALIDATION_BUCKET: validationBucket.bucketName,
       ...optionalEnv([
@@ -54,39 +89,11 @@ export function PickupStack ({ app, stack }: StackContext): void {
         'FETCH_TIMEOUT_MS',
         'FETCH_CHUNK_TIMEOUT_MS'
       ])
-    },
-    queue: basicApi.queue.cdk.queue,
-    enableExecuteCommand: isPrBuild(app),
-    healthCheck: {
-      command: ['CMD-SHELL', 'ps -ef | grep pickup || exit 1'],
-      // the properties below are optional
-      interval: Duration.seconds(5),
-      retries: 2,
-      startPeriod: Duration.seconds(5),
-      timeout: Duration.seconds(20)
-    },
-    scalingSteps: [
-      { upper: 0, change: -1 },
-      { lower: 20, change: +1 },
-      { lower: 100, change: +5 }
-    ]
-  })
-
-  // add go-ipfs as sidecar! see: https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_ecs_patterns-readme.html#deploy-application-and-metrics-sidecar
-  service.taskDefinition.addContainer('ipfs', {
-    logging: service.logDriver,
-    image: ContainerImage.fromAsset(new URL('../../pickup/ipfs/', import.meta.url).pathname, {
-      platform: Platform.LINUX_AMD64
-    }),
-    healthCheck: {
-      command: ['CMD-SHELL', 'ipfs cat /ipfs/QmQPeNsJPyVWPFDVHb77w8G42Fvo15z4bG2X8D2GhfbSXc/readme || exit 1'],
-      // the properties below are optional
-      interval: Duration.seconds(5),
-      retries: 2,
-      startPeriod: Duration.seconds(5),
-      timeout: Duration.seconds(20)
     }
   })
+
+  service.service.connections.allowFromAnyIpv4(Port.udp(4001), 'ipfs swarm udp')
+  service.service.connections.allowFromAnyIpv4(Port.tcp(4001), 'ipfs swarm tcp')
 
   // set up permissions so cluster tasks can use buckets and db
   basicApi.bucket.cdk.bucket.grantReadWrite(service.taskDefinition.taskRole)

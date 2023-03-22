@@ -4,6 +4,7 @@ import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs'
 import { APIGatewayProxyEventV2, Context } from 'aws-lambda'
 import { ClusterAddResponseBody, ErrorCode, Pin, Response, ValidationError } from './schema.js'
 import { nanoid } from 'nanoid'
+import retry from 'p-retry'
 import { doAuth } from './helper/auth-basic.js'
 import {
   validateDynamoDBConfiguration,
@@ -14,9 +15,9 @@ import { findUsableMultiaddrs } from './helper/multiaddr.js'
 import { logger, setLoggerWithLambdaRequest } from './helper/logger.js'
 import { toAddPinResponse, toResponse, toResponseError } from './helper/response.js'
 
-interface UpsertPinInput {
+interface GetPinInput {
   cid: string
-  dynamo: DynamoDBClient
+  dynamo: DynamoDBDocumentClient
   table: string
 }
 
@@ -29,7 +30,9 @@ interface AddToQueueInput {
 }
 
 // type AddPinInput = AddToQueueInput & UpsertPinInput
-interface AddPinInput extends UpsertPinInput, AddToQueueInput {}
+interface AddPinInput extends GetPinInput, AddToQueueInput {
+  waitForDelegates?: boolean
+}
 
 /**
  * AWS API Gateway handler for POST /pin/${cid}?&origins=${multiaddr},${multiaddr}
@@ -86,7 +89,7 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
 
   try {
     const sqs = new SQSClient({ endpoint: sqsEndpoint })
-    const dynamo = new DynamoDBClient({ endpoint: dbEndpoint })
+    const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ endpoint: dbEndpoint }))
     const res = await addPin({ cid, origins, bucket, sqs, queueUrl, dynamo, table })
     return toResponse(res)
   } catch (err: any) {
@@ -101,19 +104,51 @@ export async function handler (event: APIGatewayProxyEventV2, context: Context):
  * DynamoDB and adds a message to SQS to kick off a pickup of the requested CID
  * with optional source multiaddrs specified as origins list.
  */
-export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table }: AddPinInput): Promise<ClusterAddResponseBody> {
+export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, table, waitForDelegates = true }: AddPinInput): Promise<ClusterAddResponseBody> {
   const { shouldQueue, pin } = await upsertOnDynamo({ cid, dynamo, table })
-  if (shouldQueue) {
-    await addToQueue({ cid, origins, bucket, sqs, queueUrl })
+  if (!shouldQueue) {
+    return toAddPinResponse(pin, origins)
   }
-  return toAddPinResponse(pin, origins)
+  await addToQueue({ cid, origins, bucket, sqs, queueUrl })
+
+  if (!waitForDelegates) {
+    return toAddPinResponse(pin, origins)
+  }
+  // wait for delegates to be set on Pin, or return the Pin withtout if we don't get them in time
+  try {
+    const pinWithDelegates = await retry(async () => await findDelegates({ cid, dynamo, table }), {
+      minTimeout: 2000,
+      retries: 4,
+      factor: 1.66 // spread 4 retries over ~20s, see 'Real Solution' on https://www.wolframalpha.com/input?i=Sum%5B1000*x%5Ek,+%7Bk,+0,+5%7D%5D+%3D+27+*+1000
+    })
+    return toAddPinResponse(pinWithDelegates, origins)
+  } catch (err) {
+    logger.info({ cid, err }, 'Error waiting for delegates')
+    return toAddPinResponse(pin, origins)
+  }
+}
+
+export async function findDelegates ({ cid, dynamo, table }: GetPinInput): Promise<Pin> {
+  const pin = await getPin({ cid, dynamo, table })
+  if (!pin.delegates || pin.delegates.size === 0) {
+    throw new Error('No delegates assigned yet')
+  }
+  return pin
+}
+
+export async function getPin ({ cid, dynamo, table }: GetPinInput): Promise<Pin> {
+  const cmd = new GetCommand({
+    TableName: table,
+    Key: { cid }
+  })
+  const res = await retry(async () => await dynamo.send(cmd), { retries: 3 })
+  return res.Item as Pin
 }
 
 /**
  * Save Pin to Dynamo. If we already have that CID then return the existing.
  */
-export async function upsertOnDynamo ({ cid, dynamo, table }: UpsertPinInput): Promise<{shouldQueue: boolean, pin: Pin}> {
-  const client = DynamoDBDocumentClient.from(dynamo)
+export async function upsertOnDynamo ({ cid, dynamo, table }: GetPinInput): Promise<{shouldQueue: boolean, pin: Pin}> {
   const pin: Pin = {
     cid,
     status: 'queued',
@@ -121,7 +156,7 @@ export async function upsertOnDynamo ({ cid, dynamo, table }: UpsertPinInput): P
   }
   try {
     // TODO should be read then write, since reads are faster
-    await client.send(new PutCommand({
+    await dynamo.send(new PutCommand({
       TableName: table,
       Item: pin,
       ConditionExpression: 'attribute_not_exists(cid)'
@@ -133,20 +168,15 @@ export async function upsertOnDynamo ({ cid, dynamo, table }: UpsertPinInput): P
     // expected error if CID already exists
     // TODO handle failure for "get" command
     if (err instanceof ConditionalCheckFailedException) {
-      const existing = await client.send(new GetCommand({
-        TableName: table,
-        Key: { cid }
-      }))
+      const foundPin = await getPin({ cid, dynamo, table })
       logger.info({ code: 'DYNAMO_GET' }, 'Get existing pin')
-
-      const foundPin = existing.Item as Pin
       let newPin
       if (foundPin.status === 'failed') {
         newPin = await updateFailedItem({ cid, dynamo, table })
         return { shouldQueue: true, pin: newPin }
       }
 
-      return { shouldQueue: false, pin: existing.Item as Pin }
+      return { shouldQueue: false, pin: foundPin }
     }
     logger.error({ err }, 'Dynamo error')
   }
@@ -156,15 +186,14 @@ export async function upsertOnDynamo ({ cid, dynamo, table }: UpsertPinInput): P
 /**
  * Save Pin to Dynamo. If we already have that CID then return the existing.
  */
-export async function updateFailedItem ({ cid, dynamo, table }: UpsertPinInput): Promise<Pin> {
+export async function updateFailedItem ({ cid, dynamo, table }: GetPinInput): Promise<Pin> {
   const pin: Pin = {
     cid,
     status: 'queued',
     created: new Date().toISOString()
   }
   try {
-    const client = DynamoDBDocumentClient.from(dynamo)
-    await client.send(new UpdateCommand({
+    await dynamo.send(new UpdateCommand({
       TableName: table,
       Key: { cid },
       ExpressionAttributeNames: {

@@ -4,6 +4,7 @@ import { Multiaddr } from 'multiaddr'
 import debounce from 'debounce'
 import fetch from 'node-fetch'
 import retry from 'p-retry'
+import bogon from 'bogon'
 import { logger } from './logger.js'
 
 /** @typedef {import('node:stream').Readable} Readable */
@@ -111,7 +112,7 @@ export function isCID (cid) {
  * Test the connection with IPFS server
  * @param {string} ipfsApiUrl
  * @param {number} timeoutMs
- * @returns {Promise<Record<string, string>>}
+ * @returns {Promise<{ID: string, Addresses: string[]}>}
  */
 export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
   const url = new URL('/api/v0/id', ipfsApiUrl)
@@ -128,6 +129,14 @@ export async function testIpfsApi (ipfsApiUrl, timeoutMs = 10000) {
   } catch (err) {
     throw new Error('IPFS API test failed.', { cause: err })
   }
+}
+
+export function isPublicIp4 (input = '') {
+  if (input === '' || input === null) return false
+  if (!input.startsWith('/ip4/')) return false
+  const ip = input.split('/').at(2)
+  if (ip === undefined) return false
+  return !bogon(ip)
 }
 
 export const TOO_BIG = 'TOO_BIG'
@@ -197,8 +206,20 @@ export class CarFetcher {
     return compose(body, streamWatcher)
   }
 
-  async testIpfsApi () {
-    return retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 5 })
+  /**
+   * @throws {Error} if can't connect to ipfs
+   * @returns {Promise<Set<string>} public multiaddrs for the local ipfs node
+   */
+  async findPublicMultiaddrs () {
+    const res = await retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 5 })
+    if (!Array.isArray(res?.Addresses) || res.Addresses.length === 0) {
+      throw new Error('No Addresses provided for local IPFS node')
+    }
+    const publicAddrs = res.Addresses.filter(isPublicIp4)
+    if (publicAddrs.length === 0) {
+      throw new Error('No public ipv4 Addresses for local IPFS node')
+    }
+    return new Set(publicAddrs)
   }
 
   /**

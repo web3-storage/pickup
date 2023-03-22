@@ -1,3 +1,4 @@
+import { setTimeout } from 'timers/promises'
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb'
 import { SQSClient, CreateQueueCommand, GetQueueUrlCommand, ReceiveMessageCommand } from '@aws-sdk/client-sqs'
 import { GenericContainer as Container } from 'testcontainers'
@@ -59,8 +60,46 @@ test('addPin for the first time', async t => {
   const bucket = 'foo'
   const cid = nanoid()
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
-  const res = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl })
+  const res = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl, waitForDelegates: false })
 
+  t.is(res.cid, cid)
+  t.is(res.origins[0], origins[0])
+  t.is(res.type, 'pin')
+  const msgs = await getMessagesFromSQS({ queueUrl, length: 2, sqs })
+  t.is(msgs.length, 1)
+  const msg = JSON.parse(msgs[0].Body)
+  t.is(msg.cid, cid)
+  t.is(msg.origins[0], origins[0])
+  t.is(msg.bucket, bucket)
+  t.is(msg.key, `pickup/${cid}/${cid}.root.car`)
+})
+
+async function addDelegates ({ cid, delegates, dynamo, table }) {
+  const cmd = new UpdateCommand({
+    TableName: table,
+    Key: { cid },
+    ExpressionAttributeValues: {
+      ':d': delegates
+    },
+    UpdateExpression: 'ADD delegates :d',
+    ReturnValues: 'ALL_NEW'
+  })
+  return dynamo.send(cmd)
+}
+
+test('addPin for the first time and wait for delegates', async t => {
+  const { dynamo, table, sqs, createQueue } = t.context
+  const queueUrl = await createQueue()
+  const bucket = 'foo'
+  const cid = nanoid()
+  const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
+  let addPinResolved = false
+  const addPinRes = addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl })
+    .then(res => { addPinResolved = true; return res })
+  await setTimeout(2000)
+  t.false(addPinResolved)
+  await addDelegates({ cid, delegates: new Set('/ip4/1'), dynamo, table })
+  const res = await addPinRes
   t.is(res.cid, cid)
   t.is(res.origins[0], origins[0])
   t.is(res.type, 'pin')
@@ -115,8 +154,8 @@ test('addPin for an item already queued', async t => {
   const cid = nanoid()
   const origins = ['/p2p/12D3KooWCVU8Hjzky8u6earCs4z6m9SbznMn646Q9xt8QsvMXkgS']
 
-  const res1 = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl })
-  const res2 = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl })
+  const res1 = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl, waitForDelegates: false })
+  const res2 = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl, waitForDelegates: false })
 
   t.is(res1.cid, cid)
   t.is(res1.origins[0], origins[0])
@@ -125,6 +164,7 @@ test('addPin for an item already queued', async t => {
   t.is(res2.cid, res1.cid)
   t.deepEqual(res2.origins, res1.origins)
   t.is(res2.type, res1.type)
+  t.is(res1.timestamp, res2.timestamp)
 
   const msgs = await getMessagesFromSQS({ queueUrl, length: 2, sqs })
   t.is(msgs.length, 1)
@@ -151,7 +191,7 @@ test('addPin for an item already pinned', async t => {
     ReturnValues: 'ALL_NEW'
   }))
 
-  const res1 = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl })
+  const res1 = await addPin({ cid, origins, bucket: 'foo', dynamo, table, sqs, queueUrl, waitForDelegates: false })
 
   t.is(res1.cid, cid)
   t.is(res1.origins[0], origins[0])

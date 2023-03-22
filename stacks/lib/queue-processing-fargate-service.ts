@@ -2,7 +2,7 @@
 // Adds `ephemeralStorageGiB` property to the Service, passed thru to FargateTaskDefinition
 // Official support is stuck in a stalled PR here https://github.com/aws/aws-cdk/pull/18106
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
-import { FargatePlatformVersion, FargateService, FargateTaskDefinition, HealthCheck } from 'aws-cdk-lib/aws-ecs'
+import { FargatePlatformVersion, FargateService, FargateTaskDefinition, HealthCheck, PortMapping } from 'aws-cdk-lib/aws-ecs'
 import { Construct } from 'constructs'
 import { QueueProcessingServiceBase, QueueProcessingServiceBaseProps } from 'aws-cdk-lib/aws-ecs-patterns'
 
@@ -111,6 +111,12 @@ export interface QueueProcessingFargateServiceProps extends QueueProcessingServi
    * @default false
    */
   readonly assignPublicIp?: boolean
+
+  /**
+   * The list of port mappings for the container. Port mappings allow containers to access ports
+   * on the host container instance to send or receive traffic.
+   */
+  readonly portMappings?: PortMapping[]
 }
 
 /**
@@ -148,7 +154,8 @@ export class QueueProcessingFargateService extends QueueProcessingServiceBase {
       environment: this.environment,
       secrets: this.secrets,
       logging: this.logDriver,
-      healthCheck: props.healthCheck
+      healthCheck: props.healthCheck,
+      portMappings: props.portMappings
     })
 
     // Create a Fargate service with the previously defined Task Definition and configure

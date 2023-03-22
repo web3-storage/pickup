@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "ava"
+    "test": "SST_APP=NOSUCH SST_STAGE=NOSUCH LOG_LEVEL=fatal ava"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.110.0",
