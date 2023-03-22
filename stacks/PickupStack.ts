@@ -110,7 +110,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
       firelensConfig: {
         type: FirelensLogRouterType.FLUENTBIT
       },
-      image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:2.7.4-amd64')
+      image: ContainerImage.fromRegistry('grafana/fluent-bit-plugin-loki:1.6.0-amd64')
     })
   }
 }
