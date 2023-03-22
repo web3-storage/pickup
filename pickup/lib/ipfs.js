@@ -211,8 +211,15 @@ export class CarFetcher {
    * @returns {Promise<Set<string>} public multiaddrs for the local ipfs node
    */
   async findPublicMultiaddrs () {
-    const { Addresses } = await retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 5 })
-    return new Set(Addresses.filter(isPublicIp4))
+    const res = await retry(() => testIpfsApi(this.ipfsApiUrl), { retries: 5 })
+    if (!Array.isArray(res?.Addresses) || res.Addresses.length === 0) {
+      throw new Error('No Addresses provided for local IPFS node')
+    }
+    const publicAddrs = res.Addresses.filter(isPublicIp4)
+    if (publicAddrs.length === 0) {
+      throw new Error('No public ipv4 Addresses for local IPFS node')
+    }
+    return new Set(publicAddrs)
   }
 
   /**

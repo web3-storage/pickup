@@ -58,7 +58,7 @@ test('throw an error if can\'t connect to IPFS', async t => {
 
 test('Process 1 message successfully', async t => {
   t.timeout(1000 * 60)
-  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
+  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable, dynamoEndpoint } = t.context
 
   const queueUrl = await createQueue()
   const destinationBucket = await createBucket()
@@ -68,7 +68,8 @@ test('Process 1 message successfully', async t => {
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 1000, fetchChunkTimeoutMs: 1000 }),
-    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket }),
+    pinTable: new PinTable({ table: dynamoTable, endpoint: dynamoEndpoint })
   })
 
   // Preapre the data for the test
@@ -79,9 +80,9 @@ test('Process 1 message successfully', async t => {
   // Configure nock to mock the response
   const nockPickup = nock(ipfsApiUrl)
   nockPickup
-    .post('/api/v0/id')// Alive
-    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
-    .post('/api/v0/repo/gc?silent=true')// Garbage collector
+    .post('/api/v0/id') // Alive
+    .reply(200, JSON.stringify({ ID: 'test', Addresses: ['/ip4/93.184.216.34/p2p/test'] })).persist()
+    .post('/api/v0/repo/gc?silent=true') // Garbage collector
     .optionally().reply(200, 'GC Success').persist()
 
   for (const item of cars) {
@@ -132,7 +133,7 @@ test('Process 1 message successfully', async t => {
 
 test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
   t.timeout(1000 * 60 * 2)
-  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
+  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable, dynamoEndpoint } = t.context
 
   const queueUrl = await createQueue()
   const destinationBucket = await createBucket()
@@ -142,7 +143,8 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000, idlePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 500, fetchChunkTimeoutMs: 2000 }),
-    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket }),
+    pinTable: new PinTable({ table: dynamoTable, endpoint: dynamoEndpoint })
   })
 
   // Preapre the data for the test
@@ -154,7 +156,7 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
   const nockPickup = nock(ipfsApiUrl)
   nockPickup
     .post('/api/v0/id')// Alive
-    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+    .reply(200, JSON.stringify({ ID: 'test', Addresses: ['/ip4/93.184.216.34/p2p/test'] })).persist()
     .post('/api/v0/repo/gc?silent=true')// Garbage collector
     .optionally().reply(200, 'GC Success').persist()
 
@@ -205,7 +207,7 @@ test('Fail 1 message that sends data but exceeds fetchTimeoutMs', async t => {
 
 test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t => {
   t.timeout(1000 * 60 * 2)
-  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
+  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable, dynamoEndpoint } = t.context
 
   const queueUrl = await createQueue()
   const destinationBucket = await createBucket()
@@ -215,7 +217,8 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000, idlePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchTimeoutMs: 2000, fetchChunkTimeoutMs: 1000 }),
-    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket }),
+    pinTable: new PinTable({ table: dynamoTable, endpoint: dynamoEndpoint })
   })
 
   // Preapre the data for the test
@@ -227,7 +230,7 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
   const nockPickup = nock(ipfsApiUrl)
   nockPickup
     .post('/api/v0/id')// Alive
-    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+    .reply(200, JSON.stringify({ ID: 'test', Addresses: ['/ip4/93.184.216.34/p2p/test'] })).persist()
     .post('/api/v0/repo/gc?silent=true')// Garbage collector
     .optionally().reply(200, 'GC Success').persist()
 
@@ -278,7 +281,7 @@ test('Fail 1 message that sends data but exceeds fetchChunkTimeoutMs', async t =
 
 test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
   t.timeout(1000 * 60 * 2)
-  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
+  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable, dynamoEndpoint } = t.context
 
   const queueUrl = await createQueue()
   const destinationBucket = await createBucket()
@@ -288,7 +291,8 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' }, maxInFlight: 1, activePollIntervalMs: 10000, idlePollIntervalMs: 10000 }),
     carFetcher: new CarFetcher({ ipfsApiUrl, maxCarBytes: 1 }),
-    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket }),
+    pinTable: new PinTable({ table: dynamoTable, endpoint: dynamoEndpoint })
   })
 
   // Preapre the data for the test
@@ -300,7 +304,7 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
   const nockPickup = nock(ipfsApiUrl)
   nockPickup
     .post('/api/v0/id')// Alive
-    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+    .reply(200, JSON.stringify({ ID: 'test', Addresses: ['/ip4/93.184.216.34/p2p/test'] })).persist()
     .post('/api/v0/repo/gc?silent=true')// Garbage collector
     .optionally().reply(200, 'GC Success').persist()
 
@@ -351,7 +355,7 @@ test('Fail 1 message that sends data but exceeds maxCarBytes', async t => {
 
 test('Process 3 messages concurrently and the last has a timeout', async t => {
   t.timeout(1000 * 60 * 2)
-  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable } = t.context
+  const { createQueue, createBucket, sqs, s3, dynamoClient, dynamoTable, dynamoEndpoint } = t.context
 
   const queueUrl = await createQueue()
   const destinationBucket = await createBucket()
@@ -369,7 +373,7 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
   const nockPickup = nock(ipfsApiUrl)
   nockPickup
     .post('/api/v0/id')// Alive
-    .reply(200, JSON.stringify({ AgentVersion: 'Agent 1', ID: '12345465' }))
+    .reply(200, JSON.stringify({ ID: 'test', Addresses: ['/ip4/93.184.216.34/p2p/test'] })).persist()
     .post('/api/v0/repo/gc?silent=true')// Garbage collector
     .reply(200, 'GC Success').persist()
 
@@ -391,7 +395,8 @@ test('Process 3 messages concurrently and the last has a timeout', async t => {
   const pickup = createPickup({
     sqsPoller: createSqsPoller({ queueUrl, awsConfig: { region: 'us-east-1' } }),
     carFetcher: new CarFetcher({ ipfsApiUrl, fetchChunkTimeoutMs: 2000 }),
-    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket })
+    s3Uploader: new S3Uploader({ s3, validationBucket, destinationBucket }),
+    pinTable: new PinTable({ table: dynamoTable, endpoint: dynamoEndpoint })
   })
 
   // The number of the messages resolved, when is max close the test and finalize

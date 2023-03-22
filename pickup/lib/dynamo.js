@@ -15,10 +15,13 @@ export class PinTable {
   /**
    * Add multiaddrs to the delegates set for this pin record
    * @param {object} config
-   * @param {string} cid
-   * @param {Set<string>} delegates
+   * @param {string} config.cid
+   * @param {Set<string>} config.delegates
    */
   async addDelegates ({ cid, delegates }) {
+    if (!delegates || delegates.size === 0) {
+      throw new Error('addDelegates requires 1 or more delegates')
+    }
     const cmd = new UpdateCommand({
       TableName: this.table,
       Key: { cid },

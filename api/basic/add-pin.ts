@@ -122,7 +122,8 @@ export async function addPin ({ cid, origins, bucket, sqs, queueUrl, dynamo, tab
       factor: 1.66 // spread 4 retries over ~20s, see 'Real Solution' on https://www.wolframalpha.com/input?i=Sum%5B1000*x%5Ek,+%7Bk,+0,+5%7D%5D+%3D+27+*+1000
     })
     return toAddPinResponse(pinWithDelegates, origins)
-  } catch (error) {
+  } catch (err) {
+    logger.info({ cid, err }, 'Error waiting for delegates')
     return toAddPinResponse(pin, origins)
   }
 }
