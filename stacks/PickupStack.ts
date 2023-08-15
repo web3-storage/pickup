@@ -16,7 +16,14 @@ export function PickupStack ({ app, stack }: StackContext): void {
     cdk: {
       bucket: {
         lifecycleRules: [
-          { expiration: Duration.days(1) } // minimum is 1 day
+          {
+            expiration: Duration.days(1), // minimum is 1 day
+            noncurrentVersionExpiration: Duration.days(1),
+            abortIncompleteMultipartUploadAfter: Duration.days(1)
+          },
+          {
+            expiredObjectDeleteMarker: true
+          }
         ]
       }
     }
