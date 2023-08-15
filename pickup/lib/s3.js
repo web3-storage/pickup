@@ -1,7 +1,7 @@
 import { S3Client, GetObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3'
 import { Upload } from '@aws-sdk/lib-storage'
 import retry from 'p-retry'
-import { linkdex } from './car.js'
+import { checkCar } from './car.js'
 import { logger } from './logger.js'
 
 /**
@@ -30,37 +30,20 @@ export async function uploadAndVerify ({ client, validationBucket, destinationBu
 
   await s3Upload.done()
 
-  await checkCar({ client, bucket: validationBucket, key, cid })
-
-  return retry(() => client.send(new CopyObjectCommand({
-    CopySource: `${validationBucket}/${key}`,
-    Bucket: destinationBucket,
+  const res = await retry(() => client.send(new GetObjectCommand({
+    Bucket: validationBucket,
     Key: key
-  })), { retries: 5, onFailedAttempt: (err) => logger.info({ err, cid }, 'Copy to destination failed, retrying') })
-}
+  })), { retries: 5, onFailedAttempt: (err) => logger.info({ err, cid }, 'Get car from s3 failed, retrying') })
 
-/**
- * Fetch the car and stream it through linkdex to check if it's complete
- *
- * @param {object} config
- * @param {S3Client} config.client
- * @param {string} config.bucket
- * @param {string} config.key
- * @param {string} config.cid
- */
-export async function checkCar ({ client, bucket, key, cid }) {
-  let report
+  let check
   try {
-    report = await retry(async () => {
-      const res = await client.send(new GetObjectCommand({
-        Bucket: bucket,
-        Key: key
-      }))
-      return linkdex(res.Body)
-    }, { retries: 3, onFailedAttempt: (err) => logger.info({ err, cid }, 'checkCar failed, retrying') })
-  } catch (cause) {
-    throw new Error('checkCar failed', { cause })
+    check = await checkCar(res.Body)
+  } catch (err) {
+    logger.info({ err, cid }, 'checkCar failed')
+    throw new Error('checkCar failed', { cause: err })
   }
+
+  const { carCid, report } = check
 
   if (report.blocksIndexed === 0) {
     logger.info({ report, cid }, 'linkdex: Empty CAR')
@@ -71,6 +54,12 @@ export async function checkCar ({ client, bucket, key, cid }) {
     logger.info({ report, cid }, 'linkdex: DAG not complete')
     throw new Error('DAG not complete')
   }
+
+  return retry(() => client.send(new CopyObjectCommand({
+    CopySource: `${validationBucket}/${key}`,
+    Bucket: destinationBucket,
+    Key: `${carCid}/${carCid}.car`
+  })), { retries: 5, onFailedAttempt: (err) => logger.info({ err, cid }, 'Copy to destination failed, retrying') })
 }
 
 export class S3Uploader {
