@@ -43,7 +43,7 @@ export async function uploadAndVerify ({ client, validationBucket, destinationBu
     throw new Error('checkCar failed', { cause: err })
   }
 
-  const { carCid, carBytes, report } = check
+  const { carCid, carSize, report } = check
 
   if (report.blocksIndexed === 0) {
     logger.info({ report, cid }, 'linkdex: Empty CAR')
@@ -61,7 +61,7 @@ export async function uploadAndVerify ({ client, validationBucket, destinationBu
     Key: `${carCid}/${carCid}.car`
   })), { retries: 5, onFailedAttempt: (err) => logger.info({ err, cid }, 'Copy to destination failed, retrying') })
 
-  return { carCid, carBytes, cid }
+  return { carCid, carSize, cid }
 }
 
 export class S3Uploader {
