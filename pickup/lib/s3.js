@@ -43,7 +43,7 @@ export async function uploadAndVerify ({ client, validationBucket, destinationBu
     throw new Error('checkCar failed', { cause: err })
   }
 
-  const { carCid, report } = check
+  const { carCid, carBytes, report } = check
 
   if (report.blocksIndexed === 0) {
     logger.info({ report, cid }, 'linkdex: Empty CAR')
@@ -55,11 +55,13 @@ export async function uploadAndVerify ({ client, validationBucket, destinationBu
     throw new Error('DAG not complete')
   }
 
-  return retry(() => client.send(new CopyObjectCommand({
+  await retry(() => client.send(new CopyObjectCommand({
     CopySource: `${validationBucket}/${key}`,
     Bucket: destinationBucket,
     Key: `${carCid}/${carCid}.car`
   })), { retries: 5, onFailedAttempt: (err) => logger.info({ err, cid }, 'Copy to destination failed, retrying') })
+
+  return { carCid, carBytes, cid }
 }
 
 export class S3Uploader {
