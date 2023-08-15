@@ -1,7 +1,8 @@
-import { StackContext, Api, Table, Queue, Bucket, Topic, Config } from '@serverless-stack/resources'
+import { StackContext, Api, Table, Queue, Bucket, Config } from '@serverless-stack/resources'
 import { SSTConstruct } from '@serverless-stack/resources/dist/Construct'
 import * as cfnApig from 'aws-cdk-lib/aws-apigatewayv2'
 import * as apig from '@aws-cdk/aws-apigatewayv2-alpha'
+import * as s3 from 'aws-cdk-lib/aws-s3'
 import { Duration } from 'aws-cdk-lib'
 
 export function BasicApiStack ({
@@ -53,49 +54,11 @@ export function BasicApiStack ({
     }
   })
 
-  const updatePinDlq = new Queue(stack, 'UpdatePinDlq')
-
-  const updatePinQueue = new Queue(stack, 'UpdatePinQueue', {
-    consumer: {
-      function: {
-        handler: 'basic/update-pin.sqsEventHandler',
-        bind: [dynamoDbTable],
-        environment: {
-          TABLE_NAME: dynamoDbTable.tableName
-        }
-      },
-      cdk: {
-        eventSource: {
-          batchSize: 1 // why?
-        }
-      }
-    },
-    cdk: {
-      queue: {
-        deadLetterQueue: {
-          queue: updatePinDlq.cdk.queue,
-          maxReceiveCount: 2
-        }
-      }
-    }
-  })
-
-  const s3Topic = new Topic(stack, 'S3Events', {
-    subscribers: {
-      updatePinQueue
-    }
-  })
-
   const bucket = new Bucket(stack, 'Car', {
-    notifications: {
-      topic: {
-        type: 'topic',
-        topic: s3Topic,
-        events: ['object_created']
-      }
+    cdk: {
+      bucket: s3.Bucket.fromBucketArn(stack, 'carpark', process.env.CARPARK_ARN)
     }
   })
-  bucket.cdk.bucket.enableEventBridgeNotification()
 
   const customDomain = getCustomDomain(app.stage, process.env.HOSTED_ZONE)
   const apiFunctionBindList: SSTConstruct[] = [bucket, dynamoDbTable, queue]
@@ -146,7 +109,6 @@ export function BasicApiStack ({
   }
 
   stack.addOutputs({
-    S3EventsTopicARN: s3Topic.topicArn,
     ApiEndpoint: api.url,
     CustomDomain: (customDomain !== undefined) ? `https://${customDomain.domainName}` : 'Set HOSTED_ZONE in env to deploy to a custom domain'
   })
