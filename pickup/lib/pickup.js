@@ -74,8 +74,8 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader, pinTable }) {
       logger.info({ cid, origins }, 'Fetching CAR')
       await carFetcher.connectTo(origins)
       const body = await carFetcher.fetch({ cid, origins, abortCtl })
-      await upload(body)
-      logger.info({ cid, origins }, 'OK. Car in S3')
+      const { carCid, carSize } = await upload(body)
+      logger.info({ cid, origins, carCid, carSize }, 'OK. Car in S3')
       await msg.del() // the message is handled, remove it from queue.
     } catch (err) {
       if (abortCtl.signal.reason === TOO_BIG) {
