@@ -16,7 +16,13 @@ export function PickupStack ({ app, stack }: StackContext): void {
     cdk: {
       bucket: {
         lifecycleRules: [
-          { expiration: Duration.days(1) } // minimum is 1 day
+          {
+            expiration: Duration.days(1), // minimum is 1 day
+            abortIncompleteMultipartUploadAfter: Duration.days(1)
+          },
+          {
+            expiredObjectDeleteMarker: true
+          }
         ]
       }
     }
@@ -36,7 +42,7 @@ export function PickupStack ({ app, stack }: StackContext): void {
     minScalingCapacity: 1,
     maxScalingCapacity: 10,
     enableExecuteCommand: isPrBuild(app),
-    ephemeralStorageGiB: isPrBuild(app) ? 21 : 200, // requried to be > 20!
+    ephemeralStorageGiB: isPrBuild(app) ? 21 : 200, // required to be > 20!
     logDriver: isPrBuild(app) ? undefined : getLokiLogDriver(app, stack), // use aws cloudwatch in PRs, loki in prod.
     cpu: 4096, /* 4 vCPU. Task eats CPU. */
     memoryLimitMiB: 8 * 1024, /* 8 GB RAM, min allowed with 4 vCPU */
