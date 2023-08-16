@@ -56,7 +56,7 @@ export function BasicApiStack ({
 
   const bucket = new Bucket(stack, 'Car', {
     cdk: {
-      bucket: s3.Bucket.fromBucketArn(stack, 'carpark', process.env.CARPARK_ARN)
+      bucket: s3.Bucket.fromBucketName(stack, 'carpark', process.env.CARPARK ?? 'carpark-staging-0')
     }
   })
 

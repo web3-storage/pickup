@@ -7,12 +7,9 @@ CLUSTER_BASIC_AUTH_TOKEN="???"
 # Indexer base url (The example below is referred to staging)
 LEGACY_CLUSTER_IPFS_URL="https://nft.storage.ipfscluster.io/api"
 
-# Indexer base url
-# 0 -> all request to Indexer
-# 100 -> All request to Pickup
-# values in between the balancer is applied (eg. 15 -> 15% of the request to Pickup, 85% to Indexer)
-BALANCER_RATE=10
+# Optional - name of bucket to write CARs to. Default: `carpark-staging-0`
+# CARPARK="my-bucket-name"
 
-# uncomment to try out deploying the api under a custom domain.
+# Optional - deploying the api under a custom domain.
 # the value should match a hosted zone configured in route53 that your aws account has access to.
 # HOSTED_ZONE=pickup.dag.haus
