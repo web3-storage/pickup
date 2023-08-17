@@ -74,23 +74,24 @@ export function createPickup ({ sqsPoller, carFetcher, s3Uploader, pinTable }) {
       logger.info({ cid, origins }, 'Fetching CAR')
       await carFetcher.connectTo(origins)
       const body = await carFetcher.fetch({ cid, origins, abortCtl })
-      const { carCid, carSize } = await upload(body)
+      const { carCid, carSize } = await upload(body, abortCtl.signal)
       logger.info({ cid, origins, carCid, carSize }, 'OK. Car in S3')
+      await pinTable.updatePinStatus({ cid })
       await msg.del() // the message is handled, remove it from queue.
     } catch (err) {
+      // fail if too big, otherwise release back to the queue for another attempt
       if (abortCtl.signal.reason === TOO_BIG) {
+        await pinTable.updatePinStatus({ cid, status: 'failed' })
+        await msg.del()
         logger.error({ cid, origins, err }, 'Failed to fetch CAR: Too big')
-        await msg.release()
-      } else if (abortCtl.signal.reason === CHUNK_TOO_SLOW) {
-        logger.error({ cid, origins, err }, 'Failed to fetch CAR: chunk too slow')
-        await msg.release()
-      } else if (abortCtl.signal.reason === FETCH_TOO_SLOW) {
-        logger.error({ cid, origins, err }, 'Failed to fetch CAR: fetch too slow')
-        await msg.release()
       } else {
-        logger.error({ cid, origins, err }, 'Failed to fetch CAR: other error')
-        if (!msg.isHandled) {
-          await msg.release() // back to the queue, try again
+        await msg.release()
+        if (abortCtl.signal.reason === CHUNK_TOO_SLOW) {
+          logger.error({ cid, origins, err }, 'Failed to fetch CAR: chunk too slow')
+        } else if (abortCtl.signal.reason === FETCH_TOO_SLOW) {
+          logger.error({ cid, origins, err }, 'Failed to fetch CAR: fetch too slow')
+        } else {
+          logger.error({ cid, origins, err }, 'Failed to fetch CAR: other error')
         }
       }
     } finally {

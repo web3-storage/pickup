@@ -5,31 +5,17 @@ import { checkCar } from './car.js'
 import { logger } from './logger.js'
 
 /**
- * Upload CAR stream to temp bucket, verify it, then copy to destination bucket
+ * Verify CAR, by getting it back from the verification bucket and checking the dag is complete.
+ * If it's ok, calculate it's size and carCid and copy to destination bucket
  *
  * @param {object} config
  * @param {S3Client} config.client
  * @param {string} config.validationBucket
  * @param {string} config.destinationBucket
  * @param {string} config.key
- * @param {Readable} config.body
  * @param {string} config.cid
  */
-export async function uploadAndVerify ({ client, validationBucket, destinationBucket, key, body, cid }) {
-  // Handles s3 multipart uploading
-  // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
-  const s3Upload = new Upload({
-    client,
-    params: {
-      Metadata: { structure: 'complete' },
-      Bucket: validationBucket,
-      Key: key,
-      Body: body
-    }
-  })
-
-  await s3Upload.done()
-
+export async function verify ({ client, validationBucket, destinationBucket, key, cid }) {
   const res = await retry(() => client.send(new GetObjectCommand({
     Bucket: validationBucket,
     Key: key
@@ -87,16 +73,24 @@ export class S3Uploader {
     /**
      * @typedef {import('node:stream').Readable} Readable
      * @param {Readable} body
+     * @param {AbortSignal} signal
      */
-    return async function (body) {
-      return uploadAndVerify({
+    return async function (body, signal) {
+      // Handles s3 multipart uploading
+      // see: https://github.com/aws/aws-sdk-js-v3/blob/main/lib/lib-storage/README.md
+      const s3Upload = new Upload({
         client: s3,
-        validationBucket,
-        destinationBucket,
-        key,
-        body,
-        cid
+        params: {
+          Metadata: { structure: 'Complete' },
+          Bucket: validationBucket,
+          Key: key,
+          Body: body
+        }
       })
+      signal.addEventListener('abort', () => s3Upload.abort())
+      await s3Upload.done()
+
+      return verify({ client: s3, validationBucket, destinationBucket, key, cid })
     }
   }
 }

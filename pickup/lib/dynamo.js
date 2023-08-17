@@ -47,4 +47,27 @@ export class PinTable {
     const res = await this.dynamo.send(cmd)
     return res.Item
   }
+
+  /**
+   * Update the pin status for a given CID
+   *
+   * @param {object} config
+   * @param {string} config.cid
+   * @param {string} [config.status]
+   */
+  async updatePinStatus ({ cid, status = 'pinned' }) {
+    const res = await this.dynamo.send(new UpdateCommand({
+      TableName: this.table,
+      Key: { cid },
+      ExpressionAttributeNames: {
+        '#status': 'status'
+      },
+      ExpressionAttributeValues: {
+        ':s': status
+      },
+      UpdateExpression: 'set #status = :s',
+      ReturnValues: 'ALL_NEW'
+    }))
+    return res.Attributes
+  }
 }

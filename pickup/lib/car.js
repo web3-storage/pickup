@@ -50,5 +50,5 @@ export async function checkCar (car) {
     }
   }))
   const carCid = createCarCid(sha256)
-  return { carCid, carSize, report }
+  return { carCid: carCid.toString(), carSize, report }
 }

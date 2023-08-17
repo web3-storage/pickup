@@ -12,9 +12,10 @@ import { logger } from './logger.js'
 /**
  * Fetch a CAR from kubo
  *
- * @param {string} cid - The CID requested
- * @param {string} ipfsApiUrl - The IPFS server url
- * @param {AbortSignal} signal - Cancel the fetch
+ * @param {object} config
+ * @param {string} config.cid - The CID requested
+ * @param {string} config.ipfsApiUrl - The IPFS server url
+ * @param {AbortSignal} config.signal - Cancel the fetch
  * @returns {Promise<Readable>}
  */
 export async function fetchCar ({ cid, ipfsApiUrl, signal }) {
@@ -170,24 +171,28 @@ export class CarFetcher {
    */
   async fetch ({ cid, abortCtl }) {
     const { ipfsApiUrl, maxCarBytes, fetchTimeoutMs, fetchChunkTimeoutMs } = this
+
+    const fetchTimer = debounce(() => abort(FETCH_TOO_SLOW), fetchTimeoutMs)
+    const chunkTimer = debounce(() => abort(CHUNK_TOO_SLOW), fetchChunkTimeoutMs)
+    const clearTimers = () => {
+      fetchTimer.clear()
+      chunkTimer.clear()
+    }
+    function abort (reason) {
+      clearTimers()
+      if (!abortCtl.signal.aborted) {
+        abortCtl.abort(reason)
+      }
+    }
+
+    // start the clock!
+    fetchTimer()
+    chunkTimer()
+
     /**
      * @param {AsyncIterable<Uint8Array>} source
      */
     async function * streamWatcher (source) {
-      const fetchTimer = debounce(() => abort(FETCH_TOO_SLOW), fetchTimeoutMs)
-      const chunkTimer = debounce(() => abort(CHUNK_TOO_SLOW), fetchChunkTimeoutMs)
-      const clearTimers = () => {
-        fetchTimer.clear()
-        chunkTimer.clear()
-      }
-      function abort (reason) {
-        clearTimers()
-        if (!abortCtl.signal.aborted) {
-          abortCtl.abort(reason)
-        }
-      }
-      fetchTimer()
-      chunkTimer()
       let size = 0
       for await (const chonk of source) {
         chunkTimer()
