@@ -78,7 +78,7 @@ export async function verifyMessage ({ msg, cars, t, bucket, s3 }) {
   try {
     const message = msg.body
     const index = Number(message.requestid)
-    if (cars[index].expectedResult === 'success') {
+    if (cars[index].expectedResult === 'pinned') {
       // If succeed, the s3 file should have the same content of the car generated
       const { cid: msgCid } = message
       t.is(msgCid, cars[index].cid)
