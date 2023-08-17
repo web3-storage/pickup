@@ -81,7 +81,7 @@ export class S3Uploader {
       const s3Upload = new Upload({
         client: s3,
         params: {
-          Metadata: { structure: 'complete' },
+          Metadata: { structure: 'Complete' },
           Bucket: validationBucket,
           Key: key,
           Body: body
