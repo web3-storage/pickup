@@ -1,10 +1,10 @@
 import { Tags, RemovalPolicy } from 'aws-cdk-lib'
-import { PickupStack } from './PickupStack'
+import { PickupStack, isPrBuild } from './PickupStack'
 import { BasicApiStack } from './BasicApiStack'
 import { App } from '@serverless-stack/resources'
 
 export default function (app: App): void {
-  if (!(app.stage in ['prod', 'staging'])) {
+  if (isPrBuild(app)) {
     app.setDefaultRemovalPolicy(RemovalPolicy.DESTROY)
   }
 
